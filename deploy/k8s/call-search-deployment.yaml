@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: call-search
+  namespace: call-center
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: call-search
+  template:
+    metadata:
+      labels:
+        app: call-search
+    spec:
+      containers:
+        - name: call-search
+          image: call-search:latest
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: call-center-config
+            - secretRef:
+                name: call-center-secret

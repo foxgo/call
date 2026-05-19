@@ -1,0 +1,9 @@
+{
+  "aliases": {
+    "call_round_write": {
+      "is_write_index": true
+    },
+    "call_round_read": {}
+  }
+}
+

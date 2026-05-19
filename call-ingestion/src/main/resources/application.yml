@@ -1,0 +1,83 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: call-ingestion
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:call-write-group}
+      enable-auto-commit: false
+      max-poll-records: 500
+      properties:
+        allow.auto.create.topics: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+call:
+  kafka:
+    topics:
+      record: ${CALL_RECORD_TOPIC:call_record_topic}
+      round: ${CALL_ROUND_TOPIC:call_round_topic}
+      record-dlq: ${CALL_RECORD_DLQ_TOPIC:call_record_dlq}
+      round-dlq: ${CALL_ROUND_DLQ_TOPIC:call_round_dlq}
+  shard:
+    db-count: ${CALL_DB_COUNT:4}
+    table-count: ${CALL_TABLE_COUNT:16}
+  id:
+    machine-id: ${CALL_MACHINE_ID:1}
+    epoch: ${CALL_ID_EPOCH:1700000000000}
+  datasource:
+    nodes:
+      - index: 0
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_0
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 1
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_1
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 2
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_2
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 3
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_3
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+  elasticsearch:
+    uris:
+      - ${ES_URI:http://localhost:9200}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:elastic123}
+    auto-init: true
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"

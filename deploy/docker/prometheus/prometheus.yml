@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: call-ingestion
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["call-ingestion:8081"]
+  - job_name: call-search
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["call-search:8082"]

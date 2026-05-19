@@ -4,21 +4,23 @@ import com.callcenter.common.config.CallElasticsearchProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 public class ElasticsearchIndexInitializer implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(ElasticsearchIndexInitializer.class);
 
     private final RestClient restClient;
     private final CallElasticsearchProperties properties;

@@ -2,9 +2,7 @@ package com.callcenter.common.util;
 
 import com.callcenter.common.config.CallIdProperties;
 import com.callcenter.common.config.ShardProperties;
-
 import java.time.Clock;
-
 import org.springframework.stereotype.Component;
 
 @Component
@@ -56,7 +54,7 @@ public class ShardedSnowflakeIdGenerator {
         }
         lastTimestamp = timestamp;
 
-        long shard = HashUtil.hash(phone == null ? "" : phone) % tableCount;
+        long shard = Math.floorMod((phone == null ? "" : phone).hashCode(), tableCount) & 0x0F;
         return ((timestamp - epoch) << TIME_SHIFT)
                 | (workerId << WORKER_SHIFT)
                 | (shard << SHARD_SHIFT)

@@ -15,6 +15,7 @@ public class CallRecordEntity {
     private String lineNumber;
     private Integer callStatus;
     private Integer duration;
+    private Integer roundTotal;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createdAt;
@@ -75,6 +76,14 @@ public class CallRecordEntity {
         this.duration = duration;
     }
 
+    public Integer getRoundTotal() {
+        return roundTotal;
+    }
+
+    public void setRoundTotal(Integer roundTotal) {
+        this.roundTotal = roundTotal;
+    }
+
     public LocalDateTime getStartTime() {
         return startTime;
     }
@@ -99,4 +108,3 @@ public class CallRecordEntity {
         this.createdAt = createdAt;
     }
 }
-

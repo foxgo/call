@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS call_event_outbox (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    event_id VARCHAR(128) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    aggregate_type VARCHAR(32) NOT NULL,
+    aggregate_id VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    partition_key VARCHAR(64) NOT NULL,
+    schema_version INT NOT NULL,
+    payload JSON NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempt_count INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME NULL,
+    last_error TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_call_event_outbox_event_id (event_id),
+    KEY idx_call_event_outbox_status_next_attempt (status, next_attempt_at),
+    KEY idx_call_event_outbox_partition_key (partition_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

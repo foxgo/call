@@ -1,0 +1,42 @@
+package com.callcenter.ingestion.outbox;
+
+import jakarta.validation.constraints.Min;
+import java.time.Duration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+@Validated
+@ConfigurationProperties(prefix = "call.outbox")
+public class OutboxPublisherProperties {
+
+    @Min(1)
+    private int batchSize = 100;
+
+    private Duration pollInterval = Duration.ofSeconds(5);
+
+    private Duration retryBackoff = Duration.ofSeconds(30);
+
+    public int getBatchSize() {
+        return batchSize;
+    }
+
+    public void setBatchSize(int batchSize) {
+        this.batchSize = batchSize;
+    }
+
+    public Duration getPollInterval() {
+        return pollInterval;
+    }
+
+    public void setPollInterval(Duration pollInterval) {
+        this.pollInterval = pollInterval;
+    }
+
+    public Duration getRetryBackoff() {
+        return retryBackoff;
+    }
+
+    public void setRetryBackoff(Duration retryBackoff) {
+        this.retryBackoff = retryBackoff;
+    }
+}

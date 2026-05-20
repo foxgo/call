@@ -9,18 +9,15 @@ spring:
       enabled: true
   jackson:
     default-property-inclusion: non_null
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP:call-write-group}
-      enable-auto-commit: false
-      max-poll-records: 500
-      properties:
-        allow.auto.create.topics: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:call-producer-group}
 
 management:
   endpoints:
@@ -33,12 +30,38 @@ management:
         enabled: true
 
 call:
-  kafka:
+  rocketmq:
+    name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+    producer-group: ${ROCKETMQ_PRODUCER_GROUP:call-producer-group}
     topics:
-      record: ${CALL_RECORD_TOPIC:call_record_topic}
-      round: ${CALL_ROUND_TOPIC:call_round_topic}
+      record-ingest: ${CALL_RECORD_INGEST_TOPIC:call_record_ingest}
+      round-ingest: ${CALL_ROUND_INGEST_TOPIC:call_round_ingest}
       record-dlq: ${CALL_RECORD_DLQ_TOPIC:call_record_dlq}
       round-dlq: ${CALL_ROUND_DLQ_TOPIC:call_round_dlq}
+    consumers:
+      record:
+        group: ${CALL_RECORD_CONSUMER_GROUP:call-record-consumer-group}
+        consume-thread-max: ${CALL_RECORD_CONSUMER_THREADS:6}
+      round:
+        group: ${CALL_ROUND_CONSUMER_GROUP:call-round-consumer-group}
+        consume-thread-max: ${CALL_ROUND_CONSUMER_THREADS:6}
+      index:
+        group: ${CALL_INDEX_CONSUMER_GROUP:call-index-group}
+        consume-thread-max: ${CALL_INDEX_CONSUMER_THREADS:2}
+      ai:
+        group: ${CALL_AI_CONSUMER_GROUP:call-ai-group}
+        consume-thread-max: ${CALL_AI_CONSUMER_THREADS:2}
+      third-party:
+        group: ${CALL_THIRD_PARTY_CONSUMER_GROUP:call-third-party-group}
+        consume-thread-max: ${CALL_THIRD_PARTY_CONSUMER_THREADS:2}
+  outbox:
+    batch-size: ${CALL_OUTBOX_BATCH_SIZE:100}
+    poll-interval: ${CALL_OUTBOX_POLL_INTERVAL:PT5S}
+    retry-backoff: ${CALL_OUTBOX_RETRY_BACKOFF:PT30S}
+  postprocess:
+    topics:
+      record-persisted: ${CALL_RECORD_PERSISTED_TOPIC:call_record_persisted}
+      round-persisted: ${CALL_ROUND_PERSISTED_TOPIC:call_round_persisted}
   shard:
     db-count: ${CALL_DB_COUNT:4}
     table-count: ${CALL_TABLE_COUNT:16}

@@ -31,6 +31,7 @@ BEGIN
       'line_number VARCHAR(20),',
       'call_status TINYINT,',
       'duration INT,',
+      'round_total INT,',
       'start_time DATETIME,',
       'end_time DATETIME,',
       'created_at DATETIME DEFAULT CURRENT_TIMESTAMP,',

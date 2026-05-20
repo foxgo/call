@@ -2,10 +2,11 @@ package com.callcenter.ingestion.service;
 
 import com.callcenter.common.context.ShardContextHolder;
 import com.callcenter.common.dto.CallRecordMessage;
+import com.callcenter.common.entity.CallEventOutboxEntity;
 import com.callcenter.common.entity.CallRecordEntity;
+import com.callcenter.common.mapper.CallEventOutboxMapper;
 import com.callcenter.common.mapper.CallRecordMapper;
 import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
 import com.callcenter.ingestion.config.WriteMetrics;
 import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
@@ -18,16 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class CallRecordMysqlService {
 
     private final CallRecordMapper callRecordMapper;
-    private final ShardedSnowflakeIdGenerator idGenerator;
+    private final CallEventOutboxMapper callEventOutboxMapper;
+    private final OutboxEventFactory outboxEventFactory;
     private final WriteMetrics writeMetrics;
 
     public CallRecordMysqlService(
             CallRecordMapper callRecordMapper,
-            ShardedSnowflakeIdGenerator idGenerator,
+            CallEventOutboxMapper callEventOutboxMapper,
+            OutboxEventFactory outboxEventFactory,
             WriteMetrics writeMetrics
     ) {
         this.callRecordMapper = callRecordMapper;
-        this.idGenerator = idGenerator;
+        this.callEventOutboxMapper = callEventOutboxMapper;
+        this.outboxEventFactory = outboxEventFactory;
         this.writeMetrics = writeMetrics;
     }
 
@@ -36,8 +40,12 @@ public class CallRecordMysqlService {
         ShardContextHolder.set(shardKey.toContext());
         try {
             List<CallRecordEntity> entities = batch.stream().map(this::toEntity).toList();
+            List<CallEventOutboxEntity> outboxEvents = entities.stream()
+                    .map(outboxEventFactory::recordPersisted)
+                    .toList();
             Timer.Sample sample = Timer.start();
             callRecordMapper.batchInsertIgnore(entities);
+            callEventOutboxMapper.batchInsert(outboxEvents);
             sample.stop(writeMetrics.mysqlInsertLatency());
             return entities;
         } finally {
@@ -46,14 +54,18 @@ public class CallRecordMysqlService {
     }
 
     private CallRecordEntity toEntity(CallRecordMessage message) {
+        if (message.callId() == null) {
+            throw new IllegalArgumentException("callId is required");
+        }
         CallRecordEntity entity = new CallRecordEntity();
-        entity.setCallId(message.callId() == null ? idGenerator.nextId(message.phone()) : message.callId());
+        entity.setCallId(message.callId());
         entity.setTenantId(message.tenantId());
         entity.setTaskId(message.taskId());
         entity.setPhone(message.phone());
         entity.setLineNumber(message.lineNumber());
         entity.setCallStatus(message.callStatus());
         entity.setDuration(message.duration());
+        entity.setRoundTotal(message.roundTotal());
         entity.setStartTime(toDateTime(message.startTime()));
         entity.setEndTime(toDateTime(message.endTime()));
         entity.setCreatedAt(LocalDateTime.now());
@@ -71,4 +83,3 @@ public class CallRecordMysqlService {
         );
     }
 }
-

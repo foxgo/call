@@ -13,13 +13,12 @@ public interface CallRecordMapper extends BaseMapper<CallRecordEntity> {
     @Insert({
             "<script>",
             "INSERT IGNORE INTO call_record ",
-            "(call_id, tenant_id, task_id, phone, line_number, call_status, duration, start_time, end_time, created_at) VALUES ",
+            "(call_id, tenant_id, task_id, phone, line_number, call_status, duration, round_total, start_time, end_time, created_at) VALUES ",
             "<foreach collection='records' item='record' separator=','>",
             "(#{record.callId}, #{record.tenantId}, #{record.taskId}, #{record.phone}, #{record.lineNumber},",
-            "#{record.callStatus}, #{record.duration}, #{record.startTime}, #{record.endTime}, #{record.createdAt})",
+            "#{record.callStatus}, #{record.duration}, #{record.roundTotal}, #{record.startTime}, #{record.endTime}, #{record.createdAt})",
             "</foreach>",
             "</script>"
     })
     int batchInsertIgnore(@Param("records") List<CallRecordEntity> records);
 }
-

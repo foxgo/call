@@ -1,0 +1,187 @@
+package com.callcenter.ingestion.service;
+
+import com.callcenter.common.dto.CallRecordMessage;
+import com.callcenter.common.dto.CallRoundMessage;
+import com.callcenter.common.dto.DomainEventMessage;
+import com.callcenter.common.entity.CallEventOutboxEntity;
+import com.callcenter.common.entity.CallRecordEntity;
+import com.callcenter.common.entity.CallRoundEntity;
+import com.callcenter.common.mapper.CallEventOutboxMapper;
+import com.callcenter.common.mapper.CallRecordMapper;
+import com.callcenter.common.mapper.CallRoundMapper;
+import com.callcenter.common.route.ShardKey;
+import com.callcenter.ingestion.config.WriteMetrics;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.micrometer.core.instrument.Timer;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class OutboxEventFactoryTest {
+
+    @Test
+    void shouldBuildRecordPersistedEventWithStableEnvelopeAndPayload() throws Exception {
+        OutboxEventFactory factory = new OutboxEventFactory(JsonSupport.objectMapper());
+        CallRecordEntity entity = recordEntity();
+
+        CallEventOutboxEntity outbox = factory.recordPersisted(entity);
+        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.getPayload(), DomainEventMessage.class);
+
+        assertThat(outbox.getEventId()).isEqualTo("call_record_persisted:9:1001");
+        assertThat(outbox.getEventType()).isEqualTo("call_record_persisted");
+        assertThat(outbox.getAggregateType()).isEqualTo("CALL_RECORD");
+        assertThat(outbox.getAggregateId()).isEqualTo("1001");
+        assertThat(outbox.getTenantId()).isEqualTo(9L);
+        assertThat(outbox.getPartitionKey()).isEqualTo("1001");
+        assertThat(outbox.getSchemaVersion()).isEqualTo(1);
+        assertThat(outbox.getStatus()).isEqualTo("NEW");
+        assertThat(event.eventId()).isEqualTo(outbox.getEventId());
+        assertThat(event.eventType()).isEqualTo(outbox.getEventType());
+        assertThat(event.aggregateType()).isEqualTo(outbox.getAggregateType());
+        assertThat(event.aggregateId()).isEqualTo(outbox.getAggregateId());
+        assertThat(event.tenantId()).isEqualTo(outbox.getTenantId());
+        assertThat(event.schemaVersion()).isEqualTo(1);
+
+        JsonNode payload = event.payload();
+        assertThat(payload.get("callId").asLong()).isEqualTo(1001L);
+        assertThat(payload.get("tenantId").asLong()).isEqualTo(9L);
+        assertThat(payload.get("phone").asText()).isEqualTo("13800138000");
+        assertThat(payload.get("lineNumber").asText()).isEqualTo("021");
+        assertThat(payload.get("callStatus").asInt()).isEqualTo(2);
+        assertThat(payload.get("duration").asInt()).isEqualTo(180);
+        assertThat(payload.get("roundTotal").asInt()).isEqualTo(3);
+        assertThat(payload.get("startTime").asText()).isEqualTo("2026-05-20T10:00:00");
+        assertThat(payload.get("endTime").asText()).isEqualTo("2026-05-20T10:03:00");
+    }
+
+    @Test
+    void shouldBuildRoundPersistedEventWithDownstreamFields() throws Exception {
+        OutboxEventFactory factory = new OutboxEventFactory(JsonSupport.objectMapper());
+        CallRoundEntity entity = roundEntity();
+
+        CallEventOutboxEntity outbox = factory.roundPersisted(entity);
+        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.getPayload(), DomainEventMessage.class);
+
+        assertThat(outbox.getEventId()).isEqualTo("call_round_persisted:9:1001:77");
+        assertThat(outbox.getEventType()).isEqualTo("call_round_persisted");
+        assertThat(outbox.getAggregateType()).isEqualTo("CALL_ROUND");
+        assertThat(outbox.getAggregateId()).isEqualTo("77");
+        assertThat(outbox.getTenantId()).isEqualTo(9L);
+        assertThat(outbox.getPartitionKey()).isEqualTo("1001");
+        assertThat(outbox.getSchemaVersion()).isEqualTo(1);
+        assertThat(outbox.getStatus()).isEqualTo("NEW");
+        assertThat(event.eventId()).isEqualTo(outbox.getEventId());
+        assertThat(event.eventType()).isEqualTo(outbox.getEventType());
+        assertThat(event.aggregateType()).isEqualTo(outbox.getAggregateType());
+        assertThat(event.aggregateId()).isEqualTo(outbox.getAggregateId());
+        assertThat(event.tenantId()).isEqualTo(outbox.getTenantId());
+        assertThat(event.schemaVersion()).isEqualTo(1);
+
+        JsonNode payload = event.payload();
+        assertThat(payload.get("roundId").asLong()).isEqualTo(77L);
+        assertThat(payload.get("callId").asLong()).isEqualTo(1001L);
+        assertThat(payload.get("tenantId").asLong()).isEqualTo(9L);
+        assertThat(payload.get("roundIndex").asInt()).isEqualTo(1);
+        assertThat(payload.get("speaker").asText()).isEqualTo("AGENT");
+        assertThat(payload.get("content").asText()).isEqualTo("hello");
+        assertThat(payload.get("intent").asText()).isEqualTo("GREETING");
+        assertThat(payload.get("startTime").asText()).isEqualTo("2026-05-20T10:01:00");
+    }
+
+    @Test
+    void shouldPersistRecordRowsAndOutboxRowsTogether() {
+        CallRecordMapper callRecordMapper = mock(CallRecordMapper.class);
+        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
+        WriteMetrics writeMetrics = mock(WriteMetrics.class);
+        CallRecordMysqlService service = new CallRecordMysqlService(
+                callRecordMapper,
+                outboxMapper,
+                outboxEventFactory,
+                writeMetrics
+        );
+        CallRecordMessage message = new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 2, 1L, 2L, 180, 3, null);
+        CallEventOutboxEntity outbox = new CallEventOutboxEntity();
+
+        when(writeMetrics.mysqlInsertLatency()).thenReturn(mock(Timer.class));
+        when(outboxEventFactory.recordPersisted(any())).thenReturn(outbox);
+
+        List<CallRecordEntity> entities = service.persistBatch(new ShardKey(9L, 0, 1, "202605"), List.of(message));
+
+        assertThat(entities).singleElement().satisfies(entity -> {
+            assertThat(entity.getCallId()).isEqualTo(1001L);
+            assertThat(entity.getTenantId()).isEqualTo(9L);
+            assertThat(entity.getPhone()).isEqualTo("13800138000");
+            assertThat(entity.getRoundTotal()).isEqualTo(3);
+        });
+        verify(callRecordMapper).batchInsertIgnore(entities);
+        verify(outboxEventFactory).recordPersisted(entities.getFirst());
+        verify(outboxMapper).batchInsert(List.of(outbox));
+    }
+
+    @Test
+    void shouldPersistRoundRowsAndOutboxRowsTogether() {
+        CallRoundMapper callRoundMapper = mock(CallRoundMapper.class);
+        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
+        WriteMetrics writeMetrics = mock(WriteMetrics.class);
+        CallRoundMysqlService service = new CallRoundMysqlService(
+                callRoundMapper,
+                outboxMapper,
+                outboxEventFactory,
+                writeMetrics
+        );
+        CallRoundMessage message = new CallRoundMessage(77L, 9L, 1001L, 1, "AGENT", "hello", "GREETING", 1L);
+        CallEventOutboxEntity outbox = new CallEventOutboxEntity();
+
+        when(writeMetrics.mysqlInsertLatency()).thenReturn(mock(Timer.class));
+        when(outboxEventFactory.roundPersisted(any())).thenReturn(outbox);
+
+        List<CallRoundEntity> entities = service.persistBatch(new ShardKey(9L, 0, 1, "202605"), List.of(message));
+
+        assertThat(entities).singleElement().satisfies(entity -> {
+            assertThat(entity.getRoundId()).isEqualTo(77L);
+            assertThat(entity.getCallId()).isEqualTo(1001L);
+            assertThat(entity.getTenantId()).isEqualTo(9L);
+        });
+        verify(callRoundMapper).batchInsertIgnore(entities);
+        verify(outboxEventFactory).roundPersisted(entities.getFirst());
+        verify(outboxMapper).batchInsert(List.of(outbox));
+    }
+
+    private static CallRecordEntity recordEntity() {
+        CallRecordEntity entity = new CallRecordEntity();
+        entity.setCallId(1001L);
+        entity.setTenantId(9L);
+        entity.setTaskId(1L);
+        entity.setPhone("13800138000");
+        entity.setLineNumber("021");
+        entity.setCallStatus(2);
+        entity.setDuration(180);
+        entity.setRoundTotal(3);
+        entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
+        entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
+        entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));
+        return entity;
+    }
+
+    private static CallRoundEntity roundEntity() {
+        CallRoundEntity entity = new CallRoundEntity();
+        entity.setRoundId(77L);
+        entity.setCallId(1001L);
+        entity.setTenantId(9L);
+        entity.setRoundIndex(1);
+        entity.setSpeaker("AGENT");
+        entity.setContent("hello");
+        entity.setIntent("GREETING");
+        entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 1));
+        entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 1, 30));
+        return entity;
+    }
+}

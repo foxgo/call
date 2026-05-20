@@ -6,10 +6,11 @@ import co.elastic.clients.elasticsearch.core.BulkResponse;
 import com.callcenter.common.entity.CallRecordEntity;
 import com.callcenter.common.entity.CallRoundEntity;
 import com.callcenter.ingestion.config.WriteMetrics;
+import com.callcenter.ingestion.processor.MessageKeys;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +29,7 @@ public class ElasticsearchBulkService {
         BulkRequest.Builder builder = new BulkRequest.Builder();
         entities.forEach(entity -> builder.operations(operation -> operation.index(index -> index
                 .index("call_record_write")
-                .id(String.valueOf(entity.getCallId()))
+                .id(MessageKeys.recordDocumentId(entity))
                 .routing(String.valueOf(entity.getTenantId()))
                 .document(buildRecordDocument(entity)))));
         execute(builder.build());
@@ -38,7 +39,7 @@ public class ElasticsearchBulkService {
         BulkRequest.Builder builder = new BulkRequest.Builder();
         entities.forEach(entity -> builder.operations(operation -> operation.index(index -> index
                 .index("call_round_write")
-                .id(String.valueOf(entity.getRoundId()))
+                .id(MessageKeys.roundDocumentId(entity))
                 .routing(String.valueOf(entity.getTenantId()))
                 .document(buildRoundDocument(entity)))));
         execute(builder.build());

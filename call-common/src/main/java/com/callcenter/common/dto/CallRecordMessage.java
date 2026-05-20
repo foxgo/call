@@ -10,7 +10,7 @@ public record CallRecordMessage(
         Long startTime,
         Long endTime,
         Integer duration,
+        Integer roundTotal,
         String extJson
 ) {
 }
-

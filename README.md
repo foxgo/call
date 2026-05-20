@@ -3,7 +3,7 @@
 生产级通话完成后处理系统工程骨架，包含：
 
 - `call-common`：共享模型、分片路由、MyBatis-Plus、ES 初始化能力
-- `call-ingestion`：Kafka 消费、MySQL 持久化、ES 写入、重试与 DLQ
+- `call-ingestion`：RocketMQ 消费、MySQL 持久化、ES 写入、重试与 DLQ
 - `call-search`：查询接口预留与基础设施
 - `call-ops`：运维入口
 
@@ -44,5 +44,6 @@ call/
 ## 说明
 
 - 该工程优先提供生产级骨架、关键配置与核心扩展点。
-- Kafka 消息体当前采用 JSON DTO，后续可无缝替换为 Protobuf 反序列化器。
+- 当前消息体采用 JSON DTO，后续可无缝替换为 Protobuf 反序列化器。
+- `call-ingestion` 当前通过 RocketMQ nameserver 地址 `ROCKETMQ_NAME_SERVER` 接入消息队列。
 - ES 索引模板、ILM 与别名由应用启动时自动初始化。

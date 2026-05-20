@@ -2,10 +2,11 @@ package com.callcenter.ingestion.service;
 
 import com.callcenter.common.context.ShardContextHolder;
 import com.callcenter.common.dto.CallRoundMessage;
+import com.callcenter.common.entity.CallEventOutboxEntity;
 import com.callcenter.common.entity.CallRoundEntity;
+import com.callcenter.common.mapper.CallEventOutboxMapper;
 import com.callcenter.common.mapper.CallRoundMapper;
 import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
 import com.callcenter.ingestion.config.WriteMetrics;
 import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
@@ -18,16 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class CallRoundMysqlService {
 
     private final CallRoundMapper callRoundMapper;
-    private final ShardedSnowflakeIdGenerator idGenerator;
+    private final CallEventOutboxMapper callEventOutboxMapper;
+    private final OutboxEventFactory outboxEventFactory;
     private final WriteMetrics writeMetrics;
 
     public CallRoundMysqlService(
             CallRoundMapper callRoundMapper,
-            ShardedSnowflakeIdGenerator idGenerator,
+            CallEventOutboxMapper callEventOutboxMapper,
+            OutboxEventFactory outboxEventFactory,
             WriteMetrics writeMetrics
     ) {
         this.callRoundMapper = callRoundMapper;
-        this.idGenerator = idGenerator;
+        this.callEventOutboxMapper = callEventOutboxMapper;
+        this.outboxEventFactory = outboxEventFactory;
         this.writeMetrics = writeMetrics;
     }
 
@@ -36,8 +40,12 @@ public class CallRoundMysqlService {
         ShardContextHolder.set(shardKey.toContext());
         try {
             List<CallRoundEntity> entities = batch.stream().map(this::toEntity).toList();
+            List<CallEventOutboxEntity> outboxEvents = entities.stream()
+                    .map(outboxEventFactory::roundPersisted)
+                    .toList();
             Timer.Sample sample = Timer.start();
             callRoundMapper.batchInsertIgnore(entities);
+            callEventOutboxMapper.batchInsert(outboxEvents);
             sample.stop(writeMetrics.mysqlInsertLatency());
             return entities;
         } finally {
@@ -46,8 +54,11 @@ public class CallRoundMysqlService {
     }
 
     private CallRoundEntity toEntity(CallRoundMessage message) {
+        if (message.roundId() == null) {
+            throw new IllegalArgumentException("roundId is required");
+        }
         CallRoundEntity entity = new CallRoundEntity();
-        entity.setRoundId(message.roundId() == null ? idGenerator.nextId(String.valueOf(message.callId())) : message.roundId());
+        entity.setRoundId(message.roundId());
         entity.setCallId(message.callId());
         entity.setTenantId(message.tenantId());
         entity.setRoundIndex(message.roundIndex());
@@ -70,4 +81,3 @@ public class CallRoundMysqlService {
         );
     }
 }
-

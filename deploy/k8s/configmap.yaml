@@ -4,11 +4,10 @@ metadata:
   name: call-center-config
   namespace: call-center
 data:
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  ROCKETMQ_NAME_SERVER: rocketmq-nameserver:9876
   MYSQL_HOST: mysql
   MYSQL_PORT: "3306"
   MYSQL_USER: call
   ES_URI: http://elasticsearch:9200
   ES_USERNAME: elastic
   REDIS_HOST: redis
-

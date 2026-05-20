@@ -2,6 +2,16 @@
 
 ---
 
+> 说明：
+> 本文档描述的是项目早期基于 Kafka 的初版技术方案，现已不再代表当前实现。
+> 当前 `call-ingestion` 已切换为 RocketMQ 链路，落地方案请以
+> [2026-05-20-rocketmq-refactor-design.md](/Users/johnny/github/call/docs/plans/2026-05-20-rocketmq-refactor-design.md:1)
+> 和
+> [2026-05-20-rocketmq-refactor.md](/Users/johnny/github/call/docs/plans/2026-05-20-rocketmq-refactor.md:1)
+> 为准。
+
+---
+
 ## 一、系统目标
 
 - 支持日均千万级通话记录写入，高峰期 QPS 约 20k+

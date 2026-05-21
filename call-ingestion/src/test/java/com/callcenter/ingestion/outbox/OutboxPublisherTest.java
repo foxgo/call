@@ -2,7 +2,7 @@ package com.callcenter.ingestion.outbox;
 
 import com.callcenter.common.entity.CallEventOutboxEntity;
 import com.callcenter.ingestion.config.PostprocessProperties;
-import com.callcenter.ingestion.mq.OrderedMessagePublisher;
+import com.callcenter.ingestion.mq.MessagePublisher;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,7 +22,7 @@ class OutboxPublisherTest {
     @Test
     void shouldPublishNewRowsToConfiguredPersistedTopicsAndMarkThemPublished() {
         OutboxRepository repository = mock(OutboxRepository.class);
-        OrderedMessagePublisher messagePublisher = mock(OrderedMessagePublisher.class);
+        MessagePublisher messagePublisher = mock(MessagePublisher.class);
         OutboxPublisherProperties properties = properties();
         PostprocessProperties postprocessProperties = postprocessProperties();
         Clock clock = Clock.fixed(Instant.parse("2026-05-20T06:00:00Z"), ZoneOffset.UTC);
@@ -43,7 +43,7 @@ class OutboxPublisherTest {
     @Test
     void shouldIncrementAttemptAndScheduleRetryWhenPublishFails() {
         OutboxRepository repository = mock(OutboxRepository.class);
-        OrderedMessagePublisher messagePublisher = mock(OrderedMessagePublisher.class);
+        MessagePublisher messagePublisher = mock(MessagePublisher.class);
         OutboxPublisherProperties properties = properties();
         PostprocessProperties postprocessProperties = postprocessProperties();
         Clock clock = Clock.fixed(Instant.parse("2026-05-20T06:00:00Z"), ZoneOffset.UTC);

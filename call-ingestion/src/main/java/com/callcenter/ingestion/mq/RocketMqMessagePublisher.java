@@ -8,7 +8,7 @@ import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RocketMqMessagePublisher implements OrderedMessagePublisher {
+public class RocketMqMessagePublisher implements MessagePublisher {
 
     private static final List<Duration> SUPPORTED_DELAYS = List.of(
             Duration.ofSeconds(1),
@@ -38,21 +38,17 @@ public class RocketMqMessagePublisher implements OrderedMessagePublisher {
     }
 
     @Override
-    public void publish(String topic, String orderingKey, String payload) {
-        rocketMQTemplate.syncSendOrderly(topic, payload, orderingKey);
+    public void publish(String topic, String key, String payload) {
+        rocketMQTemplate.syncSend(topic, payload);
     }
 
     @Override
-    public void publishDelayed(String topic, String orderingKey, String payload, Duration delay) {
+    public void publishDelayed(String topic, String key, String payload, Duration delay) {
         Message message = new Message(topic, payload.getBytes(StandardCharsets.UTF_8));
-        message.setKeys(orderingKey);
+        message.setKeys(key);
         message.setDelayTimeLevel(resolveDelayLevel(delay));
         try {
-            rocketMQTemplate.getProducer().send(
-                    message,
-                    rocketMQTemplate.getMessageQueueSelector(),
-                    orderingKey
-            );
+            rocketMQTemplate.getProducer().send(message);
         } catch (Exception exception) {
             throw new IllegalStateException("发送 RocketMQ 延迟消息失败", exception);
         }

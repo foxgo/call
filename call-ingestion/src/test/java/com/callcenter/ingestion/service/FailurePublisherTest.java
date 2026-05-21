@@ -4,7 +4,7 @@ import com.callcenter.common.dto.CallRecordMessage;
 import com.callcenter.common.dto.RetryMessageEnvelope;
 import com.callcenter.ingestion.config.RocketMqProperties;
 import com.callcenter.ingestion.config.WriteMetrics;
-import com.callcenter.ingestion.mq.OrderedMessagePublisher;
+import com.callcenter.ingestion.mq.MessagePublisher;
 import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageType;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ class FailurePublisherTest {
 
     @Test
     void shouldPublishDlqEnvelopeWithSourceMetadataAndAttempt() throws Exception {
-        OrderedMessagePublisher messagePublisher = mock(OrderedMessagePublisher.class);
+        MessagePublisher messagePublisher = mock(MessagePublisher.class);
         WriteMetrics writeMetrics = mock(WriteMetrics.class);
         RocketMqProperties properties = rocketMqProperties();
 

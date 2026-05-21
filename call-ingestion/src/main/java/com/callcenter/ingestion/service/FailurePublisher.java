@@ -3,7 +3,7 @@ package com.callcenter.ingestion.service;
 import com.callcenter.common.dto.RetryMessageEnvelope;
 import com.callcenter.ingestion.config.RocketMqProperties;
 import com.callcenter.ingestion.config.WriteMetrics;
-import com.callcenter.ingestion.mq.OrderedMessagePublisher;
+import com.callcenter.ingestion.mq.MessagePublisher;
 import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageType;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -14,13 +14,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class FailurePublisher {
 
-    private final OrderedMessagePublisher messagePublisher;
+    private final MessagePublisher messagePublisher;
     private final ObjectMapper objectMapper;
     private final WriteMetrics writeMetrics;
     private final RocketMqProperties rocketMqProperties;
 
     public FailurePublisher(
-            OrderedMessagePublisher messagePublisher,
+            MessagePublisher messagePublisher,
             ObjectMapper objectMapper,
             WriteMetrics writeMetrics,
             RocketMqProperties rocketMqProperties

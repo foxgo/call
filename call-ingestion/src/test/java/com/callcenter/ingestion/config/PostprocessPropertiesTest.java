@@ -1,6 +1,6 @@
 package com.callcenter.ingestion.config;
 
-import com.callcenter.ingestion.mq.OrderedMessagePublisher;
+import com.callcenter.ingestion.mq.MessagePublisher;
 import com.callcenter.ingestion.outbox.OutboxPublisher;
 import com.callcenter.ingestion.outbox.OutboxPublisherProperties;
 import com.callcenter.ingestion.outbox.OutboxRepository;
@@ -68,18 +68,18 @@ class PostprocessPropertiesTest {
         }
 
         @Bean
-        OrderedMessagePublisher orderedMessagePublisher() {
-            return mock(OrderedMessagePublisher.class);
+        MessagePublisher messagePublisher() {
+            return mock(MessagePublisher.class);
         }
 
         @Bean
         OutboxPublisher outboxPublisher(
                 OutboxRepository repository,
-                OrderedMessagePublisher orderedMessagePublisher,
+                MessagePublisher messagePublisher,
                 OutboxPublisherProperties outboxPublisherProperties,
                 PostprocessProperties postprocessProperties
         ) {
-            return new OutboxPublisher(repository, orderedMessagePublisher, outboxPublisherProperties, postprocessProperties);
+            return new OutboxPublisher(repository, messagePublisher, outboxPublisherProperties, postprocessProperties);
         }
     }
 }

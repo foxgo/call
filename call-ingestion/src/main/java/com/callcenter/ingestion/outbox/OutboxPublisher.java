@@ -2,7 +2,7 @@ package com.callcenter.ingestion.outbox;
 
 import com.callcenter.common.entity.CallEventOutboxEntity;
 import com.callcenter.ingestion.config.PostprocessProperties;
-import com.callcenter.ingestion.mq.OrderedMessagePublisher;
+import com.callcenter.ingestion.mq.MessagePublisher;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 public class OutboxPublisher {
 
     private final OutboxRepository repository;
-    private final OrderedMessagePublisher messagePublisher;
+    private final MessagePublisher messagePublisher;
     private final OutboxPublisherProperties properties;
     private final PostprocessProperties postprocessProperties;
     private final Clock clock;
 
     public OutboxPublisher(
             OutboxRepository repository,
-            OrderedMessagePublisher messagePublisher,
+            MessagePublisher messagePublisher,
             OutboxPublisherProperties properties,
             PostprocessProperties postprocessProperties
     ) {
@@ -30,7 +30,7 @@ public class OutboxPublisher {
 
     OutboxPublisher(
             OutboxRepository repository,
-            OrderedMessagePublisher messagePublisher,
+            MessagePublisher messagePublisher,
             OutboxPublisherProperties properties,
             PostprocessProperties postprocessProperties,
             Clock clock

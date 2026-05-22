@@ -42,18 +42,23 @@ call:
       record:
         group: ${CALL_RECORD_CONSUMER_GROUP:call-record-consumer-group}
         consume-thread-max: ${CALL_RECORD_CONSUMER_THREADS:6}
+        max-reconsume-times: ${CALL_RECORD_MAX_RECONSUME_TIMES:3}
       round:
         group: ${CALL_ROUND_CONSUMER_GROUP:call-round-consumer-group}
         consume-thread-max: ${CALL_ROUND_CONSUMER_THREADS:6}
+        max-reconsume-times: ${CALL_ROUND_MAX_RECONSUME_TIMES:3}
       index:
         group: ${CALL_INDEX_CONSUMER_GROUP:call-index-group}
         consume-thread-max: ${CALL_INDEX_CONSUMER_THREADS:2}
+        max-reconsume-times: ${CALL_INDEX_MAX_RECONSUME_TIMES:3}
       ai:
         group: ${CALL_AI_CONSUMER_GROUP:call-ai-group}
         consume-thread-max: ${CALL_AI_CONSUMER_THREADS:2}
+        max-reconsume-times: ${CALL_AI_MAX_RECONSUME_TIMES:3}
       third-party:
         group: ${CALL_THIRD_PARTY_CONSUMER_GROUP:call-third-party-group}
         consume-thread-max: ${CALL_THIRD_PARTY_CONSUMER_THREADS:2}
+        max-reconsume-times: ${CALL_THIRD_PARTY_MAX_RECONSUME_TIMES:3}
   outbox:
     batch-size: ${CALL_OUTBOX_BATCH_SIZE:100}
     poll-interval: ${CALL_OUTBOX_POLL_INTERVAL:PT5S}

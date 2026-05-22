@@ -104,19 +104,19 @@ public class RocketMqProperties {
     public static class Consumers {
 
         @Valid
-        private Consumer record = new Consumer("call-record-consumer-group", 6);
+        private Consumer record = new Consumer("call-record-consumer-group", 6, 3);
 
         @Valid
-        private Consumer round = new Consumer("call-round-consumer-group", 6);
+        private Consumer round = new Consumer("call-round-consumer-group", 6, 3);
 
         @Valid
-        private Consumer index = new Consumer("call-index-group", 2);
+        private Consumer index = new Consumer("call-index-group", 2, 3);
 
         @Valid
-        private Consumer ai = new Consumer("call-ai-group", 2);
+        private Consumer ai = new Consumer("call-ai-group", 2, 3);
 
         @Valid
-        private Consumer thirdParty = new Consumer("call-third-party-group", 2);
+        private Consumer thirdParty = new Consumer("call-third-party-group", 2, 3);
 
         public Consumer getRecord() {
             return record;
@@ -167,12 +167,15 @@ public class RocketMqProperties {
         @Min(1)
         private int consumeThreadMax;
 
+        private int maxReconsumeTimes = 3;
+
         public Consumer() {
         }
 
-        public Consumer(String group, int consumeThreadMax) {
+        public Consumer(String group, int consumeThreadMax, int maxReconsumeTimes) {
             this.group = group;
             this.consumeThreadMax = consumeThreadMax;
+            this.maxReconsumeTimes = maxReconsumeTimes;
         }
 
         public String getGroup() {
@@ -189,6 +192,14 @@ public class RocketMqProperties {
 
         public void setConsumeThreadMax(int consumeThreadMax) {
             this.consumeThreadMax = consumeThreadMax;
+        }
+
+        public int getMaxReconsumeTimes() {
+            return maxReconsumeTimes;
+        }
+
+        public void setMaxReconsumeTimes(int maxReconsumeTimes) {
+            this.maxReconsumeTimes = maxReconsumeTimes;
         }
     }
 }

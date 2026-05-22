@@ -1,5 +1,6 @@
 package com.callcenter.ingestion.config;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.spring.support.DefaultRocketMQListenerContainer;
@@ -9,21 +10,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class RocketMqListenerContainerCustomizer implements BeanPostProcessor {
 
-    private final Map<String, Integer> consumeThreadMaxByGroup;
+    private final Map<String, ConsumerSettings> settingsByGroup;
 
     public RocketMqListenerContainerCustomizer(RocketMqProperties properties) {
-        this.consumeThreadMaxByGroup = Map.of(
-                properties.getConsumers().getRecord().getGroup(),
-                properties.getConsumers().getRecord().getConsumeThreadMax(),
-                properties.getConsumers().getRound().getGroup(),
-                properties.getConsumers().getRound().getConsumeThreadMax(),
-                properties.getConsumers().getIndex().getGroup(),
-                properties.getConsumers().getIndex().getConsumeThreadMax(),
-                properties.getConsumers().getAi().getGroup(),
-                properties.getConsumers().getAi().getConsumeThreadMax(),
-                properties.getConsumers().getThirdParty().getGroup(),
-                properties.getConsumers().getThirdParty().getConsumeThreadMax()
-        );
+        this.settingsByGroup = new HashMap<>();
+        put(properties.getConsumers().getRecord());
+        put(properties.getConsumers().getRound());
+        put(properties.getConsumers().getIndex());
+        put(properties.getConsumers().getAi());
+        put(properties.getConsumers().getThirdParty());
     }
 
     @Override
@@ -32,15 +27,26 @@ public class RocketMqListenerContainerCustomizer implements BeanPostProcessor {
             return bean;
         }
 
-        Integer consumeThreadMax = consumeThreadMaxByGroup.get(container.getConsumerGroup());
-        if (consumeThreadMax == null) {
+        ConsumerSettings settings = settingsByGroup.get(container.getConsumerGroup());
+        if (settings == null) {
             return bean;
         }
 
         DefaultMQPushConsumer consumer = container.getConsumer();
         if (consumer != null) {
-            consumer.setConsumeThreadMax(consumeThreadMax);
+            consumer.setConsumeThreadMax(settings.consumeThreadMax());
+            consumer.setMaxReconsumeTimes(settings.maxReconsumeTimes());
         }
         return bean;
+    }
+
+    private void put(RocketMqProperties.Consumer consumer) {
+        settingsByGroup.put(
+                consumer.getGroup(),
+                new ConsumerSettings(consumer.getConsumeThreadMax(), consumer.getMaxReconsumeTimes())
+        );
+    }
+
+    private record ConsumerSettings(int consumeThreadMax, int maxReconsumeTimes) {
     }
 }

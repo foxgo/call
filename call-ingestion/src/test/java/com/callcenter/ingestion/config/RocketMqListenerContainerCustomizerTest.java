@@ -15,6 +15,7 @@ class RocketMqListenerContainerCustomizerTest {
         RocketMqProperties properties = new RocketMqProperties();
         properties.getConsumers().getRecord().setGroup("call-record-consumer-group");
         properties.getConsumers().getRecord().setConsumeThreadMax(8);
+        properties.getConsumers().getRecord().setMaxReconsumeTimes(4);
         RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
         DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
         DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
@@ -25,6 +26,7 @@ class RocketMqListenerContainerCustomizerTest {
         customizer.postProcessAfterInitialization(container, "rocketMqCallRecordConsumer");
 
         verify(consumer).setConsumeThreadMax(8);
+        verify(consumer).setMaxReconsumeTimes(4);
     }
 
     @Test
@@ -47,6 +49,7 @@ class RocketMqListenerContainerCustomizerTest {
         RocketMqProperties properties = new RocketMqProperties();
         properties.getConsumers().getRound().setGroup("call-round-consumer-group");
         properties.getConsumers().getRound().setConsumeThreadMax(5);
+        properties.getConsumers().getRound().setMaxReconsumeTimes(6);
         RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
         DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
         DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
@@ -57,5 +60,6 @@ class RocketMqListenerContainerCustomizerTest {
         customizer.postProcessAfterInitialization(container, "rocketMqCallRoundConsumer");
 
         verify(consumer).setConsumeThreadMax(5);
+        verify(consumer).setMaxReconsumeTimes(6);
     }
 }

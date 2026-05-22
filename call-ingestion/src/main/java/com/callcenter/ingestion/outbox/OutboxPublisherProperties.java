@@ -12,6 +12,9 @@ public class OutboxPublisherProperties {
     @Min(1)
     private int batchSize = 100;
 
+    @Min(1)
+    private int maxRetries = 10;
+
     private Duration pollInterval = Duration.ofSeconds(5);
 
     private Duration retryBackoff = Duration.ofSeconds(30);
@@ -24,6 +27,14 @@ public class OutboxPublisherProperties {
 
     public void setBatchSize(int batchSize) {
         this.batchSize = batchSize;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
     }
 
     public Duration getPollInterval() {

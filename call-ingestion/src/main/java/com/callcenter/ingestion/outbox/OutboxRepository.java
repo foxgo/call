@@ -19,8 +19,8 @@ public class OutboxRepository {
     }
 
     @Transactional
-    public List<CallEventOutboxEntity> claimPublishableBatch(LocalDateTime now, int batchSize) {
-        List<Long> ids = mapper.selectPublishableIdsForClaim(now, batchSize);
+    public List<CallEventOutboxEntity> claimPublishableBatch(LocalDateTime now, int batchSize, int maxRetries) {
+        List<Long> ids = mapper.selectPublishableIdsForClaim(now, batchSize, maxRetries);
         if (ids.isEmpty()) {
             return List.of();
         }
@@ -29,7 +29,10 @@ public class OutboxRepository {
         update.in("id", ids)
                 .and(wrapper -> wrapper.eq("status", OutboxStatus.NEW.name())
                         .or(retry -> retry.eq("status", OutboxStatus.FAILED.name())
-                                .le("next_attempt_at", now)))
+                                .le("next_attempt_at", now)
+                                .and(attempt -> attempt.isNull("attempt_count")
+                                        .or()
+                                        .lt("attempt_count", maxRetries))))
                 .set("status", OutboxStatus.PROCESSING.name())
                 .set("updated_at", now);
         int claimedCount = mapper.update(null, update);

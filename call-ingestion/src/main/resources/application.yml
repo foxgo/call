@@ -61,6 +61,7 @@ call:
         max-reconsume-times: ${CALL_THIRD_PARTY_MAX_RECONSUME_TIMES:3}
   outbox:
     batch-size: ${CALL_OUTBOX_BATCH_SIZE:100}
+    max-retries: ${CALL_OUTBOX_MAX_RETRIES:10}
     poll-interval: ${CALL_OUTBOX_POLL_INTERVAL:PT5S}
     retry-backoff: ${CALL_OUTBOX_RETRY_BACKOFF:PT30S}
     processing-timeout: ${CALL_OUTBOX_PROCESSING_TIMEOUT:PT5M}

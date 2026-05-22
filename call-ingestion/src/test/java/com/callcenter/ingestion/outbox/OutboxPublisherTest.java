@@ -33,7 +33,7 @@ class OutboxPublisherTest {
         OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
         CallEventOutboxEntity recordEvent = claimedEvent(1L, "call_record_persisted", "1001");
 
-        when(repository.claimPublishableBatch(any(), eq(20))).thenReturn(List.of(recordEvent));
+        when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(recordEvent));
 
         publisher.publishPendingBatch();
 
@@ -42,7 +42,7 @@ class OutboxPublisherTest {
                 LocalDateTime.of(2026, 5, 20, 5, 55),
                 LocalDateTime.of(2026, 5, 20, 6, 0)
         );
-        inOrder.verify(repository).claimPublishableBatch(LocalDateTime.of(2026, 5, 20, 6, 0), 20);
+        inOrder.verify(repository).claimPublishableBatch(LocalDateTime.of(2026, 5, 20, 6, 0), 20, 10);
         verify(messagePublisher).publish("call_record_persisted", "1001", recordEvent.getPayload());
         verify(repository).deleteProcessingById(1L);
     }
@@ -60,7 +60,7 @@ class OutboxPublisherTest {
         OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
         CallEventOutboxEntity event = claimedEvent(9L, "call_record_persisted", "1001");
 
-        when(repository.claimPublishableBatch(any(), eq(20))).thenReturn(List.of(event));
+        when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(event));
         org.mockito.Mockito.doThrow(new IllegalStateException("broker unavailable"))
                 .when(messagePublisher)
                 .publish("call_record_persisted", "1001", event.getPayload());
@@ -72,7 +72,7 @@ class OutboxPublisherTest {
                 LocalDateTime.of(2026, 5, 20, 5, 55),
                 LocalDateTime.of(2026, 5, 20, 6, 0)
         );
-        inOrder.verify(repository).claimPublishableBatch(LocalDateTime.of(2026, 5, 20, 6, 0), 20);
+        inOrder.verify(repository).claimPublishableBatch(LocalDateTime.of(2026, 5, 20, 6, 0), 20, 10);
         verify(repository).markFailed(
                 eq(9L),
                 eq(1),

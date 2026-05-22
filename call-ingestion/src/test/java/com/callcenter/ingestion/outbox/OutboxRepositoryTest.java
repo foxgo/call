@@ -24,12 +24,12 @@ class OutboxRepositoryTest {
         OutboxRepository repository = new OutboxRepository(mapper);
         LocalDateTime now = LocalDateTime.of(2026, 5, 20, 6, 0);
 
-        when(mapper.selectPublishableIdsForClaim(now, 20)).thenReturn(List.of());
+        when(mapper.selectPublishableIdsForClaim(now, 20, 10)).thenReturn(List.of());
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20);
+        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
 
         assertThat(claimed).isEmpty();
-        verify(mapper).selectPublishableIdsForClaim(now, 20);
+        verify(mapper).selectPublishableIdsForClaim(now, 20, 10);
         verify(mapper, never()).update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class));
         verify(mapper, never()).selectClaimedBatchByIds(org.mockito.ArgumentMatchers.anyList());
     }
@@ -40,13 +40,13 @@ class OutboxRepositoryTest {
         OutboxRepository repository = new OutboxRepository(mapper);
         LocalDateTime now = LocalDateTime.of(2026, 5, 20, 6, 0);
 
-        when(mapper.selectPublishableIdsForClaim(now, 20)).thenReturn(List.of(1L, 2L));
+        when(mapper.selectPublishableIdsForClaim(now, 20, 10)).thenReturn(List.of(1L, 2L));
         when(mapper.update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class))).thenReturn(0);
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20);
+        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
 
         assertThat(claimed).isEmpty();
-        verify(mapper).selectPublishableIdsForClaim(now, 20);
+        verify(mapper).selectPublishableIdsForClaim(now, 20, 10);
         verify(mapper).update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class));
         verify(mapper, never()).selectClaimedBatchByIds(org.mockito.ArgumentMatchers.anyList());
     }
@@ -126,11 +126,11 @@ class OutboxRepositoryTest {
         CallEventOutboxEntity claimedSecond = event(2L, OutboxStatus.PROCESSING.name());
         claimedSecond.setUpdatedAt(now);
 
-        when(mapper.selectPublishableIdsForClaim(now, 20)).thenReturn(List.of(1L, 2L));
+        when(mapper.selectPublishableIdsForClaim(now, 20, 10)).thenReturn(List.of(1L, 2L));
         when(mapper.update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class))).thenReturn(2);
         when(mapper.selectClaimedBatchByIds(List.of(1L, 2L))).thenReturn(List.of(claimedFirst, claimedSecond));
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20);
+        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
 
         assertThat(claimed).containsExactly(claimedFirst, claimedSecond);
         assertThat(claimed)
@@ -145,10 +145,11 @@ class OutboxRepositoryTest {
         UpdateWrapper<CallEventOutboxEntity> update = updateCaptor.getValue();
         assertThat(update.getSqlSet()).contains("status", "updated_at");
         assertThat(update.getParamNameValuePairs()).containsValue(OutboxStatus.PROCESSING.name());
-        assertThat(update.getSqlSegment()).contains("id", "status", "next_attempt_at");
+        assertThat(update.getSqlSegment()).contains("id", "status", "next_attempt_at", "attempt_count");
         assertThat(update.getParamNameValuePairs()).containsValue(OutboxStatus.NEW.name());
         assertThat(update.getParamNameValuePairs()).containsValue(OutboxStatus.FAILED.name());
         assertThat(update.getParamNameValuePairs()).containsValue(now);
+        assertThat(update.getParamNameValuePairs()).containsValue(10);
         verify(mapper).selectClaimedBatchByIds(List.of(1L, 2L));
     }
 

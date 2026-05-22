@@ -30,7 +30,8 @@ public interface CallEventOutboxMapper extends BaseMapper<CallEventOutboxEntity>
             "SELECT id",
             "FROM call_event_outbox",
             "WHERE status = 'NEW'",
-            "OR (status = 'FAILED' AND next_attempt_at &lt;= #{now})",
+            "OR (status = 'FAILED' AND next_attempt_at &lt;= #{now}",
+            "AND (attempt_count IS NULL OR attempt_count &lt; #{maxRetries}))",
             "ORDER BY created_at ASC, id ASC",
             "LIMIT #{limit}",
             "FOR UPDATE SKIP LOCKED",
@@ -38,7 +39,8 @@ public interface CallEventOutboxMapper extends BaseMapper<CallEventOutboxEntity>
     })
     List<Long> selectPublishableIdsForClaim(
             @Param("now") LocalDateTime now,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("maxRetries") int maxRetries
     );
 
     @Select({

@@ -46,7 +46,8 @@ public class OutboxPublisher {
     public void publishPendingBatch() {
         LocalDateTime batchNow = currentTime();
         repository.recoverStaleProcessingRows(batchNow.minus(properties.getProcessingTimeout()), batchNow);
-        List<CallEventOutboxEntity> events = repository.claimPublishableBatch(batchNow, properties.getBatchSize());
+        List<CallEventOutboxEntity> events =
+                repository.claimPublishableBatch(batchNow, properties.getBatchSize(), properties.getMaxRetries());
         for (CallEventOutboxEntity event : events) {
             publish(event);
         }

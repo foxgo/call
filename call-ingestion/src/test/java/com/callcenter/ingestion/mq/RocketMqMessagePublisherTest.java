@@ -36,17 +36,17 @@ class RocketMqMessagePublisherTest {
         when(rocketMQTemplate.getProducer()).thenReturn(producer);
         RocketMqMessagePublisher publisher = new RocketMqMessagePublisher(rocketMQTemplate);
 
-        publisher.publishDelayed("call_round_persisted", "1001", "{\"eventType\":\"call_round_persisted\"}", Duration.ofSeconds(5));
+        publisher.publishDelayed("call_record_persisted", "1001", "{\"eventType\":\"call_record_persisted\"}", Duration.ofSeconds(5));
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(producer).send(messageCaptor.capture());
         verify(rocketMQTemplate, never()).getMessageQueueSelector();
 
         Message message = messageCaptor.getValue();
-        assertThat(message.getTopic()).isEqualTo("call_round_persisted");
+        assertThat(message.getTopic()).isEqualTo("call_record_persisted");
         assertThat(message.getKeys()).isEqualTo("1001");
         assertThat(message.getDelayTimeLevel()).isEqualTo(2);
         assertThat(new String(message.getBody(), StandardCharsets.UTF_8))
-                .isEqualTo("{\"eventType\":\"call_round_persisted\"}");
+                .isEqualTo("{\"eventType\":\"call_record_persisted\"}");
     }
 }

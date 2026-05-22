@@ -3,7 +3,6 @@ package com.callcenter.ingestion.service;
 import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.common.entity.CallEventOutboxEntity;
 import com.callcenter.common.entity.CallRecordEntity;
-import com.callcenter.common.entity.CallRoundEntity;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,18 +28,6 @@ public class OutboxEventFactory {
                 "call_record_persisted",
                 "CALL_RECORD",
                 String.valueOf(entity.getCallId()),
-                entity.getTenantId(),
-                String.valueOf(entity.getCallId()),
-                objectMapper.valueToTree(entity)
-        );
-    }
-
-    public CallEventOutboxEntity roundPersisted(CallRoundEntity entity) {
-        return createEvent(
-                "call_round_persisted:%d:%d:%d".formatted(entity.getTenantId(), entity.getCallId(), entity.getRoundId()),
-                "call_round_persisted",
-                "CALL_ROUND",
-                String.valueOf(entity.getRoundId()),
                 entity.getTenantId(),
                 String.valueOf(entity.getCallId()),
                 objectMapper.valueToTree(entity)

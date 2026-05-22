@@ -11,6 +11,7 @@ import com.callcenter.ingestion.config.WriteMetrics;
 import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.function.Consumer;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,14 +38,26 @@ public class CallRecordMysqlService {
 
     @Transactional
     public List<CallRecordEntity> persistBatch(ShardKey shardKey, List<CallRecordMessage> batch) {
+        return persistBatch(shardKey, batch, entities -> {
+        });
+    }
+
+    @Transactional
+    public List<CallRecordEntity> persistBatch(
+            ShardKey shardKey,
+            List<CallRecordMessage> batch,
+            Consumer<List<CallRecordEntity>> beforeOutboxInsert
+    ) {
         ShardContextHolder.set(shardKey.toContext());
         try {
             List<CallRecordEntity> entities = batch.stream().map(this::toEntity).toList();
+            Timer.Sample sample = Timer.start();
+            callRecordMapper.batchInsertIgnore(entities);
+            beforeOutboxInsert.accept(entities);
+            ShardContextHolder.set(shardKey.toContext());
             List<CallEventOutboxEntity> outboxEvents = entities.stream()
                     .map(outboxEventFactory::recordPersisted)
                     .toList();
-            Timer.Sample sample = Timer.start();
-            callRecordMapper.batchInsertIgnore(entities);
             callEventOutboxMapper.batchInsert(outboxEvents);
             sample.stop(writeMetrics.mysqlInsertLatency());
             return entities;

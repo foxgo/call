@@ -12,17 +12,20 @@ public class CallRecordIngestionService {
 
     private final ShardingRouter shardingRouter;
     private final CallRecordMysqlService callRecordMysqlService;
+    private final CallRoundMysqlService callRoundMysqlService;
     private final FailurePublisher failurePublisher;
     private final FailureClassifier failureClassifier;
 
     public CallRecordIngestionService(
             ShardingRouter shardingRouter,
             CallRecordMysqlService callRecordMysqlService,
+            CallRoundMysqlService callRoundMysqlService,
             FailurePublisher failurePublisher,
             FailureClassifier failureClassifier
     ) {
         this.shardingRouter = shardingRouter;
         this.callRecordMysqlService = callRecordMysqlService;
+        this.callRoundMysqlService = callRoundMysqlService;
         this.failurePublisher = failurePublisher;
         this.failureClassifier = failureClassifier;
     }
@@ -35,13 +38,38 @@ public class CallRecordIngestionService {
                     message.phone(),
                     shardingRouter.toDateTime(message.startTime())
             );
-            callRecordMysqlService.persistBatch(shardKey, List.of(message));
+            callRecordMysqlService.persistBatch(
+                    shardKey,
+                    List.of(message),
+                    ignored -> validatePersistedRoundCount(message)
+            );
             return true;
         } catch (Exception exception) {
             if (failureClassifier.isRetryable(exception)) {
                 return false;
             }
             return failurePublisher.publishDlq(inbound, exception);
+        }
+    }
+
+    private void validatePersistedRoundCount(CallRecordMessage message) {
+        if (message.roundTotal() == null) {
+            return;
+        }
+        ShardKey roundShardKey = shardingRouter.routeRound(
+                message.tenantId(),
+                message.callId(),
+                shardingRouter.toDateTime(message.startTime())
+        );
+        long persistedRoundCount = callRoundMysqlService.countByCallId(roundShardKey, message.callId());
+        if (persistedRoundCount != message.roundTotal()) {
+            throw new IllegalStateException(
+                    "call_round persisted count mismatch, callId=%d, expected=%d, actual=%d".formatted(
+                            message.callId(),
+                            message.roundTotal(),
+                            persistedRoundCount
+                    )
+            );
         }
     }
 }

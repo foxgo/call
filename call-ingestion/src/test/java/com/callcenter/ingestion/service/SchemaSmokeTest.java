@@ -1,6 +1,7 @@
 package com.callcenter.ingestion.service;
 
 import java.sql.Connection;
+import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -27,10 +28,19 @@ class SchemaSmokeTest {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_call_event_outbox.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V2__update_call_event_outbox_indexes.sql"));
         }
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
         assertThat(indexExists(jdbcTemplate, "call_event_outbox", "uk_call_event_outbox_event_id")).isTrue();
+        assertThat(indexExists(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_status_next_attempt")).isFalse();
+        assertThat(indexExists(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_publishable")).isTrue();
+        assertThat(indexExists(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_processing")).isTrue();
+        assertThat(indexExists(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_partition_key")).isTrue();
+        assertThat(indexColumns(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_publishable"))
+                .containsExactly("status", "next_attempt_at", "created_at", "id");
+        assertThat(indexColumns(jdbcTemplate, "call_event_outbox", "idx_call_event_outbox_processing"))
+                .containsExactly("status", "updated_at", "id");
     }
 
     private static boolean indexExists(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
@@ -47,6 +57,22 @@ class SchemaSmokeTest {
                 indexName
         );
         return count != null && count > 0;
+    }
+
+    private static List<String> indexColumns(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT column_name
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND index_name = ?
+                ORDER BY seq_in_index
+                """,
+                String.class,
+                tableName,
+                indexName
+        );
     }
 
     private static DataSource dataSource() {

@@ -3,8 +3,10 @@ package com.callcenter.ingestion.consumer;
 import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.common.entity.CallRecordEntity;
 import com.callcenter.common.entity.CallRoundEntity;
+import com.callcenter.common.route.ShardKey;
+import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.ingestion.service.CallRecordIndexService;
-import com.callcenter.ingestion.service.CallRoundIndexService;
+import com.callcenter.ingestion.service.CallRoundMysqlService;
 import com.callcenter.ingestion.service.ElasticsearchBulkService;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -17,8 +19,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class PersistedIndexConsumerTest {
 
@@ -26,7 +30,14 @@ class PersistedIndexConsumerTest {
     void shouldDeserializeRecordPersistedEventAndIndexPayload() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         ElasticsearchBulkService bulkService = mock(ElasticsearchBulkService.class);
-        CallRecordIndexService indexService = new CallRecordIndexService(objectMapper, bulkService);
+        ShardingRouter shardingRouter = mock(ShardingRouter.class);
+        CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
+        CallRecordIndexService indexService = new CallRecordIndexService(
+                objectMapper,
+                bulkService,
+                shardingRouter,
+                callRoundMysqlService
+        );
         DomainEventMessage event = new DomainEventMessage(
                 "call_record_persisted:9:1001",
                 "call_record_persisted",
@@ -37,30 +48,14 @@ class PersistedIndexConsumerTest {
                 1,
                 objectMapper.valueToTree(recordEntity())
         );
+        when(shardingRouter.routeRound(9L, 1001L, LocalDateTime.of(2026, 5, 20, 10, 0)))
+                .thenReturn(new ShardKey(9L, 0, 3, "202605"));
+        when(callRoundMysqlService.listByCallId(any(), anyLong()))
+                .thenReturn(List.of(roundEntity()));
 
         indexService.indexPersistedEvent(event);
 
         verify(bulkService).bulkIndexRecords(any(List.class));
-    }
-
-    @Test
-    void shouldDeserializeRoundPersistedEventAndIndexPayload() throws Exception {
-        ObjectMapper objectMapper = objectMapper();
-        ElasticsearchBulkService bulkService = mock(ElasticsearchBulkService.class);
-        CallRoundIndexService indexService = new CallRoundIndexService(objectMapper, bulkService);
-        DomainEventMessage event = new DomainEventMessage(
-                "call_round_persisted:9:1001:77",
-                "call_round_persisted",
-                "CALL_ROUND",
-                "77",
-                9L,
-                Instant.parse("2026-05-20T06:00:00Z"),
-                1,
-                objectMapper.valueToTree(roundEntity())
-        );
-
-        indexService.indexPersistedEvent(event);
-
         verify(bulkService).bulkIndexRounds(any(List.class));
     }
 
@@ -68,12 +63,9 @@ class PersistedIndexConsumerTest {
     void shouldDispatchRecordEventToRecordIndexService() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        CallRoundIndexService roundIndexService = mock(CallRoundIndexService.class);
         RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
                 objectMapper,
-                indexService,
-                roundIndexService,
-                new com.callcenter.ingestion.config.PostprocessProperties()
+                indexService
         );
         DomainEventMessage event = new DomainEventMessage(
                 "call_record_persisted:9:1001",
@@ -96,15 +88,12 @@ class PersistedIndexConsumerTest {
     }
 
     @Test
-    void shouldDispatchRoundEventToRoundIndexService() throws Exception {
+    void shouldRejectRoundPersistedEvent() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        CallRoundIndexService roundIndexService = mock(CallRoundIndexService.class);
         RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
                 objectMapper,
-                indexService,
-                roundIndexService,
-                new com.callcenter.ingestion.config.PostprocessProperties()
+                indexService
         );
         DomainEventMessage event = new DomainEventMessage(
                 "call_round_persisted:9:1001:77",
@@ -121,21 +110,18 @@ class PersistedIndexConsumerTest {
         message.setTopic("call_round_persisted");
         message.setBody(objectMapper.writeValueAsBytes(event));
 
-        consumer.onMessage(message);
-
-        verify(roundIndexService).indexPersistedEvent(any(DomainEventMessage.class));
+        assertThatThrownBy(() -> consumer.onMessage(message))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("处理 RocketMQ 落库事件失败");
     }
 
     @Test
     void shouldPropagateFailureWhenIndexingFails() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        CallRoundIndexService roundIndexService = mock(CallRoundIndexService.class);
         RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
                 objectMapper,
-                indexService,
-                roundIndexService,
-                new com.callcenter.ingestion.config.PostprocessProperties()
+                indexService
         );
         DomainEventMessage event = new DomainEventMessage(
                 "call_record_persisted:9:1001",
@@ -170,6 +156,7 @@ class PersistedIndexConsumerTest {
         entity.setLineNumber("021");
         entity.setCallStatus(2);
         entity.setDuration(180);
+        entity.setRoundTotal(1);
         entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
         entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
         entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));

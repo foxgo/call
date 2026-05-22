@@ -23,15 +23,16 @@ class PostprocessPropertiesTest {
         contextRunner
                 .withPropertyValues(
                         "call.postprocess.topics.record-persisted=record.persisted.v1",
-                        "call.postprocess.topics.round-persisted=round.persisted.v1",
                         "call.outbox.batch-size=50",
-                        "call.outbox.poll-interval=PT3S"
+                        "call.outbox.poll-interval=PT3S",
+                        "call.outbox.processing-timeout=PT2M"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     PostprocessProperties properties = context.getBean(PostprocessProperties.class);
+                    OutboxPublisherProperties outboxProperties = context.getBean(OutboxPublisherProperties.class);
                     assertThat(properties.getTopics().getRecordPersisted()).isEqualTo("record.persisted.v1");
-                    assertThat(properties.getTopics().getRoundPersisted()).isEqualTo("round.persisted.v1");
+                    assertThat(outboxProperties.getProcessingTimeout()).isEqualTo(java.time.Duration.ofMinutes(2));
                 });
     }
 
@@ -55,6 +56,8 @@ class PostprocessPropertiesTest {
             assertThat(context).hasSingleBean(OutboxPublisher.class);
             assertThat(context.getBean(PostprocessProperties.class).getTopics().getRecordPersisted())
                     .isEqualTo("call_record_persisted");
+            assertThat(context.getBean(OutboxPublisherProperties.class).getProcessingTimeout())
+                    .isEqualTo(java.time.Duration.ofMinutes(5));
         });
     }
 

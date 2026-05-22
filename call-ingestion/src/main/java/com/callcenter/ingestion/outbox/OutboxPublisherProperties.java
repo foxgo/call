@@ -16,6 +16,8 @@ public class OutboxPublisherProperties {
 
     private Duration retryBackoff = Duration.ofSeconds(30);
 
+    private Duration processingTimeout = Duration.ofMinutes(5);
+
     public int getBatchSize() {
         return batchSize;
     }
@@ -38,5 +40,13 @@ public class OutboxPublisherProperties {
 
     public void setRetryBackoff(Duration retryBackoff) {
         this.retryBackoff = retryBackoff;
+    }
+
+    public Duration getProcessingTimeout() {
+        return processingTimeout;
+    }
+
+    public void setProcessingTimeout(Duration processingTimeout) {
+        this.processingTimeout = processingTimeout;
     }
 }

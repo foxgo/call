@@ -58,10 +58,10 @@ call:
     batch-size: ${CALL_OUTBOX_BATCH_SIZE:100}
     poll-interval: ${CALL_OUTBOX_POLL_INTERVAL:PT5S}
     retry-backoff: ${CALL_OUTBOX_RETRY_BACKOFF:PT30S}
+    processing-timeout: ${CALL_OUTBOX_PROCESSING_TIMEOUT:PT5M}
   postprocess:
     topics:
       record-persisted: ${CALL_RECORD_PERSISTED_TOPIC:call_record_persisted}
-      round-persisted: ${CALL_ROUND_PERSISTED_TOPIC:call_round_persisted}
   shard:
     db-count: ${CALL_DB_COUNT:4}
     table-count: ${CALL_TABLE_COUNT:16}

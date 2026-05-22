@@ -7,6 +7,7 @@ import com.callcenter.common.mapper.CallEventOutboxMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class OutboxRepository {
@@ -17,33 +18,59 @@ public class OutboxRepository {
         this.mapper = mapper;
     }
 
-    public List<CallEventOutboxEntity> findPublishableBatch(LocalDateTime now, int batchSize) {
-        QueryWrapper<CallEventOutboxEntity> query = new QueryWrapper<>();
-        query.and(wrapper -> wrapper.eq("status", OutboxStatus.NEW.name())
+    @Transactional
+    public List<CallEventOutboxEntity> claimPublishableBatch(LocalDateTime now, int batchSize) {
+        List<Long> ids = mapper.selectPublishableIdsForClaim(now, batchSize);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        UpdateWrapper<CallEventOutboxEntity> update = new UpdateWrapper<>();
+        update.in("id", ids)
+                .and(wrapper -> wrapper.eq("status", OutboxStatus.NEW.name())
                         .or(retry -> retry.eq("status", OutboxStatus.FAILED.name())
                                 .le("next_attempt_at", now)))
-                .orderByAsc("created_at")
-                .last("LIMIT " + batchSize);
-        return mapper.selectList(query);
+                .set("status", OutboxStatus.PROCESSING.name())
+                .set("updated_at", now);
+        int claimedCount = mapper.update(null, update);
+        if (claimedCount == 0) {
+            return List.of();
+        }
+        return mapper.selectClaimedBatchByIds(ids);
     }
 
-    public void markPublished(Long id, LocalDateTime publishedAt) {
-        UpdateWrapper<CallEventOutboxEntity> update = new UpdateWrapper<>();
-        update.eq("id", id)
-                .set("status", OutboxStatus.PUBLISHED.name())
-                .set("last_error", null)
-                .set("updated_at", publishedAt);
-        mapper.update(null, update);
+    public int deleteProcessingById(Long id) {
+        QueryWrapper<CallEventOutboxEntity> delete = new QueryWrapper<>();
+        delete.eq("id", id)
+                .eq("status", OutboxStatus.PROCESSING.name());
+        return mapper.delete(delete);
     }
 
-    public void markFailed(Long id, int attemptCount, String lastError, LocalDateTime nextAttemptAt) {
+    public int recoverStaleProcessingRows(LocalDateTime staleBefore, LocalDateTime recoveredAt) {
+        UpdateWrapper<CallEventOutboxEntity> update = new UpdateWrapper<>();
+        update.eq("status", OutboxStatus.PROCESSING.name())
+                .le("updated_at", staleBefore)
+                .set("status", OutboxStatus.FAILED.name())
+                .set("next_attempt_at", recoveredAt)
+                .set("updated_at", recoveredAt);
+        return mapper.update(null, update);
+    }
+
+    public void markFailed(
+            Long id,
+            int attemptCount,
+            String lastError,
+            LocalDateTime failedAt,
+            LocalDateTime nextAttemptAt
+    ) {
         UpdateWrapper<CallEventOutboxEntity> update = new UpdateWrapper<>();
         update.eq("id", id)
+                .eq("status", OutboxStatus.PROCESSING.name())
                 .set("status", OutboxStatus.FAILED.name())
                 .set("attempt_count", attemptCount)
                 .set("last_error", lastError)
                 .set("next_attempt_at", nextAttemptAt)
-                .set("updated_at", nextAttemptAt);
+                .set("updated_at", failedAt);
         mapper.update(null, update);
     }
 }

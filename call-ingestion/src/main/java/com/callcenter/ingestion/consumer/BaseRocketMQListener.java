@@ -24,6 +24,7 @@ public abstract class BaseRocketMQListener implements RocketMQPushConsumerLifecy
     @Override
     public void prepareStart(DefaultMQPushConsumer consumer) {
         this.consumer = consumer;
+        this.consumer.setMaxReconsumeTimes(3);
     }
 
 }

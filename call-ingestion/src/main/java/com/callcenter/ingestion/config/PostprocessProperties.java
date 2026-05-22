@@ -25,23 +25,12 @@ public class PostprocessProperties {
         @NotBlank
         private String recordPersisted = "call_record_persisted";
 
-        @NotBlank
-        private String roundPersisted = "call_round_persisted";
-
         public String getRecordPersisted() {
             return recordPersisted;
         }
 
         public void setRecordPersisted(String recordPersisted) {
             this.recordPersisted = recordPersisted;
-        }
-
-        public String getRoundPersisted() {
-            return roundPersisted;
-        }
-
-        public void setRoundPersisted(String roundPersisted) {
-            this.roundPersisted = roundPersisted;
         }
     }
 }

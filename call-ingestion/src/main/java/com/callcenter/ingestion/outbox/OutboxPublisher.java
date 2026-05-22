@@ -44,32 +44,39 @@ public class OutboxPublisher {
 
     @Scheduled(fixedDelayString = "${call.outbox.poll-interval:PT5S}")
     public void publishPendingBatch() {
-        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-        List<CallEventOutboxEntity> events = repository.findPublishableBatch(now, properties.getBatchSize());
+        LocalDateTime batchNow = currentTime();
+        repository.recoverStaleProcessingRows(batchNow.minus(properties.getProcessingTimeout()), batchNow);
+        List<CallEventOutboxEntity> events = repository.claimPublishableBatch(batchNow, properties.getBatchSize());
         for (CallEventOutboxEntity event : events) {
-            publish(event, now);
+            publish(event);
         }
     }
 
-    private void publish(CallEventOutboxEntity event, LocalDateTime now) {
+    private void publish(CallEventOutboxEntity event) {
+        LocalDateTime now = currentTime();
         try {
             messagePublisher.publish(resolveTopic(event.getEventType()), event.getPartitionKey(), event.getPayload());
-            repository.markPublished(event.getId(), now);
+            repository.deleteProcessingById(event.getId());
         } catch (RuntimeException exception) {
             int attempt = event.getAttemptCount() == null ? 1 : event.getAttemptCount() + 1;
+            LocalDateTime nextAttemptAt = now.plus(properties.getRetryBackoff());
             repository.markFailed(
                     event.getId(),
                     attempt,
                     rootMessage(exception),
-                    now.plus(properties.getRetryBackoff())
+                    now,
+                    nextAttemptAt
             );
         }
+    }
+
+    private LocalDateTime currentTime() {
+        return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
     }
 
     private String resolveTopic(String eventType) {
         return switch (eventType) {
             case "call_record_persisted" -> postprocessProperties.getTopics().getRecordPersisted();
-            case "call_round_persisted" -> postprocessProperties.getTopics().getRoundPersisted();
             default -> throw new IllegalArgumentException("不支持的 outbox 事件类型: " + eventType);
         };
     }

@@ -1,4 +1,4 @@
-package com.callcenter.ingestion.consumer;
+package com.callcenter.ingestion.consumer.dlq;
 
 import com.callcenter.ingestion.model.MessageType;
 import com.callcenter.ingestion.service.DeadLetterTaskService;

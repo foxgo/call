@@ -70,7 +70,7 @@ class PersistedIndexConsumerTest {
     void shouldDispatchRecordEventToRecordIndexService() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
+        RocketMqElasticSearchConsumer consumer = new RocketMqElasticSearchConsumer(
                 objectMapper,
                 indexService
         );
@@ -98,7 +98,7 @@ class PersistedIndexConsumerTest {
     void shouldRejectRecordPersistedEvent() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
+        RocketMqElasticSearchConsumer consumer = new RocketMqElasticSearchConsumer(
                 objectMapper,
                 indexService
         );
@@ -126,7 +126,7 @@ class PersistedIndexConsumerTest {
     void shouldPropagateFailureWhenIndexingFails() throws Exception {
         ObjectMapper objectMapper = objectMapper();
         CallRecordIndexService indexService = mock(CallRecordIndexService.class);
-        RocketMqPersistedEventConsumer consumer = new RocketMqPersistedEventConsumer(
+        RocketMqElasticSearchConsumer consumer = new RocketMqElasticSearchConsumer(
                 objectMapper,
                 indexService
         );

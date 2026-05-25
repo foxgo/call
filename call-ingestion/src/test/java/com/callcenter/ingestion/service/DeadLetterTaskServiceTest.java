@@ -74,6 +74,65 @@ class DeadLetterTaskServiceTest {
     }
 
     @Test
+    void shouldPersistIndexDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
+        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        MessageExt messageExt = postprocessDeadLetterMessage("%DLQ%call-index-group", "call_record_persisted", 31L, 2, "origin-index-1");
+
+        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+
+        service.persist(messageExt, MessageType.INDEX);
+
+        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
+        verify(mapper).insertIgnore(captor.capture());
+        CallDeadLetterTaskEntity task = captor.getValue();
+        assertThat(task.getMessageType()).isEqualTo("INDEX");
+        assertThat(task.getPayloadType()).isEqualTo("call_record_persisted");
+        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+    }
+
+    @Test
+    void shouldPersistAiDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
+        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        MessageExt messageExt = postprocessDeadLetterMessage("%DLQ%call-ai-group", "call_record_persisted", 33L, 3, "origin-ai-1");
+
+        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+
+        service.persist(messageExt, MessageType.AI);
+
+        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
+        verify(mapper).insertIgnore(captor.capture());
+        CallDeadLetterTaskEntity task = captor.getValue();
+        assertThat(task.getMessageType()).isEqualTo("AI");
+        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+    }
+
+    @Test
+    void shouldPersistThirdPartyDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
+        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        MessageExt messageExt = postprocessDeadLetterMessage(
+                "%DLQ%call-third-party-group",
+                "call_record_analysis_completed",
+                35L,
+                4,
+                "origin-third-party-1"
+        );
+
+        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+
+        service.persist(messageExt, MessageType.THIRD_PARTY);
+
+        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
+        verify(mapper).insertIgnore(captor.capture());
+        CallDeadLetterTaskEntity task = captor.getValue();
+        assertThat(task.getMessageType()).isEqualTo("THIRD_PARTY");
+        assertThat(task.getPayloadType()).isEqualTo("call_record_analysis_completed");
+        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+    }
+
+    @Test
     void shouldTreatDuplicateDeadLetterTaskAsSuccess() throws Exception {
         CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
         DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
@@ -133,6 +192,31 @@ class DeadLetterTaskServiceTest {
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_REAL_QUEUE_ID, "4");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_MAX_RECONSUME_TIMES, "5");
         message.setStoreTimestamp(Instant.parse("2026-05-25T02:01:00Z").toEpochMilli());
+        return message;
+    }
+
+    private MessageExt postprocessDeadLetterMessage(
+            String dlqTopic,
+            String eventType,
+            long queueOffset,
+            int reconsumeTimes,
+            String originMessageId
+    ) throws Exception {
+        DomainEventMessage event = domainEvent(
+                "evt-postprocess-1",
+                eventType,
+                "CALL_RECORD",
+                "1001",
+                9L,
+                JsonSupport.objectMapper().readTree("""
+                        {"callId":1001,"tenantId":9,"taskId":1}
+                        """)
+        );
+        MessageExt message = messageExt(dlqTopic, event, queueOffset, reconsumeTimes, originMessageId);
+        MessageAccessor.putProperty(message, MessageConst.PROPERTY_RETRY_TOPIC, "call_record_persisted");
+        MessageAccessor.putProperty(message, MessageConst.PROPERTY_REAL_QUEUE_ID, "1");
+        MessageAccessor.putProperty(message, MessageConst.PROPERTY_MAX_RECONSUME_TIMES, "7");
+        message.setStoreTimestamp(Instant.parse("2026-05-25T03:01:00Z").toEpochMilli());
         return message;
     }
 

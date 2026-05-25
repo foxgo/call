@@ -1,0 +1,24 @@
+package com.callcenter.ingestion.consumer;
+
+import com.callcenter.ingestion.model.MessageType;
+import com.callcenter.ingestion.service.DeadLetterTaskService;
+import org.apache.rocketmq.spring.annotation.ConsumeMode;
+import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
+import org.springframework.stereotype.Component;
+
+@RocketMQMessageListener(
+        consumerGroup = "${call.rocketmq.consumers.ai-dlq.group}",
+        topic = "%DLQ%${call.rocketmq.consumers.ai.group}",
+        selectorExpression = "*",
+        consumeMode = ConsumeMode.CONCURRENTLY,
+        nameServer = "${call.rocketmq.name-server}"
+)
+@Component
+public class RocketMqAiDeadLetterConsumer extends AbstractRocketMqDeadLetterConsumer {
+
+    public RocketMqAiDeadLetterConsumer(
+            DeadLetterTaskService deadLetterTaskService
+    ) {
+        super(deadLetterTaskService, MessageType.AI);
+    }
+}

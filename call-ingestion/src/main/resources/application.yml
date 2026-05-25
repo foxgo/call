@@ -57,14 +57,26 @@ call:
         group: ${CALL_ROUND_DLQ_CONSUMER_GROUP:call-round-dlq-group}
         consume-thread-max: ${CALL_ROUND_DLQ_CONSUMER_THREADS:1}
         max-reconsume-times: ${CALL_ROUND_DLQ_MAX_RECONSUME_TIMES:3}
+      index-dlq:
+        group: ${CALL_INDEX_DLQ_CONSUMER_GROUP:call-index-dlq-group}
+        consume-thread-max: ${CALL_INDEX_DLQ_CONSUMER_THREADS:1}
+        max-reconsume-times: ${CALL_INDEX_DLQ_MAX_RECONSUME_TIMES:3}
       ai:
         group: ${CALL_AI_CONSUMER_GROUP:call-ai-group}
         consume-thread-max: ${CALL_AI_CONSUMER_THREADS:2}
         max-reconsume-times: ${CALL_AI_MAX_RECONSUME_TIMES:3}
+      ai-dlq:
+        group: ${CALL_AI_DLQ_CONSUMER_GROUP:call-ai-dlq-group}
+        consume-thread-max: ${CALL_AI_DLQ_CONSUMER_THREADS:1}
+        max-reconsume-times: ${CALL_AI_DLQ_MAX_RECONSUME_TIMES:3}
       third-party:
         group: ${CALL_THIRD_PARTY_CONSUMER_GROUP:call-third-party-group}
         consume-thread-max: ${CALL_THIRD_PARTY_CONSUMER_THREADS:2}
         max-reconsume-times: ${CALL_THIRD_PARTY_MAX_RECONSUME_TIMES:3}
+      third-party-dlq:
+        group: ${CALL_THIRD_PARTY_DLQ_CONSUMER_GROUP:call-third-party-dlq-group}
+        consume-thread-max: ${CALL_THIRD_PARTY_DLQ_CONSUMER_THREADS:1}
+        max-reconsume-times: ${CALL_THIRD_PARTY_DLQ_MAX_RECONSUME_TIMES:3}
   outbox:
     batch-size: ${CALL_OUTBOX_BATCH_SIZE:100}
     max-retries: ${CALL_OUTBOX_MAX_RETRIES:10}

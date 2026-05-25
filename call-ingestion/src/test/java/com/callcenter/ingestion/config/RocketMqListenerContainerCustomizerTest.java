@@ -81,4 +81,61 @@ class RocketMqListenerContainerCustomizerTest {
         verify(consumer).setConsumeThreadMax(2);
         verify(consumer).setMaxReconsumeTimes(7);
     }
+
+    @Test
+    void shouldApplyConfiguredThreadMaxToIndexDeadLetterConsumerGroup() {
+        RocketMqProperties properties = new RocketMqProperties();
+        properties.getConsumers().getIndexDlq().setGroup("call-index-dlq-group");
+        properties.getConsumers().getIndexDlq().setConsumeThreadMax(3);
+        properties.getConsumers().getIndexDlq().setMaxReconsumeTimes(8);
+        RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
+        DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
+        DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
+
+        when(container.getConsumerGroup()).thenReturn("call-index-dlq-group");
+        when(container.getConsumer()).thenReturn(consumer);
+
+        customizer.postProcessAfterInitialization(container, "rocketMqIndexDeadLetterConsumer");
+
+        verify(consumer).setConsumeThreadMax(3);
+        verify(consumer).setMaxReconsumeTimes(8);
+    }
+
+    @Test
+    void shouldApplyConfiguredThreadMaxToAiDeadLetterConsumerGroup() {
+        RocketMqProperties properties = new RocketMqProperties();
+        properties.getConsumers().getAiDlq().setGroup("call-ai-dlq-group");
+        properties.getConsumers().getAiDlq().setConsumeThreadMax(1);
+        properties.getConsumers().getAiDlq().setMaxReconsumeTimes(9);
+        RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
+        DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
+        DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
+
+        when(container.getConsumerGroup()).thenReturn("call-ai-dlq-group");
+        when(container.getConsumer()).thenReturn(consumer);
+
+        customizer.postProcessAfterInitialization(container, "rocketMqAiDeadLetterConsumer");
+
+        verify(consumer).setConsumeThreadMax(1);
+        verify(consumer).setMaxReconsumeTimes(9);
+    }
+
+    @Test
+    void shouldApplyConfiguredThreadMaxToThirdPartyDeadLetterConsumerGroup() {
+        RocketMqProperties properties = new RocketMqProperties();
+        properties.getConsumers().getThirdPartyDlq().setGroup("call-third-party-dlq-group");
+        properties.getConsumers().getThirdPartyDlq().setConsumeThreadMax(2);
+        properties.getConsumers().getThirdPartyDlq().setMaxReconsumeTimes(10);
+        RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
+        DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
+        DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
+
+        when(container.getConsumerGroup()).thenReturn("call-third-party-dlq-group");
+        when(container.getConsumer()).thenReturn(consumer);
+
+        customizer.postProcessAfterInitialization(container, "rocketMqThirdPartyDeadLetterConsumer");
+
+        verify(consumer).setConsumeThreadMax(2);
+        verify(consumer).setMaxReconsumeTimes(10);
+    }
 }

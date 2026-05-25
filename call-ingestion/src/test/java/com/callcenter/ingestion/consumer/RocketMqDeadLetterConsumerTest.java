@@ -38,6 +38,36 @@ class RocketMqDeadLetterConsumerTest {
     }
 
     @Test
+    void shouldDelegateIndexDlqEnvelopeToTaskService() throws Exception {
+        DeadLetterTaskService service = mock(DeadLetterTaskService.class);
+        RocketMqIndexDeadLetterConsumer consumer = new RocketMqIndexDeadLetterConsumer(service);
+
+        consumer.onMessage(message("%DLQ%call-index-group", objectMapper.writeValueAsString(envelope("call_record_persisted"))));
+
+        verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.INDEX));
+    }
+
+    @Test
+    void shouldDelegateAiDlqEnvelopeToTaskService() throws Exception {
+        DeadLetterTaskService service = mock(DeadLetterTaskService.class);
+        RocketMqAiDeadLetterConsumer consumer = new RocketMqAiDeadLetterConsumer(service);
+
+        consumer.onMessage(message("%DLQ%call-ai-group", objectMapper.writeValueAsString(envelope("call_record_persisted"))));
+
+        verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.AI));
+    }
+
+    @Test
+    void shouldDelegateThirdPartyDlqEnvelopeToTaskService() throws Exception {
+        DeadLetterTaskService service = mock(DeadLetterTaskService.class);
+        RocketMqThirdPartyDeadLetterConsumer consumer = new RocketMqThirdPartyDeadLetterConsumer(service);
+
+        consumer.onMessage(message("%DLQ%call-third-party-group", objectMapper.writeValueAsString(envelope("call_record_persisted"))));
+
+        verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.THIRD_PARTY));
+    }
+
+    @Test
     void shouldDelegateRawDeadLetterMessageToService() {
         DeadLetterTaskService service = mock(DeadLetterTaskService.class);
         RocketMqRecordDeadLetterConsumer consumer = new RocketMqRecordDeadLetterConsumer(service);

@@ -97,10 +97,19 @@ public class RocketMqProperties {
         private Consumer roundDlq = new Consumer("call-round-dlq-group", 1, 3);
 
         @Valid
+        private Consumer indexDlq = new Consumer("call-index-dlq-group", 1, 3);
+
+        @Valid
         private Consumer ai = new Consumer("call-ai-group", 2, 3);
 
         @Valid
+        private Consumer aiDlq = new Consumer("call-ai-dlq-group", 1, 3);
+
+        @Valid
         private Consumer thirdParty = new Consumer("call-third-party-group", 2, 3);
+
+        @Valid
+        private Consumer thirdPartyDlq = new Consumer("call-third-party-dlq-group", 1, 3);
 
         public Consumer getRecord() {
             return record;
@@ -142,6 +151,14 @@ public class RocketMqProperties {
             this.roundDlq = roundDlq;
         }
 
+        public Consumer getIndexDlq() {
+            return indexDlq;
+        }
+
+        public void setIndexDlq(Consumer indexDlq) {
+            this.indexDlq = indexDlq;
+        }
+
         public Consumer getAi() {
             return ai;
         }
@@ -150,12 +167,28 @@ public class RocketMqProperties {
             this.ai = ai;
         }
 
+        public Consumer getAiDlq() {
+            return aiDlq;
+        }
+
+        public void setAiDlq(Consumer aiDlq) {
+            this.aiDlq = aiDlq;
+        }
+
         public Consumer getThirdParty() {
             return thirdParty;
         }
 
         public void setThirdParty(Consumer thirdParty) {
             this.thirdParty = thirdParty;
+        }
+
+        public Consumer getThirdPartyDlq() {
+            return thirdPartyDlq;
+        }
+
+        public void setThirdPartyDlq(Consumer thirdPartyDlq) {
+            this.thirdPartyDlq = thirdPartyDlq;
         }
     }
 

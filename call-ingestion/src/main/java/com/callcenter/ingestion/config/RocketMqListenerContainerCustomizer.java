@@ -19,8 +19,11 @@ public class RocketMqListenerContainerCustomizer implements BeanPostProcessor {
         put(properties.getConsumers().getIndex());
         put(properties.getConsumers().getRecordDlq());
         put(properties.getConsumers().getRoundDlq());
+        put(properties.getConsumers().getIndexDlq());
         put(properties.getConsumers().getAi());
+        put(properties.getConsumers().getAiDlq());
         put(properties.getConsumers().getThirdParty());
+        put(properties.getConsumers().getThirdPartyDlq());
     }
 
     @Override

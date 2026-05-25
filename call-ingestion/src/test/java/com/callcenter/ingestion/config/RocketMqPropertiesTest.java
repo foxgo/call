@@ -36,12 +36,21 @@ class RocketMqPropertiesTest {
                         "call.rocketmq.consumers.round-dlq.group=call-round-dlq-group",
                         "call.rocketmq.consumers.round-dlq.consume-thread-max=1",
                         "call.rocketmq.consumers.round-dlq.max-reconsume-times=10",
+                        "call.rocketmq.consumers.index-dlq.group=call-index-dlq-group",
+                        "call.rocketmq.consumers.index-dlq.consume-thread-max=2",
+                        "call.rocketmq.consumers.index-dlq.max-reconsume-times=11",
                         "call.rocketmq.consumers.ai.group=call-ai-group",
                         "call.rocketmq.consumers.ai.consume-thread-max=2",
                         "call.rocketmq.consumers.ai.max-reconsume-times=7",
+                        "call.rocketmq.consumers.ai-dlq.group=call-ai-dlq-group",
+                        "call.rocketmq.consumers.ai-dlq.consume-thread-max=1",
+                        "call.rocketmq.consumers.ai-dlq.max-reconsume-times=12",
                         "call.rocketmq.consumers.third-party.group=call-third-party-group",
                         "call.rocketmq.consumers.third-party.consume-thread-max=3",
-                        "call.rocketmq.consumers.third-party.max-reconsume-times=8"
+                        "call.rocketmq.consumers.third-party.max-reconsume-times=8",
+                        "call.rocketmq.consumers.third-party-dlq.group=call-third-party-dlq-group",
+                        "call.rocketmq.consumers.third-party-dlq.consume-thread-max=1",
+                        "call.rocketmq.consumers.third-party-dlq.max-reconsume-times=13"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -64,11 +73,20 @@ class RocketMqPropertiesTest {
                     assertThat(properties.getConsumers().getRoundDlq().getGroup()).isEqualTo("call-round-dlq-group");
                     assertThat(properties.getConsumers().getRoundDlq().getConsumeThreadMax()).isEqualTo(1);
                     assertThat(properties.getConsumers().getRoundDlq().getMaxReconsumeTimes()).isEqualTo(10);
+                    assertThat(properties.getConsumers().getIndexDlq().getGroup()).isEqualTo("call-index-dlq-group");
+                    assertThat(properties.getConsumers().getIndexDlq().getConsumeThreadMax()).isEqualTo(2);
+                    assertThat(properties.getConsumers().getIndexDlq().getMaxReconsumeTimes()).isEqualTo(11);
                     assertThat(properties.getConsumers().getAi().getConsumeThreadMax()).isEqualTo(2);
                     assertThat(properties.getConsumers().getAi().getMaxReconsumeTimes()).isEqualTo(7);
+                    assertThat(properties.getConsumers().getAiDlq().getGroup()).isEqualTo("call-ai-dlq-group");
+                    assertThat(properties.getConsumers().getAiDlq().getConsumeThreadMax()).isEqualTo(1);
+                    assertThat(properties.getConsumers().getAiDlq().getMaxReconsumeTimes()).isEqualTo(12);
                     assertThat(properties.getConsumers().getThirdParty().getGroup()).isEqualTo("call-third-party-group");
                     assertThat(properties.getConsumers().getThirdParty().getConsumeThreadMax()).isEqualTo(3);
                     assertThat(properties.getConsumers().getThirdParty().getMaxReconsumeTimes()).isEqualTo(8);
+                    assertThat(properties.getConsumers().getThirdPartyDlq().getGroup()).isEqualTo("call-third-party-dlq-group");
+                    assertThat(properties.getConsumers().getThirdPartyDlq().getConsumeThreadMax()).isEqualTo(1);
+                    assertThat(properties.getConsumers().getThirdPartyDlq().getMaxReconsumeTimes()).isEqualTo(13);
                 });
     }
 

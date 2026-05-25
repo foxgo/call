@@ -38,4 +38,11 @@ public final class MessageKeys {
     public static String roundDocumentId(CallRoundMessage message) {
         return message.callId() + ":" + message.roundId();
     }
+
+    public static String domainEventIdempotencyKey(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            throw new IllegalArgumentException("eventId is required");
+        }
+        return eventId;
+    }
 }

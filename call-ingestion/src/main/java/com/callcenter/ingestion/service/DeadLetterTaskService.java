@@ -103,6 +103,7 @@ public class DeadLetterTaskService {
                 case ROUND -> MessageKeys.roundIdempotencyKey(
                         objectMapper.treeToValue(event.payload(), CallRoundMessage.class)
                 );
+                case INDEX, AI, THIRD_PARTY -> MessageKeys.domainEventIdempotencyKey(event.eventId());
             };
         } catch (Exception exception) {
             throw new IllegalArgumentException("无法从自动死信消息恢复幂等键", exception);

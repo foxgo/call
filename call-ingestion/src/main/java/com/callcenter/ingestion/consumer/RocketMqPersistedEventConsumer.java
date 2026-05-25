@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
         nameServer = "${call.rocketmq.name-server}"
 )
 @Component
-public class RocketMqPersistedEventConsumer implements RocketMQListener<MessageExt> {
+public class RocketMqPersistedEventConsumer extends BaseRocketMQListener implements RocketMQListener<MessageExt>  {
 
     private final ObjectMapper objectMapper;
     private final CallRecordIndexService recordIndexService;

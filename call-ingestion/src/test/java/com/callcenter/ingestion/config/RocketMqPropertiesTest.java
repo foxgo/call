@@ -21,8 +21,6 @@ class RocketMqPropertiesTest {
                         "call.rocketmq.producer-group=call-producer-group",
                         "call.rocketmq.topics.record-ingest=call_record_ingest",
                         "call.rocketmq.topics.round-ingest=call_round_ingest",
-                        "call.rocketmq.topics.record-dlq=call_record_dlq",
-                        "call.rocketmq.topics.round-dlq=call_round_dlq",
                         "call.rocketmq.consumers.record.group=call-record-consumer-group",
                         "call.rocketmq.consumers.record.consume-thread-max=8",
                         "call.rocketmq.consumers.record.max-reconsume-times=4",
@@ -32,6 +30,12 @@ class RocketMqPropertiesTest {
                         "call.rocketmq.consumers.index.group=call-index-group",
                         "call.rocketmq.consumers.index.consume-thread-max=4",
                         "call.rocketmq.consumers.index.max-reconsume-times=6",
+                        "call.rocketmq.consumers.record-dlq.group=call-record-dlq-group",
+                        "call.rocketmq.consumers.record-dlq.consume-thread-max=1",
+                        "call.rocketmq.consumers.record-dlq.max-reconsume-times=9",
+                        "call.rocketmq.consumers.round-dlq.group=call-round-dlq-group",
+                        "call.rocketmq.consumers.round-dlq.consume-thread-max=1",
+                        "call.rocketmq.consumers.round-dlq.max-reconsume-times=10",
                         "call.rocketmq.consumers.ai.group=call-ai-group",
                         "call.rocketmq.consumers.ai.consume-thread-max=2",
                         "call.rocketmq.consumers.ai.max-reconsume-times=7",
@@ -46,8 +50,6 @@ class RocketMqPropertiesTest {
                     assertThat(properties.getProducerGroup()).isEqualTo("call-producer-group");
                     assertThat(properties.getTopics().getRecordIngest()).isEqualTo("call_record_ingest");
                     assertThat(properties.getTopics().getRoundIngest()).isEqualTo("call_round_ingest");
-                    assertThat(properties.getTopics().getRecordDlq()).isEqualTo("call_record_dlq");
-                    assertThat(properties.getTopics().getRoundDlq()).isEqualTo("call_round_dlq");
                     assertThat(properties.getConsumers().getRecord().getGroup()).isEqualTo("call-record-consumer-group");
                     assertThat(properties.getConsumers().getRecord().getConsumeThreadMax()).isEqualTo(8);
                     assertThat(properties.getConsumers().getRecord().getMaxReconsumeTimes()).isEqualTo(4);
@@ -56,6 +58,12 @@ class RocketMqPropertiesTest {
                     assertThat(properties.getConsumers().getRound().getMaxReconsumeTimes()).isEqualTo(5);
                     assertThat(properties.getConsumers().getIndex().getConsumeThreadMax()).isEqualTo(4);
                     assertThat(properties.getConsumers().getIndex().getMaxReconsumeTimes()).isEqualTo(6);
+                    assertThat(properties.getConsumers().getRecordDlq().getGroup()).isEqualTo("call-record-dlq-group");
+                    assertThat(properties.getConsumers().getRecordDlq().getConsumeThreadMax()).isEqualTo(1);
+                    assertThat(properties.getConsumers().getRecordDlq().getMaxReconsumeTimes()).isEqualTo(9);
+                    assertThat(properties.getConsumers().getRoundDlq().getGroup()).isEqualTo("call-round-dlq-group");
+                    assertThat(properties.getConsumers().getRoundDlq().getConsumeThreadMax()).isEqualTo(1);
+                    assertThat(properties.getConsumers().getRoundDlq().getMaxReconsumeTimes()).isEqualTo(10);
                     assertThat(properties.getConsumers().getAi().getConsumeThreadMax()).isEqualTo(2);
                     assertThat(properties.getConsumers().getAi().getMaxReconsumeTimes()).isEqualTo(7);
                     assertThat(properties.getConsumers().getThirdParty().getGroup()).isEqualTo("call-third-party-group");

@@ -62,12 +62,6 @@ public class RocketMqProperties {
         @NotBlank
         private String roundIngest = "call_round_ingest";
 
-        @NotBlank
-        private String recordDlq = "call_record_dlq";
-
-        @NotBlank
-        private String roundDlq = "call_round_dlq";
-
         public String getRecordIngest() {
             return recordIngest;
         }
@@ -83,22 +77,6 @@ public class RocketMqProperties {
         public void setRoundIngest(String roundIngest) {
             this.roundIngest = roundIngest;
         }
-
-        public String getRecordDlq() {
-            return recordDlq;
-        }
-
-        public void setRecordDlq(String recordDlq) {
-            this.recordDlq = recordDlq;
-        }
-
-        public String getRoundDlq() {
-            return roundDlq;
-        }
-
-        public void setRoundDlq(String roundDlq) {
-            this.roundDlq = roundDlq;
-        }
     }
 
     public static class Consumers {
@@ -111,6 +89,12 @@ public class RocketMqProperties {
 
         @Valid
         private Consumer index = new Consumer("call-index-group", 2, 3);
+
+        @Valid
+        private Consumer recordDlq = new Consumer("call-record-dlq-group", 1, 3);
+
+        @Valid
+        private Consumer roundDlq = new Consumer("call-round-dlq-group", 1, 3);
 
         @Valid
         private Consumer ai = new Consumer("call-ai-group", 2, 3);
@@ -140,6 +124,22 @@ public class RocketMqProperties {
 
         public void setIndex(Consumer index) {
             this.index = index;
+        }
+
+        public Consumer getRecordDlq() {
+            return recordDlq;
+        }
+
+        public void setRecordDlq(Consumer recordDlq) {
+            this.recordDlq = recordDlq;
+        }
+
+        public Consumer getRoundDlq() {
+            return roundDlq;
+        }
+
+        public void setRoundDlq(Consumer roundDlq) {
+            this.roundDlq = roundDlq;
         }
 
         public Consumer getAi() {

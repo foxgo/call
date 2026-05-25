@@ -36,8 +36,6 @@ call:
     topics:
       record-ingest: ${CALL_RECORD_INGEST_TOPIC:call_record_ingest}
       round-ingest: ${CALL_ROUND_INGEST_TOPIC:call_round_ingest}
-      record-dlq: ${CALL_RECORD_DLQ_TOPIC:call_record_dlq}
-      round-dlq: ${CALL_ROUND_DLQ_TOPIC:call_round_dlq}
     consumers:
       record:
         group: ${CALL_RECORD_CONSUMER_GROUP:call-record-consumer-group}
@@ -51,6 +49,14 @@ call:
         group: ${CALL_INDEX_CONSUMER_GROUP:call-index-group}
         consume-thread-max: ${CALL_INDEX_CONSUMER_THREADS:2}
         max-reconsume-times: ${CALL_INDEX_MAX_RECONSUME_TIMES:3}
+      record-dlq:
+        group: ${CALL_RECORD_DLQ_CONSUMER_GROUP:call-record-dlq-group}
+        consume-thread-max: ${CALL_RECORD_DLQ_CONSUMER_THREADS:1}
+        max-reconsume-times: ${CALL_RECORD_DLQ_MAX_RECONSUME_TIMES:3}
+      round-dlq:
+        group: ${CALL_ROUND_DLQ_CONSUMER_GROUP:call-round-dlq-group}
+        consume-thread-max: ${CALL_ROUND_DLQ_CONSUMER_THREADS:1}
+        max-reconsume-times: ${CALL_ROUND_DLQ_MAX_RECONSUME_TIMES:3}
       ai:
         group: ${CALL_AI_CONSUMER_GROUP:call-ai-group}
         consume-thread-max: ${CALL_AI_CONSUMER_THREADS:2}

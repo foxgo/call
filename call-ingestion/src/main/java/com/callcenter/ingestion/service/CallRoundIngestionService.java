@@ -12,19 +12,13 @@ public class CallRoundIngestionService {
 
     private final ShardingRouter shardingRouter;
     private final CallRoundMysqlService callRoundMysqlService;
-    private final FailurePublisher failurePublisher;
-    private final FailureClassifier failureClassifier;
 
     public CallRoundIngestionService(
             ShardingRouter shardingRouter,
-            CallRoundMysqlService callRoundMysqlService,
-            FailurePublisher failurePublisher,
-            FailureClassifier failureClassifier
+            CallRoundMysqlService callRoundMysqlService
     ) {
         this.shardingRouter = shardingRouter;
         this.callRoundMysqlService = callRoundMysqlService;
-        this.failurePublisher = failurePublisher;
-        this.failureClassifier = failureClassifier;
     }
 
     public boolean process(InboundMessage<CallRoundMessage> inbound) {
@@ -38,10 +32,7 @@ public class CallRoundIngestionService {
             callRoundMysqlService.persistBatch(shardKey, List.of(message));
             return true;
         } catch (Exception exception) {
-            if (failureClassifier.isRetryable(exception)) {
-                return false;
-            }
-            return failurePublisher.publishDlq(inbound, exception);
+            return false;
         }
     }
 }

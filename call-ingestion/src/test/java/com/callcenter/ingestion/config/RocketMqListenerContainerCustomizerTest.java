@@ -62,4 +62,23 @@ class RocketMqListenerContainerCustomizerTest {
         verify(consumer).setConsumeThreadMax(5);
         verify(consumer).setMaxReconsumeTimes(6);
     }
+
+    @Test
+    void shouldApplyConfiguredThreadMaxToRecordDeadLetterConsumerGroup() {
+        RocketMqProperties properties = new RocketMqProperties();
+        properties.getConsumers().getRecordDlq().setGroup("call-record-dlq-group");
+        properties.getConsumers().getRecordDlq().setConsumeThreadMax(2);
+        properties.getConsumers().getRecordDlq().setMaxReconsumeTimes(7);
+        RocketMqListenerContainerCustomizer customizer = new RocketMqListenerContainerCustomizer(properties);
+        DefaultRocketMQListenerContainer container = mock(DefaultRocketMQListenerContainer.class);
+        DefaultMQPushConsumer consumer = mock(DefaultMQPushConsumer.class);
+
+        when(container.getConsumerGroup()).thenReturn("call-record-dlq-group");
+        when(container.getConsumer()).thenReturn(consumer);
+
+        customizer.postProcessAfterInitialization(container, "rocketMqRecordDeadLetterConsumer");
+
+        verify(consumer).setConsumeThreadMax(2);
+        verify(consumer).setMaxReconsumeTimes(7);
+    }
 }

@@ -23,13 +23,9 @@ class CallRoundIngestionServiceTest {
     void shouldPersistRoundMessageWhenRoutingAndMysqlWriteSucceed() {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRoundIngestionService service = new CallRoundIngestionService(
                 shardingRouter,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
@@ -42,20 +38,15 @@ class CallRoundIngestionServiceTest {
 
         assertThat(processed).isTrue();
         verify(callRoundMysqlService).persistBatch(any(), eq(List.of(inbound.payload())));
-        verify(failurePublisher, never()).publishDlq(any(), any());
     }
 
     @Test
     void shouldReturnFalseWhenMysqlWriteFailsWithRetryableError() {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRoundIngestionService service = new CallRoundIngestionService(
                 shardingRouter,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
@@ -63,25 +54,19 @@ class CallRoundIngestionServiceTest {
                 .thenReturn(new ShardKey(9L, 0, 1, "202605"));
         when(callRoundMysqlService.persistBatch(any(), any()))
                 .thenThrow(new IllegalStateException("mysql timeout"));
-        when(failureClassifier.isRetryable(any())).thenReturn(true);
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isFalse();
-        verify(failurePublisher, never()).publishDlq(any(), any());
     }
 
     @Test
-    void shouldPublishDlqWhenMysqlWriteFailsWithNonRetryableError() {
+    void shouldReturnFalseWhenMysqlWriteFailsWithNonRetryableError() {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRoundIngestionService service = new CallRoundIngestionService(
                 shardingRouter,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
@@ -89,13 +74,10 @@ class CallRoundIngestionServiceTest {
                 .thenReturn(new ShardKey(9L, 0, 1, "202605"));
         when(callRoundMysqlService.persistBatch(any(), any()))
                 .thenThrow(new IllegalArgumentException("invalid payload"));
-        when(failureClassifier.isRetryable(any())).thenReturn(false);
-        when(failurePublisher.publishDlq(eq(inbound), any())).thenReturn(true);
 
         boolean processed = service.process(inbound);
 
-        assertThat(processed).isTrue();
-        verify(failurePublisher).publishDlq(eq(inbound), any());
+        assertThat(processed).isFalse();
     }
 
     private static InboundMessage<CallRoundMessage> roundInboundMessage() {

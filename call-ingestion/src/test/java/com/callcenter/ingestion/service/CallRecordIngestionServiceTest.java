@@ -25,14 +25,10 @@ class CallRecordIngestionServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRecordMysqlService callRecordMysqlService = mock(CallRecordMysqlService.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
                 shardingRouter,
                 callRecordMysqlService,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
@@ -55,7 +51,6 @@ class CallRecordIngestionServiceTest {
         assertThat(processed).isTrue();
         verify(callRecordMysqlService).persistBatch(any(), eq(List.of(inbound.payload())), any());
         verify(callRoundMysqlService).countByCallId(any(), eq(1001L));
-        verify(failurePublisher, never()).publishDlq(any(), any());
     }
 
     @Test
@@ -63,14 +58,10 @@ class CallRecordIngestionServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRecordMysqlService callRecordMysqlService = mock(CallRecordMysqlService.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
                 shardingRouter,
                 callRecordMysqlService,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
@@ -78,27 +69,21 @@ class CallRecordIngestionServiceTest {
                 .thenReturn(new ShardKey(9L, 0, 1, "202605"));
         when(callRecordMysqlService.persistBatch(any(), any(), any()))
                 .thenThrow(new IllegalStateException("mysql timeout"));
-        when(failureClassifier.isRetryable(any())).thenReturn(true);
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isFalse();
-        verify(failurePublisher, never()).publishDlq(any(), any());
     }
 
     @Test
-    void shouldPublishDlqWhenMysqlWriteFailsWithNonRetryableError() {
+    void shouldReturnFalseWhenMysqlWriteFailsWithNonRetryableError() {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRecordMysqlService callRecordMysqlService = mock(CallRecordMysqlService.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
                 shardingRouter,
                 callRecordMysqlService,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
@@ -106,13 +91,10 @@ class CallRecordIngestionServiceTest {
                 .thenReturn(new ShardKey(9L, 0, 1, "202605"));
         when(callRecordMysqlService.persistBatch(any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("invalid payload"));
-        when(failureClassifier.isRetryable(any())).thenReturn(false);
-        when(failurePublisher.publishDlq(eq(inbound), any())).thenReturn(true);
 
         boolean processed = service.process(inbound);
 
-        assertThat(processed).isTrue();
-        verify(failurePublisher).publishDlq(eq(inbound), any());
+        assertThat(processed).isFalse();
     }
 
     @Test
@@ -120,14 +102,10 @@ class CallRecordIngestionServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallRecordMysqlService callRecordMysqlService = mock(CallRecordMysqlService.class);
         CallRoundMysqlService callRoundMysqlService = mock(CallRoundMysqlService.class);
-        FailurePublisher failurePublisher = mock(FailurePublisher.class);
-        FailureClassifier failureClassifier = mock(FailureClassifier.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
                 shardingRouter,
                 callRecordMysqlService,
-                callRoundMysqlService,
-                failurePublisher,
-                failureClassifier
+                callRoundMysqlService
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
@@ -144,13 +122,11 @@ class CallRecordIngestionServiceTest {
             return entities;
         }).when(callRecordMysqlService).persistBatch(any(), any(), any());
         when(callRoundMysqlService.countByCallId(any(), eq(1001L))).thenReturn(1L);
-        when(failureClassifier.isRetryable(any())).thenReturn(true);
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isFalse();
         verify(callRoundMysqlService).countByCallId(any(), eq(1001L));
-        verify(failurePublisher, never()).publishDlq(any(), any());
     }
 
     private static InboundMessage<CallRecordMessage> recordInboundMessage() {

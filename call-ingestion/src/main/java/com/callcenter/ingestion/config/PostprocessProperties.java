@@ -9,8 +9,18 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "call.postprocess")
 public class PostprocessProperties {
 
+    private boolean llmEnabled = false;
+
     @Valid
     private Topics topics = new Topics();
+
+    public boolean isLlmEnabled() {
+        return llmEnabled;
+    }
+
+    public void setLlmEnabled(boolean llmEnabled) {
+        this.llmEnabled = llmEnabled;
+    }
 
     public Topics getTopics() {
         return topics;
@@ -25,12 +35,23 @@ public class PostprocessProperties {
         @NotBlank
         private String recordPersisted = "call_record_persisted";
 
+        @NotBlank
+        private String analysisCompleted = "call_record_analysis_completed";
+
         public String getRecordPersisted() {
             return recordPersisted;
         }
 
         public void setRecordPersisted(String recordPersisted) {
             this.recordPersisted = recordPersisted;
+        }
+
+        public String getAnalysisCompleted() {
+            return analysisCompleted;
+        }
+
+        public void setAnalysisCompleted(String analysisCompleted) {
+            this.analysisCompleted = analysisCompleted;
         }
     }
 }

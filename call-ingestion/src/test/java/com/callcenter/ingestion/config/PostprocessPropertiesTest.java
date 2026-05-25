@@ -23,6 +23,8 @@ class PostprocessPropertiesTest {
         contextRunner
                 .withPropertyValues(
                         "call.postprocess.topics.record-persisted=record.persisted.v1",
+                        "call.postprocess.topics.analysis-completed=analysis.completed.v1",
+                        "call.postprocess.llm-enabled=true",
                         "call.outbox.batch-size=50",
                         "call.outbox.poll-interval=PT3S",
                         "call.outbox.processing-timeout=PT2M",
@@ -33,6 +35,8 @@ class PostprocessPropertiesTest {
                     PostprocessProperties properties = context.getBean(PostprocessProperties.class);
                     OutboxPublisherProperties outboxProperties = context.getBean(OutboxPublisherProperties.class);
                     assertThat(properties.getTopics().getRecordPersisted()).isEqualTo("record.persisted.v1");
+                    assertThat(properties.getTopics().getAnalysisCompleted()).isEqualTo("analysis.completed.v1");
+                    assertThat(properties.isLlmEnabled()).isTrue();
                     assertThat(outboxProperties.getProcessingTimeout()).isEqualTo(java.time.Duration.ofMinutes(2));
                     assertThat(outboxProperties.getMaxRetries()).isEqualTo(7);
                 });
@@ -58,6 +62,9 @@ class PostprocessPropertiesTest {
             assertThat(context).hasSingleBean(OutboxPublisher.class);
             assertThat(context.getBean(PostprocessProperties.class).getTopics().getRecordPersisted())
                     .isEqualTo("call_record_persisted");
+            assertThat(context.getBean(PostprocessProperties.class).getTopics().getAnalysisCompleted())
+                    .isEqualTo("call_record_analysis_completed");
+            assertThat(context.getBean(PostprocessProperties.class).isLlmEnabled()).isFalse();
             assertThat(context.getBean(OutboxPublisherProperties.class).getProcessingTimeout())
                     .isEqualTo(java.time.Duration.ofMinutes(5));
             assertThat(context.getBean(OutboxPublisherProperties.class).getMaxRetries()).isEqualTo(10);

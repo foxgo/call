@@ -3,13 +3,17 @@ package com.callcenter.ingestion.service;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
+import com.callcenter.common.entity.CallAnalysisResultEntity;
 import com.callcenter.common.entity.CallRecordEntity;
 import com.callcenter.common.entity.CallRoundEntity;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.callcenter.ingestion.config.WriteMetrics;
 import com.callcenter.ingestion.processor.MessageKeys;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -17,21 +21,34 @@ import org.springframework.stereotype.Service;
 @Service
 public class ElasticsearchBulkService {
 
+    private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {
+    };
+
     private final ElasticsearchClient elasticsearchClient;
     private final WriteMetrics writeMetrics;
+    private final ObjectMapper objectMapper;
 
-    public ElasticsearchBulkService(ElasticsearchClient elasticsearchClient, WriteMetrics writeMetrics) {
+    public ElasticsearchBulkService(
+            ElasticsearchClient elasticsearchClient,
+            WriteMetrics writeMetrics,
+            ObjectMapper objectMapper
+    ) {
         this.elasticsearchClient = elasticsearchClient;
         this.writeMetrics = writeMetrics;
+        this.objectMapper = objectMapper;
     }
 
     public void bulkIndexRecords(List<CallRecordEntity> entities) {
+        bulkIndexRecords(entities, Map.of());
+    }
+
+    public void bulkIndexRecords(List<CallRecordEntity> entities, Map<Long, CallAnalysisResultEntity> analysisResults) {
         BulkRequest.Builder builder = new BulkRequest.Builder();
         entities.forEach(entity -> builder.operations(operation -> operation.index(index -> index
                 .index("call_record_write")
                 .id(MessageKeys.recordDocumentId(entity))
                 .routing(String.valueOf(entity.getTenantId()))
-                .document(buildRecordDocument(entity)))));
+                .document(buildRecordDocument(entity, analysisResults.get(entity.getCallId()))))));
         execute(builder.build());
     }
 
@@ -59,7 +76,7 @@ public class ElasticsearchBulkService {
         }
     }
 
-    private Map<String, Object> buildRecordDocument(CallRecordEntity entity) {
+    private Map<String, Object> buildRecordDocument(CallRecordEntity entity, CallAnalysisResultEntity analysisResult) {
         Map<String, Object> document = new LinkedHashMap<>();
         document.put("tenant_id", entity.getTenantId());
         document.put("call_id", String.valueOf(entity.getCallId()));
@@ -71,6 +88,11 @@ public class ElasticsearchBulkService {
         putIfNotNull(document, "duration", entity.getDuration());
         putIfNotNull(document, "start_time", entity.getStartTime());
         putIfNotNull(document, "end_time", entity.getEndTime());
+        putIfNotNull(document, "round_count", entity.getRoundTotal());
+        putIfNotNull(document, "tags", readTags(analysisResult));
+        putIfNotNull(document, "risk_flag", analysisResult == null ? null : analysisResult.getRiskFlag());
+        putIfNotNull(document, "quality_score", analysisResult == null ? null : analysisResult.getQualityScore());
+        putIfNotNull(document, "ai_version", analysisResult == null ? null : analysisResult.getAiVersion());
         putIfNotNull(document, "created_at", entity.getCreatedAt());
         return document;
     }
@@ -98,5 +120,16 @@ public class ElasticsearchBulkService {
         String lineNumber = entity.getLineNumber() == null ? "" : entity.getLineNumber();
         String value = (phone + " " + lineNumber).trim();
         return value.isEmpty() ? null : value;
+    }
+
+    private List<String> readTags(CallAnalysisResultEntity analysisResult) {
+        if (analysisResult == null || analysisResult.getTags() == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(analysisResult.getTags(), STRING_LIST);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to deserialize analysis tags", exception);
+        }
     }
 }

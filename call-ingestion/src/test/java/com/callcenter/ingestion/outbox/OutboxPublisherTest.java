@@ -82,6 +82,24 @@ class OutboxPublisherTest {
         );
     }
 
+    @Test
+    void shouldPublishAnalysisCompletedToConfiguredTopic() {
+        OutboxRepository repository = mock(OutboxRepository.class);
+        MessagePublisher messagePublisher = mock(MessagePublisher.class);
+        OutboxPublisherProperties properties = properties();
+        PostprocessProperties postprocessProperties = postprocessProperties();
+        Clock clock = Clock.fixed(Instant.parse("2026-05-20T06:00:00Z"), ZoneOffset.UTC);
+        OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
+        CallEventOutboxEntity event = claimedEvent(2L, "call_record_analysis_completed", "1001");
+
+        when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(event));
+
+        publisher.publishPendingBatch();
+
+        verify(messagePublisher).publish("call_record_analysis_completed", "1001", event.getPayload());
+        verify(repository).deleteProcessingById(2L);
+    }
+
     private static OutboxPublisherProperties properties() {
         OutboxPublisherProperties properties = new OutboxPublisherProperties();
         properties.setBatchSize(20);
@@ -93,6 +111,7 @@ class OutboxPublisherTest {
     private static PostprocessProperties postprocessProperties() {
         PostprocessProperties properties = new PostprocessProperties();
         properties.getTopics().setRecordPersisted("call_record_persisted");
+        properties.getTopics().setAnalysisCompleted("call_record_analysis_completed");
         return properties;
     }
 

@@ -47,3 +47,7 @@ call/
 - 当前消息体采用 JSON DTO，后续可无缝替换为 Protobuf 反序列化器。
 - `call-ingestion` 当前通过 RocketMQ nameserver 地址 `ROCKETMQ_NAME_SERVER` 接入消息队列。
 - ES 索引模板、ILM 与别名由应用启动时自动初始化。
+- 当 `CALL_LLM_ENABLED=true` 时，`call-ingestion` 会把后处理链路切成
+  `call_record_persisted -> LLM 分析落库 -> call_record_analysis_completed -> ES / 第三方推送`。
+- LLM 结果保存在 `call_analysis_result`，当分析失败达到 RocketMQ 最大重试次数后，会按 `DEGRADED` 结果继续放行下游。
+- 新增环境变量 `CALL_RECORD_ANALYSIS_COMPLETED_TOPIC`，默认 topic 为 `call_record_analysis_completed`。

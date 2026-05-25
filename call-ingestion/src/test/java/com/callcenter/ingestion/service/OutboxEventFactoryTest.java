@@ -61,6 +61,25 @@ class OutboxEventFactoryTest {
     }
 
     @Test
+    void shouldBuildAnalysisCompletedEventWithStableEnvelopeAndPayload() throws Exception {
+        OutboxEventFactory factory = new OutboxEventFactory(JsonSupport.objectMapper());
+        CallRecordEntity entity = recordEntity();
+
+        CallEventOutboxEntity outbox = factory.analysisCompleted(entity);
+        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.getPayload(), DomainEventMessage.class);
+
+        assertThat(outbox.getEventId()).isEqualTo("call_record_analysis_completed:9:1001");
+        assertThat(outbox.getEventType()).isEqualTo("call_record_analysis_completed");
+        assertThat(outbox.getAggregateType()).isEqualTo("CALL_RECORD");
+        assertThat(outbox.getAggregateId()).isEqualTo("1001");
+        assertThat(outbox.getTenantId()).isEqualTo(9L);
+        assertThat(outbox.getPartitionKey()).isEqualTo("1001");
+        assertThat(event.payload().get("callId").asLong()).isEqualTo(1001L);
+        assertThat(event.payload().get("tenantId").asLong()).isEqualTo(9L);
+        assertThat(event.payload().get("startTime").asText()).isEqualTo("2026-05-20T10:00:00");
+    }
+
+    @Test
     void shouldPersistRecordRowsAndOutboxRowsTogether() {
         CallRecordMapper callRecordMapper = mock(CallRecordMapper.class);
         CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);

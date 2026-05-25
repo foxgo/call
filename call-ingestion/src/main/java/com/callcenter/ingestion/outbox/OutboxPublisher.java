@@ -78,6 +78,7 @@ public class OutboxPublisher {
     private String resolveTopic(String eventType) {
         return switch (eventType) {
             case "call_record_persisted" -> postprocessProperties.getTopics().getRecordPersisted();
+            case "call_record_analysis_completed" -> postprocessProperties.getTopics().getAnalysisCompleted();
             default -> throw new IllegalArgumentException("不支持的 outbox 事件类型: " + eventType);
         };
     }

@@ -43,6 +43,19 @@ class SchemaSmokeTest {
                 .containsExactly("status", "updated_at", "id");
     }
 
+    @Test
+    void shouldCreateAnalysisResultTableWithUniqueTenantCallIndex() throws Exception {
+        DataSource dataSource = dataSource();
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_call_analysis_result.sql"));
+        }
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        assertThat(indexExists(jdbcTemplate, "call_analysis_result", "uk_call_analysis_result_tenant_call")).isTrue();
+        assertThat(indexColumns(jdbcTemplate, "call_analysis_result", "uk_call_analysis_result_tenant_call"))
+                .containsExactly("tenant_id", "call_id");
+    }
+
     private static boolean indexExists(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
         Integer count = jdbcTemplate.queryForObject(
                 """

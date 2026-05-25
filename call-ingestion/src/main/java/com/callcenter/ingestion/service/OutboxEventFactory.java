@@ -34,6 +34,18 @@ public class OutboxEventFactory {
         );
     }
 
+    public CallEventOutboxEntity analysisCompleted(CallRecordEntity entity) {
+        return createEvent(
+                "call_record_analysis_completed:%d:%d".formatted(entity.getTenantId(), entity.getCallId()),
+                "call_record_analysis_completed",
+                "CALL_RECORD",
+                String.valueOf(entity.getCallId()),
+                entity.getTenantId(),
+                String.valueOf(entity.getCallId()),
+                objectMapper.valueToTree(entity)
+        );
+    }
+
     private CallEventOutboxEntity createEvent(
             String eventId,
             String eventType,

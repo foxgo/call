@@ -84,8 +84,10 @@ call:
     retry-backoff: ${CALL_OUTBOX_RETRY_BACKOFF:PT30S}
     processing-timeout: ${CALL_OUTBOX_PROCESSING_TIMEOUT:PT5M}
   postprocess:
+    llm-enabled: ${CALL_LLM_ENABLED:false}
     topics:
       record-persisted: ${CALL_RECORD_PERSISTED_TOPIC:call_record_persisted}
+      analysis-completed: ${CALL_RECORD_ANALYSIS_COMPLETED_TOPIC:call_record_analysis_completed}
   shard:
     db-count: ${CALL_DB_COUNT:4}
     table-count: ${CALL_TABLE_COUNT:16}

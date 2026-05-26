@@ -44,8 +44,8 @@ Expected: PASS
 
 Cover:
 
-- persisting a record DLQ envelope as a `NEW` task
-- persisting a round DLQ envelope as a `NEW` task
+- persisting a record DLQ ingest payload as a `NEW` task
+- persisting a round DLQ ingest payload as a `NEW` task
 - treating duplicate insert as success
 
 **Step 2: Run test to verify it fails**
@@ -56,7 +56,7 @@ Expected: FAIL because the service and mapper/entity types do not exist.
 
 **Step 3: Write minimal implementation**
 
-Add the new entity/mapper plus a service that maps `MessageExt + original DomainEventMessage` to the task row and performs idempotent insert.
+Add the new entity/mapper plus a service that maps `MessageExt + original raw payload` to the task row and performs idempotent insert. Main-write DLQ rows should preserve raw `CallRecordMessage` / `CallRoundMessage` JSON; domain-event DLQ rows can keep `DomainEventMessage`.
 
 **Step 4: Run test to verify it passes**
 

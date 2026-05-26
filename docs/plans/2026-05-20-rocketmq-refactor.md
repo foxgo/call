@@ -6,6 +6,8 @@
 
 **Architecture:** 主写链路统一收敛到一个按 `callId` 分片的 RocketMQ 顺序 topic，继续以 MySQL 加 outbox 作为可靠性边界；旧的双事件 orchestrator 删除，`MessageBatchProcessor` 也一起删除。各消费组直接通过 RocketMQ listener 消费，并分别使用 `consumeThreadMax` 控制并发；当 round 数量未齐时，依赖 RocketMQ 重新投递等待补齐；超过业务重试阈值后，即使数据仍不完整也继续执行下游逻辑。
 
+入口 RocketMQ 消息协议直接使用 `CallRecordMessage` / `CallRoundMessage`；`DomainEventMessage` 只用于 outbox 发布后的内部领域事件。
+
 **Tech Stack:** Java 21, Spring Boot 3.2, RocketMQ Spring Boot starter, MyBatis-Plus, MySQL 8, Micrometer, JUnit 5, Mockito, Testcontainers
 
 ---

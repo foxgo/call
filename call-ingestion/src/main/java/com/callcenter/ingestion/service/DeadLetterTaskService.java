@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 public class DeadLetterTaskService {
 
     private static final String NEW_STATUS = "NEW";
+    private static final String RECORD_INGEST_PAYLOAD_TYPE = "RECORD_INGEST";
+    private static final String ROUND_INGEST_PAYLOAD_TYPE = "ROUND_INGEST";
 
     private final CallDeadLetterTaskMapper mapper;
     private final ObjectMapper objectMapper;
@@ -32,7 +34,7 @@ public class DeadLetterTaskService {
     public void persist(MessageExt messageExt, MessageType messageType) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         String rawPayload = new String(messageExt.getBody(), StandardCharsets.UTF_8);
-        DomainEventMessage event = readEvent(rawPayload);
+        PayloadMetadata payloadMetadata = readPayloadMetadata(rawPayload, messageType);
         CallDeadLetterTaskEntity task = new CallDeadLetterTaskEntity();
         task.setTaskKey(taskKey(messageExt));
         task.setMessageType(messageType.name());
@@ -42,9 +44,9 @@ public class DeadLetterTaskService {
         task.setDlqTopic(messageExt.getTopic());
         task.setDlqQueueOffset(messageExt.getQueueOffset());
         task.setOriginMessageId(messageExt.getProperty(MessageConst.PROPERTY_ORIGIN_MESSAGE_ID));
-        task.setMessageKey(event.eventId());
-        task.setIdempotencyKey(resolveIdempotencyKey(messageType, event));
-        task.setPayloadType(event.eventType());
+        task.setMessageKey(payloadMetadata.messageKey());
+        task.setIdempotencyKey(payloadMetadata.idempotencyKey());
+        task.setPayloadType(payloadMetadata.payloadType());
         task.setPayload(rawPayload);
         task.setStatus(NEW_STATUS);
         task.setDlqAttempt(messageExt.getReconsumeTimes());
@@ -56,14 +58,6 @@ public class DeadLetterTaskService {
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         mapper.insertIgnore(task);
-    }
-
-    private DomainEventMessage readEvent(String rawPayload) {
-        try {
-            return objectMapper.readValue(rawPayload, DomainEventMessage.class);
-        } catch (Exception exception) {
-            throw new IllegalArgumentException("无法解析自动死信原始消息", exception);
-        }
     }
 
     private String taskKey(MessageExt messageExt) {
@@ -94,19 +88,27 @@ public class DeadLetterTaskService {
         return messageExt.getQueueId();
     }
 
-    private String resolveIdempotencyKey(MessageType messageType, DomainEventMessage event) {
+    private PayloadMetadata readPayloadMetadata(String rawPayload, MessageType messageType) {
         try {
             return switch (messageType) {
-                case RECORD -> MessageKeys.recordIdempotencyKey(
-                        objectMapper.treeToValue(event.payload(), CallRecordMessage.class)
-                );
-                case ROUND -> MessageKeys.roundIdempotencyKey(
-                        objectMapper.treeToValue(event.payload(), CallRoundMessage.class)
-                );
-                case INDEX, AI, THIRD_PARTY -> MessageKeys.domainEventIdempotencyKey(event.eventId());
+                case RECORD -> {
+                    CallRecordMessage message = objectMapper.readValue(rawPayload, CallRecordMessage.class);
+                    String idempotencyKey = MessageKeys.recordIdempotencyKey(message);
+                    yield new PayloadMetadata(idempotencyKey, idempotencyKey, RECORD_INGEST_PAYLOAD_TYPE);
+                }
+                case ROUND -> {
+                    CallRoundMessage message = objectMapper.readValue(rawPayload, CallRoundMessage.class);
+                    String idempotencyKey = MessageKeys.roundIdempotencyKey(message);
+                    yield new PayloadMetadata(idempotencyKey, idempotencyKey, ROUND_INGEST_PAYLOAD_TYPE);
+                }
+                case INDEX, AI, THIRD_PARTY -> {
+                    DomainEventMessage event = objectMapper.readValue(rawPayload, DomainEventMessage.class);
+                    String idempotencyKey = MessageKeys.domainEventIdempotencyKey(event.eventId());
+                    yield new PayloadMetadata(event.eventId(), idempotencyKey, event.eventType());
+                }
             };
         } catch (Exception exception) {
-            throw new IllegalArgumentException("无法从自动死信消息恢复幂等键", exception);
+            throw new IllegalArgumentException("无法解析自动死信原始消息", exception);
         }
     }
 
@@ -120,5 +122,12 @@ public class DeadLetterTaskService {
 
     private LocalDateTime toUtcTime(long epochMillis) {
         return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneOffset.UTC);
+    }
+
+    private record PayloadMetadata(
+            String messageKey,
+            String idempotencyKey,
+            String payloadType
+    ) {
     }
 }

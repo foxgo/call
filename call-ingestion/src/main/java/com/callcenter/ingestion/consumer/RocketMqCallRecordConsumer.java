@@ -1,7 +1,6 @@
 package com.callcenter.ingestion.consumer;
 
 import com.callcenter.common.dto.CallRecordMessage;
-import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageType;
 import com.callcenter.ingestion.processor.MessageKeys;
@@ -38,18 +37,15 @@ public class RocketMqCallRecordConsumer extends BaseRocketMQListener implements 
     @Override
     public void onMessage(MessageExt messageExt) {
         try {
-            String payload = new String(messageExt.getBody(), StandardCharsets.UTF_8);
-            DomainEventMessage envelope = objectMapper.readValue(payload, DomainEventMessage.class);
-            if (!"CALL_RECORD".equals(envelope.eventType())) {
-                throw new IllegalArgumentException("不支持的写入事件类型: " + envelope.eventType());
-            }
-
-            CallRecordMessage message = objectMapper.treeToValue(envelope.payload(), CallRecordMessage.class);
+            CallRecordMessage message = objectMapper.readValue(
+                    new String(messageExt.getBody(), StandardCharsets.UTF_8),
+                    CallRecordMessage.class
+            );
             boolean processed = recordIngestionService.process(new InboundMessage<>(
                     messageExt.getTopic(),
                     messageExt.getQueueId(),
                     messageExt.getQueueOffset(),
-                    String.valueOf(envelope.tenantId()),
+                    String.valueOf(message.tenantId()),
                     MessageType.RECORD,
                     MessageKeys.recordIdempotencyKey(message),
                     message,

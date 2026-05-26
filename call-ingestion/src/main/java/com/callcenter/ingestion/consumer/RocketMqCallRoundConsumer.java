@@ -1,7 +1,6 @@
 package com.callcenter.ingestion.consumer;
 
 import com.callcenter.common.dto.CallRoundMessage;
-import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageType;
 import com.callcenter.ingestion.processor.MessageKeys;
@@ -38,18 +37,15 @@ public class RocketMqCallRoundConsumer extends BaseRocketMQListener implements R
     @Override
     public void onMessage(MessageExt messageExt) {
         try {
-            String payload = new String(messageExt.getBody(), StandardCharsets.UTF_8);
-            DomainEventMessage envelope = objectMapper.readValue(payload, DomainEventMessage.class);
-            if (!"CALL_ROUND".equals(envelope.eventType())) {
-                throw new IllegalArgumentException("不支持的写入事件类型: " + envelope.eventType());
-            }
-
-            CallRoundMessage message = objectMapper.treeToValue(envelope.payload(), CallRoundMessage.class);
+            CallRoundMessage message = objectMapper.readValue(
+                    new String(messageExt.getBody(), StandardCharsets.UTF_8),
+                    CallRoundMessage.class
+            );
             boolean processed = roundIngestionService.process(new InboundMessage<>(
                     messageExt.getTopic(),
                     messageExt.getQueueId(),
                     messageExt.getQueueOffset(),
-                    String.valueOf(envelope.tenantId()),
+                    String.valueOf(message.tenantId()),
                     MessageType.ROUND,
                     MessageKeys.roundIdempotencyKey(message),
                     message,

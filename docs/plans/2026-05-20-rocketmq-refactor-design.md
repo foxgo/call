@@ -100,6 +100,13 @@ Tag：
 - `CALL_RECORD`
 - `CALL_ROUND`
 
+入口消息协议直接使用写库 DTO：
+
+- `CALL_RECORD` -> `CallRecordMessage`
+- `CALL_ROUND` -> `CallRoundMessage`
+
+这里不再复用 `DomainEventMessage`。`DomainEventMessage` 只从 outbox 发布边界开始使用。
+
 原因：
 
 - 如果 `CALL_RECORD` 和 `CALL_ROUND` 继续分成两个主 topic，那么系统没法对同一个 `callId` 建立有意义的跨消息类型顺序保证。
@@ -166,7 +173,7 @@ Tag：
 对于 `CALL_RECORD` 和 `CALL_ROUND`：
 
 1. 以 RocketMQ 顺序消费方式拉取消息。
-2. 做参数校验和反序列化。
+2. 直接反序列化为 `CallRecordMessage` / `CallRoundMessage` 并做参数校验。
 3. 路由到正确分片。
 4. 持久化业务数据到 MySQL。
 5. 在同一个本地事务里插入 outbox 记录。

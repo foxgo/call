@@ -1,5 +1,7 @@
 package com.callcenter.ingestion.service;
 
+import com.callcenter.common.dto.CallRecordMessage;
+import com.callcenter.common.dto.CallRoundMessage;
 import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.common.entity.CallDeadLetterTaskEntity;
 import com.callcenter.common.mapper.CallDeadLetterTaskMapper;
@@ -45,8 +47,9 @@ class DeadLetterTaskServiceTest {
         assertThat(task.getStatus()).isEqualTo("NEW");
         assertThat(task.getDlqAttempt()).isEqualTo(4);
         assertThat(task.getDlqMaxAttempts()).isEqualTo(6);
-        assertThat(task.getPayloadType()).isEqualTo("CALL_RECORD");
-        assertThat(task.getPayload()).contains("\"eventId\":\"evt-record-1\"");
+        assertThat(task.getMessageKey()).isEqualTo("1001");
+        assertThat(task.getPayloadType()).isEqualTo("RECORD_INGEST");
+        assertThat(task.getPayload()).contains("\"callId\":1001");
         assertThat(task.getIdempotencyKey()).isEqualTo("1001");
         assertThat(task.getFirstFailureAt()).isNull();
         assertThat(task.getLastFailureAt()).isEqualTo(Instant.parse("2026-05-25T01:03:00Z").atOffset(java.time.ZoneOffset.UTC).toLocalDateTime());
@@ -68,9 +71,10 @@ class DeadLetterTaskServiceTest {
         assertThat(task.getTaskKey()).isEqualTo("%DLQ%call-round-consumer-group:origin-round-1");
         assertThat(task.getMessageType()).isEqualTo("ROUND");
         assertThat(task.getDlqTopic()).isEqualTo("%DLQ%call-round-consumer-group");
-        assertThat(task.getPayloadType()).isEqualTo("CALL_ROUND");
+        assertThat(task.getMessageKey()).isEqualTo("1001:77");
+        assertThat(task.getPayloadType()).isEqualTo("ROUND_INGEST");
         assertThat(task.getIdempotencyKey()).isEqualTo("1001:77");
-        assertThat(task.getPayload()).contains("\"eventId\":\"evt-round-1\"");
+        assertThat(task.getPayload()).contains("\"roundId\":77");
     }
 
     @Test
@@ -158,17 +162,20 @@ class DeadLetterTaskServiceTest {
     }
 
     private MessageExt recordDeadLetterMessage() throws Exception {
-        DomainEventMessage event = domainEvent(
-                "evt-record-1",
-                "CALL_RECORD",
-                "CALL",
-                "1001",
+        CallRecordMessage record = new CallRecordMessage(
+                1001L,
                 9L,
-                JsonSupport.objectMapper().readTree("""
-                        {"callId":1001,"tenantId":9,"taskId":1,"phone":"13800138000","lineNumber":"021","callStatus":1,"startTime":1,"endTime":2,"duration":3,"roundTotal":2}
-                        """)
+                1L,
+                "13800138000",
+                "021",
+                1,
+                1L,
+                2L,
+                3,
+                2,
+                null
         );
-        MessageExt message = messageExt("%DLQ%call-record-consumer-group", event, 19L, 4, "origin-record-1");
+        MessageExt message = messageExt("%DLQ%call-record-consumer-group", record, 19L, 4, "origin-record-1");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_RETRY_TOPIC, "call_record_ingest");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_REAL_QUEUE_ID, "2");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_MAX_RECONSUME_TIMES, "6");
@@ -177,17 +184,17 @@ class DeadLetterTaskServiceTest {
     }
 
     private MessageExt roundDeadLetterMessage() throws Exception {
-        DomainEventMessage event = domainEvent(
-                "evt-round-1",
-                "CALL_ROUND",
-                "CALL",
-                "77",
+        CallRoundMessage round = new CallRoundMessage(
+                77L,
                 9L,
-                JsonSupport.objectMapper().readTree("""
-                        {"roundId":77,"tenantId":9,"callId":1001,"roundIndex":1,"speaker":"AGENT","content":"hello","intent":"GREETING","startTime":1747904400000}
-                        """)
+                1001L,
+                1,
+                "AGENT",
+                "hello",
+                "GREETING",
+                1747904400000L
         );
-        MessageExt message = messageExt("%DLQ%call-round-consumer-group", event, 29L, 3, "origin-round-1");
+        MessageExt message = messageExt("%DLQ%call-round-consumer-group", round, 29L, 3, "origin-round-1");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_RETRY_TOPIC, "call_round_ingest");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_REAL_QUEUE_ID, "4");
         MessageAccessor.putProperty(message, MessageConst.PROPERTY_MAX_RECONSUME_TIMES, "5");
@@ -240,14 +247,14 @@ class DeadLetterTaskServiceTest {
         );
     }
 
-    private MessageExt messageExt(String topic, DomainEventMessage event, long queueOffset, int reconsumeTimes, String originMessageId)
+    private MessageExt messageExt(String topic, Object payload, long queueOffset, int reconsumeTimes, String originMessageId)
             throws Exception {
         MessageExt messageExt = new MessageExt();
         messageExt.setTopic(topic);
         messageExt.setQueueOffset(queueOffset);
         messageExt.setReconsumeTimes(reconsumeTimes);
         messageExt.setMsgId("dlq-msg-" + originMessageId);
-        messageExt.setBody(JsonSupport.objectMapper().writeValueAsString(event).getBytes(StandardCharsets.UTF_8));
+        messageExt.setBody(JsonSupport.objectMapper().writeValueAsString(payload).getBytes(StandardCharsets.UTF_8));
         MessageAccessor.setOriginMessageId(messageExt, originMessageId);
         return messageExt;
     }

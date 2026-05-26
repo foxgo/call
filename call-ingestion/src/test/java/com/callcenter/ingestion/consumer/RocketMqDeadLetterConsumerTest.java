@@ -1,5 +1,7 @@
 package com.callcenter.ingestion.consumer;
 
+import com.callcenter.common.dto.CallRecordMessage;
+import com.callcenter.common.dto.CallRoundMessage;
 import com.callcenter.common.dto.DomainEventMessage;
 import com.callcenter.ingestion.consumer.dlq.*;
 import com.callcenter.ingestion.model.MessageType;
@@ -19,21 +21,21 @@ class RocketMqDeadLetterConsumerTest {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Test
-    void shouldDelegateRecordDlqEnvelopeToTaskService() throws Exception {
+    void shouldDelegateRecordDlqPayloadToTaskService() throws Exception {
         DeadLetterTaskService service = mock(DeadLetterTaskService.class);
         RocketMqRecordDeadLetterConsumer consumer = new RocketMqRecordDeadLetterConsumer(service);
 
-        consumer.onMessage(message("%DLQ%call-record-consumer-group", objectMapper.writeValueAsString(envelope("CALL_RECORD"))));
+        consumer.onMessage(message("%DLQ%call-record-consumer-group", objectMapper.writeValueAsString(recordPayload())));
 
         verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.RECORD));
     }
 
     @Test
-    void shouldDelegateRoundDlqEnvelopeToTaskService() throws Exception {
+    void shouldDelegateRoundDlqPayloadToTaskService() throws Exception {
         DeadLetterTaskService service = mock(DeadLetterTaskService.class);
         RocketMqRoundDeadLetterConsumer consumer = new RocketMqRoundDeadLetterConsumer(service);
 
-        consumer.onMessage(message("%DLQ%call-round-consumer-group", objectMapper.writeValueAsString(envelope("CALL_ROUND"))));
+        consumer.onMessage(message("%DLQ%call-round-consumer-group", objectMapper.writeValueAsString(roundPayload())));
 
         verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.ROUND));
     }
@@ -76,6 +78,14 @@ class RocketMqDeadLetterConsumerTest {
         consumer.onMessage(message("%DLQ%call-record-consumer-group", "{bad json}"));
 
         verify(service).persist(org.mockito.ArgumentMatchers.any(MessageExt.class), org.mockito.ArgumentMatchers.eq(MessageType.RECORD));
+    }
+
+    private CallRecordMessage recordPayload() {
+        return new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 1, 1L, 2L, 3, 2, null);
+    }
+
+    private CallRoundMessage roundPayload() {
+        return new CallRoundMessage(77L, 9L, 1001L, 1, "AGENT", "hello", "GREETING", 1L);
     }
 
     private DomainEventMessage envelope(String eventType) {

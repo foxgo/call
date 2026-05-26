@@ -46,9 +46,18 @@ DLQ 流程：
 
 其中：
 
-- `payload` 保存原始 `DomainEventMessage` 文本，供后续 replay 直接恢复。
+- `payload` 保存原始消息文本，供后续 replay 直接恢复。
 - `task_key` 基于 `%DLQ%topic + originMessageId/msgId` 生成，保证同一条 DLQ 消息重复投递时只生成一条任务。
 - `first_failure_at`、`error_class`、`error_message` 在 auto-DLQ 模式下无法从 broker 恢复，本次允许为空。
+
+对主写链路：
+
+- `RECORD` 保存原始 `CallRecordMessage` JSON，`payload_type=RECORD_INGEST`
+- `ROUND` 保存原始 `CallRoundMessage` JSON，`payload_type=ROUND_INGEST`
+
+对后处理链路：
+
+- 继续保存原始 `DomainEventMessage` JSON
 
 ## 组件调整
 

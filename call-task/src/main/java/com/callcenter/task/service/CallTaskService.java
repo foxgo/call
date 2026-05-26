@@ -1,0 +1,91 @@
+package com.callcenter.task.service;
+
+import com.callcenter.common.entity.CallTaskEntity;
+import com.callcenter.common.enums.CallTaskStatus;
+import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
+import com.callcenter.task.model.CreateTaskRequest;
+import com.callcenter.task.model.TaskSummaryResponse;
+import com.callcenter.task.repository.CallTaskRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class CallTaskService {
+
+    private final CallTaskRepository callTaskRepository;
+    private final ShardedSnowflakeIdGenerator idGenerator;
+
+    public CallTaskService(CallTaskRepository callTaskRepository, ShardedSnowflakeIdGenerator idGenerator) {
+        this.callTaskRepository = callTaskRepository;
+        this.idGenerator = idGenerator;
+    }
+
+    @Transactional
+    public TaskSummaryResponse createTask(Long tenantId, CreateTaskRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        CallTaskEntity entity = new CallTaskEntity();
+        entity.setId(idGenerator.nextId(String.valueOf(tenantId)));
+        entity.setTenantId(tenantId);
+        entity.setName(request.getName());
+        entity.setStatus(CallTaskStatus.INIT.name());
+        entity.setTotalCount(0);
+        entity.setQueuedCount(0);
+        entity.setDialingCount(0);
+        entity.setSuccessCount(0);
+        entity.setFailedCount(0);
+        entity.setMaxConcurrency(request.getMaxConcurrency());
+        entity.setStartTime(request.getStartTime());
+        entity.setVersion(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        callTaskRepository.insert(entity);
+        return TaskSummaryResponse.from(entity);
+    }
+
+    @Transactional
+    public TaskSummaryResponse startTask(Long tenantId, Long taskId) {
+        return updateStatus(tenantId, taskId, CallTaskStatus.INIT, CallTaskStatus.RUNNING);
+    }
+
+    @Transactional
+    public TaskSummaryResponse pauseTask(Long tenantId, Long taskId) {
+        return updateStatus(tenantId, taskId, CallTaskStatus.RUNNING, CallTaskStatus.PAUSED);
+    }
+
+    @Transactional
+    public TaskSummaryResponse resumeTask(Long tenantId, Long taskId) {
+        return updateStatus(tenantId, taskId, CallTaskStatus.PAUSED, CallTaskStatus.RUNNING);
+    }
+
+    public TaskSummaryResponse getTask(Long tenantId, Long taskId) {
+        return TaskSummaryResponse.from(loadTask(tenantId, taskId));
+    }
+
+    public List<TaskSummaryResponse> listTasks(Long tenantId) {
+        return callTaskRepository.listByTenant(tenantId).stream().map(TaskSummaryResponse::from).toList();
+    }
+
+    private TaskSummaryResponse updateStatus(
+            Long tenantId,
+            Long taskId,
+            CallTaskStatus expectedStatus,
+            CallTaskStatus targetStatus
+    ) {
+        CallTaskEntity entity = loadTask(tenantId, taskId);
+        if (!expectedStatus.name().equals(entity.getStatus())) {
+            throw new IllegalStateException(
+                    "Task status transition not allowed: %s -> %s".formatted(entity.getStatus(), targetStatus.name())
+            );
+        }
+        entity.setStatus(targetStatus.name());
+        entity.setUpdatedAt(LocalDateTime.now());
+        callTaskRepository.updateById(entity);
+        return TaskSummaryResponse.from(entity);
+    }
+
+    private CallTaskEntity loadTask(Long tenantId, Long taskId) {
+        return callTaskRepository.findRequired(tenantId, taskId);
+    }
+}

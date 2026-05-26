@@ -1,0 +1,97 @@
+package com.callcenter.task.db;
+
+import java.sql.Connection;
+import java.util.List;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Testcontainers(disabledWithoutDocker = true)
+class TaskSchemaMigrationTest {
+
+    @Container
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.36")
+            .withDatabaseName("call_task_schema")
+            .withUsername("call")
+            .withPassword("call123");
+
+    @Test
+    void shouldCreateTaskTablesAndDialUnitShards() throws Exception {
+        DataSource dataSource = dataSource();
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_call_task_tables.sql"));
+        }
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        assertThat(tableExists(jdbcTemplate, "call_task")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_task_import_batch")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_dial_unit_00")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_dial_unit_15")).isTrue();
+        assertThat(indexExists(jdbcTemplate, "call_dial_unit_00", "uk_call_dial_unit_00_task_phone_biz")).isTrue();
+        assertThat(indexColumns(jdbcTemplate, "call_dial_unit_00", "idx_call_dial_unit_00_task_status_next_call"))
+                .containsExactly("task_id", "status", "next_call_time", "id");
+    }
+
+    private static boolean tableExists(JdbcTemplate jdbcTemplate, String tableName) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                """,
+                Integer.class,
+                tableName
+        );
+        return count != null && count > 0;
+    }
+
+    private static boolean indexExists(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND index_name = ?
+                """,
+                Integer.class,
+                tableName,
+                indexName
+        );
+        return count != null && count > 0;
+    }
+
+    private static List<String> indexColumns(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT column_name
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND index_name = ?
+                ORDER BY seq_in_index
+                """,
+                String.class,
+                tableName,
+                indexName
+        );
+    }
+
+    private static DataSource dataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(MYSQL.getDriverClassName());
+        dataSource.setUrl(MYSQL.getJdbcUrl());
+        dataSource.setUsername(MYSQL.getUsername());
+        dataSource.setPassword(MYSQL.getPassword());
+        return dataSource;
+    }
+}

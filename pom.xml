@@ -16,6 +16,7 @@
         <module>call-ingestion</module>
         <module>call-search</module>
         <module>call-ops</module>
+        <module>call-task</module>
     </modules>
 
     <properties>

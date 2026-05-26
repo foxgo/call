@@ -1,0 +1,92 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: call-task
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:call-task-producer-group}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+call:
+  task:
+    dispatch:
+      poll-interval: ${CALL_TASK_DISPATCH_POLL_INTERVAL:PT1S}
+      retry-scan-interval: ${CALL_TASK_RETRY_SCAN_INTERVAL:PT5S}
+      processing-recovery-interval: ${CALL_TASK_PROCESSING_RECOVERY_INTERVAL:PT5S}
+      processing-timeout: ${CALL_TASK_PROCESSING_TIMEOUT:PT5M}
+      retry-backoff: ${CALL_TASK_RETRY_BACKOFF:PT30S}
+      dispatch-batch-size: ${CALL_TASK_DISPATCH_BATCH_SIZE:100}
+      preload-batch-size: ${CALL_TASK_PRELOAD_BATCH_SIZE:100}
+      preload-threshold: ${CALL_TASK_PRELOAD_THRESHOLD:300}
+      max-retries: ${CALL_TASK_MAX_RETRIES:3}
+      shard-count: ${CALL_TASK_SHARD_COUNT:16}
+    concurrency:
+      global-max: ${CALL_TASK_GLOBAL_MAX_CONCURRENCY:10000}
+      tenant-default-max: ${CALL_TASK_TENANT_DEFAULT_MAX_CONCURRENCY:1000}
+    rocketmq:
+      topics:
+        dispatch: ${CALL_TASK_DISPATCH_TOPIC:call_dispatch_topic}
+  shard:
+    db-count: ${CALL_DB_COUNT:4}
+    table-count: ${CALL_TABLE_COUNT:16}
+  id:
+    machine-id: ${CALL_MACHINE_ID:1}
+    epoch: ${CALL_ID_EPOCH:1700000000000}
+  datasource:
+    nodes:
+      - index: 0
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_0
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 1
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_1
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 2
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_2
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+      - index: 3
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_3
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+  elasticsearch:
+    uris:
+      - ${ES_URI:http://localhost:9200}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:elastic123}
+    auto-init: false
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"

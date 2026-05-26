@@ -31,12 +31,20 @@ public class ShardingRouter {
         return (int) ((callId >> 8) & 0x0F);
     }
 
+    public int tableIndexByTaskId(long taskId) {
+        return Math.floorMod(Long.hashCode(taskId), properties.getTableCount());
+    }
+
     public ShardKey routeRecord(long tenantId, String phone, LocalDateTime startTime) {
         return new ShardKey(tenantId, dbIndex(tenantId), tableIndexByPhone(phone), formatYearMonth(startTime));
     }
 
     public ShardKey routeRound(long tenantId, long callId, LocalDateTime startTime) {
         return new ShardKey(tenantId, dbIndex(tenantId), tableIndexByCallId(callId), formatYearMonth(startTime));
+    }
+
+    public ShardKey routeDialUnit(long tenantId, long taskId) {
+        return new ShardKey(tenantId, dbIndex(tenantId), tableIndexByTaskId(taskId), "dial");
     }
 
     public LocalDateTime toDateTime(Long epochMillis) {
@@ -51,4 +59,3 @@ public class ShardingRouter {
         return YEAR_MONTH.format(value);
     }
 }
-

@@ -20,6 +20,9 @@ public class MybatisPlusConfig {
             if ("call_round".equals(tableName)) {
                 return resolveTableName("call_round");
             }
+            if ("call_dial_unit".equals(tableName)) {
+                return resolveDialUnitTableName();
+            }
             return tableName;
         });
 
@@ -31,5 +34,10 @@ public class MybatisPlusConfig {
     private String resolveTableName(String baseName) {
         ShardContext context = ShardContextHolder.getRequired();
         return "%s_%s_%02d".formatted(baseName, context.yearMonth(), context.tableIndex());
+    }
+
+    private String resolveDialUnitTableName() {
+        ShardContext context = ShardContextHolder.getRequired();
+        return "call_dial_unit_%02d".formatted(context.tableIndex());
     }
 }

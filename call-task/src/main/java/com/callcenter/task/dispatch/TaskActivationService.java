@@ -37,7 +37,8 @@ public class TaskActivationService {
                 request.tenantId(),
                 request.priority(),
                 request.weight(),
-                request.partition()
+                request.partition(),
+                0L
         );
         activeTaskQueue.activate(request.partition(), request.taskId(), 0L);
     }

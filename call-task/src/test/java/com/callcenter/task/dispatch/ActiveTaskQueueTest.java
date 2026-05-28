@@ -1,8 +1,8 @@
 package com.callcenter.task.dispatch;
 
 import java.lang.reflect.Proxy;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -23,9 +23,9 @@ class ActiveTaskQueueTest {
         queue.activate(3, 1001L, 10L);
         queue.activate(3, 1002L, 20L);
 
-        Optional<Long> taskId = queue.pollNextTask(3);
-
-        assertEquals(Optional.of(1001L), taskId);
+        assertEquals(Optional.of(1001L), queue.pollNextTask(3));
+        assertEquals(Optional.of(1002L), queue.pollNextTask(3));
+        assertEquals(Optional.empty(), queue.pollNextTask(3));
     }
 
     @Test
@@ -33,10 +33,51 @@ class ActiveTaskQueueTest {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
         ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
 
-        queue.upsertMeta(1001L, 9L, 1, 8, 7);
+        queue.upsertMeta(1001L, 9L, 1, 8, 7, 0L);
 
         assertEquals(
-                Optional.of(new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)),
+                Optional.of(new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, 0L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)),
+                queue.loadMeta(1001L)
+        );
+    }
+
+    @Test
+    void shouldReactivateTaskWithUpdatedFairScore() {
+        StringRedisTemplate redisTemplate = newStubRedisTemplate();
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+
+        queue.upsertMeta(1001L, 9L, 1, 16, 3, 0L);
+        queue.activate(3, 1002L, 20L);
+
+        queue.reactivate(1001L, 80L);
+
+        assertEquals(
+                Optional.of(new TaskSchedulingMeta(1001L, 9L, 1, 16, 3, 80L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)),
+                queue.loadMeta(1001L)
+        );
+        assertEquals(Optional.of(1002L), queue.pollNextTask(3));
+        assertEquals(Optional.of(1001L), queue.pollNextTask(3));
+    }
+
+    @Test
+    void shouldBlockTaskWithReason() {
+        StringRedisTemplate redisTemplate = newStubRedisTemplate();
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+
+        queue.upsertMeta(1001L, 9L, 1, 16, 7, 0L);
+        queue.block(1001L, TaskBlockReason.CONCURRENCY_FULL);
+
+        assertEquals(
+                Optional.of(new TaskSchedulingMeta(
+                        1001L,
+                        9L,
+                        1,
+                        16,
+                        7,
+                        0L,
+                        TaskSchedulingState.BLOCKED,
+                        TaskBlockReason.CONCURRENCY_FULL
+                )),
                 queue.loadMeta(1001L)
         );
     }
@@ -61,7 +102,19 @@ class ActiveTaskQueueTest {
                                         .thenComparing(Map.Entry.comparingByKey()))
                                 .map(Map.Entry::getKey)
                                 .limit(((Long) args[2]) - ((Long) args[1]) + 1)
-                                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                    }
+                    if ("remove".equals(method.getName()) && key.equals(args[0])) {
+                        long removed = 0L;
+                        Object[] members = args.length > 1 && args[1] instanceof Object[] values
+                                ? values
+                                : java.util.Arrays.copyOfRange(args, 1, args.length);
+                        for (Object member : members) {
+                            if (scores.remove(String.valueOf(member)) != null) {
+                                removed++;
+                            }
+                        }
+                        return removed;
                     }
                     throw new UnsupportedOperationException(method.getName());
                 }
@@ -73,6 +126,10 @@ class ActiveTaskQueueTest {
                 (proxy, method, args) -> {
                     if ("putAll".equals(method.getName())) {
                         hashes.put((String) args[0], new HashMap<>((Map<?, ?>) args[1]));
+                        return null;
+                    }
+                    if ("put".equals(method.getName())) {
+                        hashes.computeIfAbsent((String) args[0], ignored -> new HashMap<>()).put(args[1], args[2]);
                         return null;
                     }
                     if ("entries".equals(method.getName())) {

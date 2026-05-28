@@ -4,10 +4,12 @@ import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.entity.CallTaskImportBatchEntity;
 import com.callcenter.common.enums.CallDialUnitStatus;
+import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.enums.CallTaskImportBatchStatus;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
+import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.model.ImportBatchResponse;
 import com.callcenter.task.model.ImportDialUnitItem;
 import com.callcenter.task.model.ImportDialUnitsRequest;
@@ -27,19 +29,22 @@ public class CallTaskImportService {
     private final CallDialUnitRepository callDialUnitRepository;
     private final ShardedSnowflakeIdGenerator idGenerator;
     private final ShardingRouter shardingRouter;
+    private final TaskActivationService taskActivationService;
 
     public CallTaskImportService(
             CallTaskRepository callTaskRepository,
             CallTaskImportBatchRepository importBatchRepository,
             CallDialUnitRepository callDialUnitRepository,
             ShardedSnowflakeIdGenerator idGenerator,
-            ShardingRouter shardingRouter
+            ShardingRouter shardingRouter,
+            TaskActivationService taskActivationService
     ) {
         this.callTaskRepository = callTaskRepository;
         this.importBatchRepository = importBatchRepository;
         this.callDialUnitRepository = callDialUnitRepository;
         this.idGenerator = idGenerator;
         this.shardingRouter = shardingRouter;
+        this.taskActivationService = taskActivationService;
     }
 
     @Transactional
@@ -78,6 +83,9 @@ public class CallTaskImportService {
         task.setTotalCount((task.getTotalCount() == null ? 0 : task.getTotalCount()) + insertedCount);
         task.setUpdatedAt(LocalDateTime.now());
         callTaskRepository.updateById(task);
+        if (CallTaskStatus.RUNNING.name().equals(task.getStatus())) {
+            taskActivationService.activate(tenantId, taskId);
+        }
         return ImportBatchResponse.from(batch);
     }
 

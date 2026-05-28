@@ -57,6 +57,40 @@ class DialResultWritebackServiceTest {
     }
 
     @Test
+    void shouldIgnoreStaleSuccessCallbackWithoutReleasingQuota() {
+        CallDialUnitRepository repository = mock(CallDialUnitRepository.class);
+        RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
+        DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
+        ShardingRouter shardingRouter = mock(ShardingRouter.class);
+        CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        TaskActivationService activationService = mock(TaskActivationService.class);
+        when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
+        when(repository.markSuccess(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-old")).thenReturn(false);
+
+        DialResultWritebackService service = new DialResultWritebackService(
+                repository,
+                queue,
+                limiter,
+                new CallTaskDispatchProperties(),
+                shardingRouter,
+                metrics,
+                activationService
+        );
+
+        DialResultCallbackRequest request = new DialResultCallbackRequest();
+        request.setTaskId(1001L);
+        request.setDialUnitId(11L);
+        request.setDispatchToken("token-old");
+        request.setResultStatus("SUCCESS");
+
+        service.handleCallback(9L, request);
+
+        verify(queue, never()).ackProcessing(9L, 1001L, 1, 11L);
+        verify(limiter, never()).release(9L, 1001L);
+        verify(activationService, never()).activate(9L, 1001L);
+    }
+
+    @Test
     void shouldScheduleRetryWhenDialFailsBeforeRetryLimit() {
         CallDialUnitRepository repository = mock(CallDialUnitRepository.class);
         RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);

@@ -2,6 +2,7 @@ package com.callcenter.task.dispatch;
 
 import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.entity.CallTaskEntity;
+import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
@@ -66,11 +67,16 @@ public class PartitionSchedulerWorker {
         }
 
         CallTaskEntity task = callTaskRepository.findRequired(meta.get().tenantId(), taskId.get());
+        if (!CallTaskStatus.RUNNING.name().equals(task.getStatus())) {
+            activeTaskQueue.block(task.getId(), TaskBlockReason.PAUSED);
+            return;
+        }
         dialUnitPreloadService.preloadRunningTask(task);
 
-        int available = concurrencyLimiter.available(task.getTenantId(), task.getId(), task.getMaxConcurrency());
-        int budget = Math.min(available, properties.getDispatchBatchSize());
-        if (budget <= 0) {
+        int requested = Math.min(properties.getDispatchBatchSize(), task.getMaxConcurrency());
+        int granted = concurrencyLimiter.tryAcquireBatch(task.getTenantId(), task.getId(), task.getMaxConcurrency(), requested);
+        if (granted <= 0) {
+            activeTaskQueue.block(task.getId(), TaskBlockReason.CONCURRENCY_FULL);
             return;
         }
 
@@ -79,11 +85,17 @@ public class PartitionSchedulerWorker {
                 task.getTenantId(),
                 task.getId(),
                 shardKey.tableIndex(),
-                budget,
+                granted,
                 Instant.now().plus(properties.getProcessingTimeout())
         );
         if (ids.isEmpty()) {
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), granted);
+            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
             return;
+        }
+
+        if (ids.size() < granted) {
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), granted - ids.size());
         }
 
         String dispatchToken = UUID.randomUUID().toString();
@@ -96,9 +108,27 @@ public class PartitionSchedulerWorker {
                 LocalDateTime.now().plus(properties.getProcessingTimeout())
         );
 
+        if (units.size() < ids.size()) {
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), ids.size() - units.size());
+        }
+
         for (CallDialUnitEntity unit : units) {
             dialDispatchPublisher.publish(unit);
             metrics.incrementDispatchPublished();
+        }
+
+        if (units.isEmpty()) {
+            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
+            return;
+        }
+
+        long nextFairScore = meta.get().fairScore() + ((long) units.size() * 1000 / meta.get().weight());
+        if (units.size() < ids.size()) {
+            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
+        } else if (granted < requested) {
+            activeTaskQueue.block(task.getId(), TaskBlockReason.CONCURRENCY_FULL);
+        } else {
+            activeTaskQueue.reactivate(task.getId(), nextFairScore);
         }
     }
 }

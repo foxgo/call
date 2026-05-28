@@ -14,8 +14,13 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,68 +28,125 @@ import static org.mockito.Mockito.when;
 class PartitionSchedulerWorkerTest {
 
     @Test
-    void shouldDispatchOwnedPartitionTaskWithSmallBudget() {
-        ActiveTaskQueue activeTaskQueue = mock(ActiveTaskQueue.class);
-        CallTaskRepository taskRepository = mock(CallTaskRepository.class);
-        DialUnitPreloadService preloadService = mock(DialUnitPreloadService.class);
-        RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
-        CallDialUnitRepository dialUnitRepository = mock(CallDialUnitRepository.class);
-        DispatchConcurrencyLimiter concurrencyLimiter = mock(DispatchConcurrencyLimiter.class);
-        DialDispatchPublisher publisher = mock(DialDispatchPublisher.class);
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        CallTaskMetrics metrics = mock(CallTaskMetrics.class);
-        CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
-        properties.setDispatchBatchSize(10);
+    void shouldReactivateTaskWithUpdatedFairScoreAfterSuccessfulDispatch() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(3);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.dialUnitRepository.markDialing(any(), eq(1001L), eq(List.of(11L, 12L, 13L)), any(), any(), any()))
+                .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
 
-        when(activeTaskQueue.pollNextTask(7)).thenReturn(Optional.of(1001L));
-        when(activeTaskQueue.loadMeta(1001L)).thenReturn(Optional.of(
-                new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)
-        ));
+        fixture.worker().runPartition(7);
 
-        CallTaskEntity task = new CallTaskEntity();
-        task.setId(1001L);
-        task.setTenantId(9L);
-        task.setStatus("RUNNING");
-        task.setMaxConcurrency(20);
-        when(taskRepository.findRequired(9L, 1001L)).thenReturn(task);
-        when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(concurrencyLimiter.available(9L, 1001L, 20)).thenReturn(3);
-        when(queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        verify(fixture.preloadService).preloadRunningTask(fixture.task);
+        verify(fixture.activeTaskQueue).reactivate(1001L, 375L);
+        verify(fixture.publisher, times(3)).publish(any(CallDialUnitEntity.class));
+    }
 
-        CallDialUnitEntity unit1 = new CallDialUnitEntity();
-        unit1.setId(11L);
-        unit1.setTaskId(1001L);
-        unit1.setTenantId(9L);
-        unit1.setPhone("13800138000");
-        CallDialUnitEntity unit2 = new CallDialUnitEntity();
-        unit2.setId(12L);
-        unit2.setTaskId(1001L);
-        unit2.setTenantId(9L);
-        unit2.setPhone("13800138001");
-        CallDialUnitEntity unit3 = new CallDialUnitEntity();
-        unit3.setId(13L);
-        unit3.setTaskId(1001L);
-        unit3.setTenantId(9L);
-        unit3.setPhone("13800138002");
-        when(dialUnitRepository.markDialing(any(), eq(1001L), eq(List.of(11L, 12L, 13L)), any(), any(), any()))
-                .thenReturn(List.of(unit1, unit2, unit3));
+    @Test
+    void shouldBlockTaskWhenNoConcurrencyQuotaIsGranted() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(3);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(0);
 
-        PartitionSchedulerWorker worker = new PartitionSchedulerWorker(
-                activeTaskQueue,
-                taskRepository,
-                preloadService,
-                queue,
-                dialUnitRepository,
-                concurrencyLimiter,
-                publisher,
-                properties,
-                shardingRouter,
-                metrics
+        fixture.worker().runPartition(7);
+
+        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.CONCURRENCY_FULL);
+        verify(fixture.queue, never()).claimReady(anyLong(), anyLong(), anyInt(), anyInt(), any());
+        verify(fixture.publisher, never()).publish(any());
+    }
+
+    @Test
+    void shouldReleaseGrantedQuotaAndBlockEmptyWhenNoReadyUnitsClaimed() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(3);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of());
+
+        fixture.worker().runPartition(7);
+
+        verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 3);
+        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
+        verify(fixture.dialUnitRepository, never()).markDialing(
+                any(ShardKey.class),
+                anyLong(),
+                anyList(),
+                anyString(),
+                any(),
+                any()
         );
+    }
 
-        worker.runPartition(7);
+    @Test
+    void shouldRollbackUnusedConcurrencySlotsWhenClaimedOrMarkedCountShrinks() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(4);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 4)).thenReturn(4);
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(4), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.dialUnitRepository.markDialing(any(), eq(1001L), eq(List.of(11L, 12L, 13L)), any(), any(), any()))
+                .thenReturn(List.of(unit(11L)));
 
-        verify(preloadService).preloadRunningTask(task);
-        verify(publisher, times(3)).publish(any(CallDialUnitEntity.class));
+        fixture.worker().runPartition(7);
+
+        verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 1);
+        verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 2);
+        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
+        verify(fixture.publisher).publish(any(CallDialUnitEntity.class));
+    }
+
+    private static CallDialUnitEntity unit(long id) {
+        CallDialUnitEntity unit = new CallDialUnitEntity();
+        unit.setId(id);
+        unit.setTaskId(1001L);
+        unit.setTenantId(9L);
+        unit.setPhone("1380013800" + id);
+        return unit;
+    }
+
+    private static final class Fixture {
+        private final ActiveTaskQueue activeTaskQueue = mock(ActiveTaskQueue.class);
+        private final CallTaskRepository taskRepository = mock(CallTaskRepository.class);
+        private final DialUnitPreloadService preloadService = mock(DialUnitPreloadService.class);
+        private final RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
+        private final CallDialUnitRepository dialUnitRepository = mock(CallDialUnitRepository.class);
+        private final DispatchConcurrencyLimiter concurrencyLimiter = mock(DispatchConcurrencyLimiter.class);
+        private final DialDispatchPublisher publisher = mock(DialDispatchPublisher.class);
+        private final ShardingRouter shardingRouter = mock(ShardingRouter.class);
+        private final CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        private final CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
+        private final CallTaskEntity task = runningTask();
+
+        private Fixture() {
+            when(activeTaskQueue.pollNextTask(7)).thenReturn(Optional.of(1001L));
+            when(activeTaskQueue.loadMeta(1001L)).thenReturn(Optional.of(
+                    new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, 0L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)
+            ));
+            when(taskRepository.findRequired(9L, 1001L)).thenReturn(task);
+            when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
+        }
+
+        private PartitionSchedulerWorker worker() {
+            return new PartitionSchedulerWorker(
+                    activeTaskQueue,
+                    taskRepository,
+                    preloadService,
+                    queue,
+                    dialUnitRepository,
+                    concurrencyLimiter,
+                    publisher,
+                    properties,
+                    shardingRouter,
+                    metrics
+            );
+        }
+
+        private static CallTaskEntity runningTask() {
+            CallTaskEntity task = new CallTaskEntity();
+            task.setId(1001L);
+            task.setTenantId(9L);
+            task.setStatus("RUNNING");
+            task.setMaxConcurrency(20);
+            return task;
+        }
     }
 }

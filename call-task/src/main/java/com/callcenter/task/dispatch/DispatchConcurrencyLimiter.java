@@ -37,10 +37,30 @@ public class DispatchConcurrencyLimiter {
         return true;
     }
 
+    public int tryAcquireBatch(Long tenantId, Long taskId, int taskMaxConcurrency, int requested) {
+        if (requested <= 0) {
+            return 0;
+        }
+        int granted = 0;
+        while (granted < requested && tryAcquire(tenantId, taskId, taskMaxConcurrency)) {
+            granted++;
+        }
+        return granted;
+    }
+
     public void release(Long tenantId, Long taskId) {
         decrement(globalKey());
         decrement(tenantKey(tenantId));
         decrement(taskKey(taskId));
+    }
+
+    public void releaseBatch(Long tenantId, Long taskId, int count) {
+        if (count <= 0) {
+            return;
+        }
+        for (int i = 0; i < count; i++) {
+            release(tenantId, taskId);
+        }
     }
 
     public int available(Long tenantId, Long taskId, int taskMaxConcurrency) {

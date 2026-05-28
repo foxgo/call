@@ -55,6 +55,7 @@ class TaskActivationServiceTest {
         private int metaPriority;
         private int metaWeight;
         private int metaPartition;
+        private long metaFairScore;
         private int activePartition;
         private Long activeTaskId;
         private long activeFairScore;
@@ -64,12 +65,13 @@ class TaskActivationServiceTest {
         }
 
         @Override
-        public void upsertMeta(Long taskId, Long tenantId, int priority, int weight, int partition) {
+        public void upsertMeta(Long taskId, Long tenantId, int priority, int weight, int partition, long fairScore) {
             this.metaTaskId = taskId;
             this.metaTenantId = tenantId;
             this.metaPriority = priority;
             this.metaWeight = weight;
             this.metaPartition = partition;
+            this.metaFairScore = fairScore;
         }
 
         @Override

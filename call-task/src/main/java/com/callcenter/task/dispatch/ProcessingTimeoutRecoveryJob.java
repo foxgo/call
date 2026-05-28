@@ -58,10 +58,8 @@ public class ProcessingTimeoutRecoveryJob {
                         now.plus(properties.getRetryBackoff())
                 );
                 metrics.incrementProcessingRecovered(recovered);
-                for (int i = 0; i < recovered; i++) {
-                    concurrencyLimiter.release(item.tenantId(), item.taskId());
-                }
                 if (recovered > 0) {
+                    concurrencyLimiter.releaseBatch(item.tenantId(), item.taskId(), recovered);
                     taskActivationService.activate(item.tenantId(), item.taskId());
                 }
             }

@@ -179,7 +179,7 @@ public class CallDialUnitRepository {
         }
     }
 
-    public void markRecoveredForRetry(
+    public int markRecoveredForRetry(
             ShardKey shardKey,
             long taskId,
             List<Long> ids,
@@ -192,6 +192,7 @@ public class CallDialUnitRepository {
             List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
             LocalDateTime nextCallTime = LocalDateTime.ofInstant(retryAt, ZoneOffset.UTC);
             LocalDateTime now = LocalDateTime.now();
+            int recovered = 0;
             for (CallDialUnitEntity unit : units) {
                 UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
                 update.eq("task_id", taskId)
@@ -209,8 +210,11 @@ public class CallDialUnitRepository {
                 } else {
                     update.set("status", CallDialUnitStatus.FAILED.name());
                 }
-                callDialUnitMapper.update(null, update);
+                if (callDialUnitMapper.update(null, update) > 0) {
+                    recovered++;
+                }
             }
+            return recovered;
         } finally {
             ShardContextHolder.clear();
         }

@@ -17,10 +17,10 @@ public class CallTaskEntity {
     private Integer dialingCount;
     private Integer successCount;
     private Integer failedCount;
+    private Integer priority;
     private Integer maxConcurrency;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private LocalDateTime nextDispatchTime;
     private Integer version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -97,6 +97,14 @@ public class CallTaskEntity {
         this.failedCount = failedCount;
     }
 
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Integer priority) {
+        this.priority = priority;
+    }
+
     public Integer getMaxConcurrency() {
         return maxConcurrency;
     }
@@ -119,14 +127,6 @@ public class CallTaskEntity {
 
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
-    }
-
-    public LocalDateTime getNextDispatchTime() {
-        return nextDispatchTime;
-    }
-
-    public void setNextDispatchTime(LocalDateTime nextDispatchTime) {
-        this.nextDispatchTime = nextDispatchTime;
     }
 
     public Integer getVersion() {

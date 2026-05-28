@@ -10,6 +10,7 @@ public class RedisQueueScriptRepository {
     private final DefaultRedisScript<List> claimReadyScript;
     private final DefaultRedisScript<List> requeueDueRetryScript;
     private final DefaultRedisScript<List> recoverExpiredProcessingScript;
+    private final DefaultRedisScript<List> popDueMembersScript;
 
     public RedisQueueScriptRepository() {
         this.claimReadyScript = new DefaultRedisScript<>();
@@ -18,6 +19,7 @@ public class RedisQueueScriptRepository {
                 for _, id in ipairs(ids) do
                     redis.call('ZREM', KEYS[1], id)
                     redis.call('ZADD', KEYS[2], ARGV[2], id)
+                    redis.call('ZADD', KEYS[3], ARGV[2], ARGV[3] .. ':' .. ARGV[4] .. ':' .. ARGV[5] .. ':' .. id)
                 end
                 return ids
                 """);
@@ -44,6 +46,16 @@ public class RedisQueueScriptRepository {
                 return ids
                 """);
         recoverExpiredProcessingScript.setResultType(List.class);
+
+        this.popDueMembersScript = new DefaultRedisScript<>();
+        popDueMembersScript.setScriptText("""
+                local members = redis.call('ZRANGEBYSCORE', KEYS[1], 0, ARGV[1], 'LIMIT', 0, ARGV[2])
+                for _, member in ipairs(members) do
+                    redis.call('ZREM', KEYS[1], member)
+                end
+                return members
+                """);
+        popDueMembersScript.setResultType(List.class);
     }
 
     public DefaultRedisScript<List> claimReadyScript() {
@@ -56,5 +68,9 @@ public class RedisQueueScriptRepository {
 
     public DefaultRedisScript<List> recoverExpiredProcessingScript() {
         return recoverExpiredProcessingScript;
+    }
+
+    public DefaultRedisScript<List> popDueMembersScript() {
+        return popDueMembersScript;
     }
 }

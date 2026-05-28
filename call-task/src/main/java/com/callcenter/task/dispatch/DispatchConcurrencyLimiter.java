@@ -43,6 +43,12 @@ public class DispatchConcurrencyLimiter {
         decrement(taskKey(taskId));
     }
 
+    public int available(Long tenantId, Long taskId, int taskMaxConcurrency) {
+        String current = stringRedisTemplate.opsForValue().get(taskKey(taskId));
+        int inFlight = current == null ? 0 : Integer.parseInt(current);
+        return Math.max(taskMaxConcurrency - inFlight, 0);
+    }
+
     private boolean incrementWithinLimit(String key, int max) {
         Long current = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, KEY_TTL);

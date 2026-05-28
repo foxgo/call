@@ -1,5 +1,9 @@
 # Call Task Design
 
+> 2026-05-27 更新：本文中的基于 `next_dispatch_time` 的轮询调度方案已被
+> [2026-05-26-call-task-parallel-scheduler-design.md](/Users/johnny/github/call/docs/plans/2026-05-26-call-task-parallel-scheduler-design.md)
+> 替代。保留本文仅用于记录早期方案演进，不应再作为当前实现依据。
+
 **日期：** 2026-05-26
 
 **状态：** 已确认
@@ -132,7 +136,7 @@
 
 说明：
 
-- `next_dispatch_time` 由系统默认批次策略推进
+- `next_dispatch_time` 为历史兼容列，当前调度主路径已不再读取
 - `version` 用于乐观锁更新，避免并发下统计覆盖
 
 ### `call_task_import_batch`
@@ -294,17 +298,17 @@ Redis 不是全量数据存储，只保存近期活跃窗口。
 
 ### 3. 主调度循环
 
-每秒执行一次：
+以下轮询模型已废弃，现已由分区 ownership + active task queue 替代：
 
 1. 扫描 `RUNNING` 任务
-2. 跳过 `next_dispatch_time` 未到的任务
+2. 历史上会跳过 `next_dispatch_time` 未到的任务
 3. 检查全局、租户、任务三级并发额度
 4. 根据系统默认批次大小，计算本轮最多可投递数量
 5. 从 `ready` 原子搬运到 `processing`
 6. 条件更新 MySQL：`QUEUED -> DIALING`
 7. 发送 RocketMQ 拨号消息
 8. 更新 `dispatch_token`、`inflight_expire_at`
-9. 推进任务 `next_dispatch_time`
+9. 历史上会推进任务 `next_dispatch_time`
 
 ### 4. 结果回写
 

@@ -39,7 +39,9 @@ class CallTaskControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INIT"));
+                .andExpect(jsonPath("$.status").value("INIT"))
+                .andExpect(jsonPath("$.priority").value(4))
+                .andExpect(jsonPath("$.nextDispatchTime").doesNotExist());
     }
 
     @Test
@@ -67,6 +69,20 @@ class CallTaskControllerTest {
     }
 
     private static TaskSummaryResponse summary(String status) {
-        return new TaskSummaryResponse(1001L, 9L, "task-a", status, 0, 0, 0, 0, 0, 8, null, null, null);
+        return new TaskSummaryResponse(
+                1001L,
+                9L,
+                "task-a",
+                status,
+                0,
+                0,
+                0,
+                0,
+                0,
+                4,
+                8,
+                null,
+                null
+        );
     }
 }

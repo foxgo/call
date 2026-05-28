@@ -5,6 +5,7 @@ import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;
 import com.callcenter.task.dispatch.RedisDialUnitQueue;
+import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.model.DialResultCallbackRequest;
 import com.callcenter.task.model.RetryDecision;
@@ -22,6 +23,7 @@ public class DialResultWritebackService {
     private final CallTaskDispatchProperties properties;
     private final ShardingRouter shardingRouter;
     private final CallTaskMetrics metrics;
+    private final TaskActivationService taskActivationService;
 
     public DialResultWritebackService(
             CallDialUnitRepository callDialUnitRepository,
@@ -29,7 +31,8 @@ public class DialResultWritebackService {
             DispatchConcurrencyLimiter concurrencyLimiter,
             CallTaskDispatchProperties properties,
             ShardingRouter shardingRouter,
-            CallTaskMetrics metrics
+            CallTaskMetrics metrics,
+            TaskActivationService taskActivationService
     ) {
         this.callDialUnitRepository = callDialUnitRepository;
         this.redisDialUnitQueue = redisDialUnitQueue;
@@ -37,6 +40,7 @@ public class DialResultWritebackService {
         this.properties = properties;
         this.shardingRouter = shardingRouter;
         this.metrics = metrics;
+        this.taskActivationService = taskActivationService;
     }
 
     @Transactional
@@ -50,9 +54,10 @@ public class DialResultWritebackService {
                     request.getDispatchToken()
             );
             if (updated) {
-                redisDialUnitQueue.ackProcessing(request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
+                redisDialUnitQueue.ackProcessing(tenantId, request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
                 concurrencyLimiter.release(tenantId, request.getTaskId());
                 metrics.incrementWritebackSuccess();
+                taskActivationService.activate(tenantId, request.getTaskId());
             }
             return;
         }
@@ -69,11 +74,13 @@ public class DialResultWritebackService {
         if (!decision.processed()) {
             return;
         }
-        redisDialUnitQueue.ackProcessing(request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
+        redisDialUnitQueue.ackProcessing(tenantId, request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
         concurrencyLimiter.release(tenantId, request.getTaskId());
         metrics.incrementWritebackFailure();
+        taskActivationService.activate(tenantId, request.getTaskId());
         if (decision.shouldRetry()) {
             redisDialUnitQueue.scheduleRetry(
+                    tenantId,
                     request.getTaskId(),
                     shardKey.tableIndex(),
                     request.getDialUnitId(),

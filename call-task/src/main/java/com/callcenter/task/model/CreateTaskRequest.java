@@ -1,5 +1,6 @@
 package com.callcenter.task.model;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -13,6 +14,10 @@ public class CreateTaskRequest {
 
     @Min(1)
     private int maxConcurrency;
+
+    @Min(1)
+    @Max(4)
+    private int priority = 4;
 
     private LocalDateTime startTime;
 
@@ -30,6 +35,14 @@ public class CreateTaskRequest {
 
     public void setMaxConcurrency(int maxConcurrency) {
         this.maxConcurrency = maxConcurrency;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     public LocalDateTime getStartTime() {

@@ -3,6 +3,7 @@ package com.callcenter.task.service;
 import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
+import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.model.CreateTaskRequest;
 import com.callcenter.task.model.TaskSummaryResponse;
 import com.callcenter.task.repository.CallTaskRepository;
@@ -16,10 +17,16 @@ public class CallTaskService {
 
     private final CallTaskRepository callTaskRepository;
     private final ShardedSnowflakeIdGenerator idGenerator;
+    private final TaskActivationService taskActivationService;
 
-    public CallTaskService(CallTaskRepository callTaskRepository, ShardedSnowflakeIdGenerator idGenerator) {
+    public CallTaskService(
+            CallTaskRepository callTaskRepository,
+            ShardedSnowflakeIdGenerator idGenerator,
+            TaskActivationService taskActivationService
+    ) {
         this.callTaskRepository = callTaskRepository;
         this.idGenerator = idGenerator;
+        this.taskActivationService = taskActivationService;
     }
 
     @Transactional
@@ -35,6 +42,7 @@ public class CallTaskService {
         entity.setDialingCount(0);
         entity.setSuccessCount(0);
         entity.setFailedCount(0);
+        entity.setPriority(request.getPriority());
         entity.setMaxConcurrency(request.getMaxConcurrency());
         entity.setStartTime(request.getStartTime());
         entity.setVersion(0);
@@ -82,6 +90,9 @@ public class CallTaskService {
         entity.setStatus(targetStatus.name());
         entity.setUpdatedAt(LocalDateTime.now());
         callTaskRepository.updateById(entity);
+        if (targetStatus == CallTaskStatus.RUNNING) {
+            taskActivationService.activate(tenantId, taskId);
+        }
         return TaskSummaryResponse.from(entity);
     }
 

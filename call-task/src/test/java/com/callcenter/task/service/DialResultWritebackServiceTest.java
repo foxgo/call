@@ -5,6 +5,7 @@ import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;
 import com.callcenter.task.dispatch.RedisDialUnitQueue;
+import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.model.DialResultCallbackRequest;
 import com.callcenter.task.model.RetryDecision;
@@ -28,6 +29,7 @@ class DialResultWritebackServiceTest {
         DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        TaskActivationService activationService = mock(TaskActivationService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
         when(repository.markSuccess(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-1")).thenReturn(true);
 
@@ -37,7 +39,8 @@ class DialResultWritebackServiceTest {
                 limiter,
                 new CallTaskDispatchProperties(),
                 shardingRouter,
-                metrics
+                metrics,
+                activationService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -48,8 +51,9 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue).ackProcessing(1001L, 1, 11L);
+        verify(queue).ackProcessing(9L, 1001L, 1, 11L);
         verify(limiter).release(9L, 1001L);
+        verify(activationService).activate(9L, 1001L);
     }
 
     @Test
@@ -59,6 +63,7 @@ class DialResultWritebackServiceTest {
         DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        TaskActivationService activationService = mock(TaskActivationService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
         when(repository.markFailedOrRetry(any(), eq(1001L), eq(11L), eq("token-1"), any(), any(), any()))
                 .thenReturn(RetryDecision.retryAt(Instant.now().plusSeconds(30)));
@@ -69,7 +74,8 @@ class DialResultWritebackServiceTest {
                 limiter,
                 new CallTaskDispatchProperties(),
                 shardingRouter,
-                metrics
+                metrics,
+                activationService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -80,8 +86,9 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue).scheduleRetry(eq(1001L), eq(1), eq(11L), any());
+        verify(queue).scheduleRetry(eq(9L), eq(1001L), eq(1), eq(11L), any());
         verify(limiter).release(9L, 1001L);
+        verify(activationService).activate(9L, 1001L);
     }
 
     @Test
@@ -91,6 +98,7 @@ class DialResultWritebackServiceTest {
         DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        TaskActivationService activationService = mock(TaskActivationService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
         when(repository.markFailedOrRetry(any(), eq(1001L), eq(11L), eq("token-old"), any(), any(), any()))
                 .thenReturn(RetryDecision.stale());
@@ -101,7 +109,8 @@ class DialResultWritebackServiceTest {
                 limiter,
                 new CallTaskDispatchProperties(),
                 shardingRouter,
-                metrics
+                metrics,
+                activationService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -112,7 +121,8 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue, never()).ackProcessing(1001L, 1, 11L);
+        verify(queue, never()).ackProcessing(9L, 1001L, 1, 11L);
         verify(limiter, never()).release(9L, 1001L);
+        verify(activationService, never()).activate(9L, 1001L);
     }
 }

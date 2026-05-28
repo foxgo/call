@@ -2,12 +2,9 @@ package com.callcenter.task.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.callcenter.common.context.DbRouteContextHolder;
-import com.callcenter.common.config.ShardProperties;
 import com.callcenter.common.entity.CallTaskEntity;
-import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.mapper.CallTaskMapper;
 import com.callcenter.common.route.ShardingRouter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.springframework.stereotype.Repository;
@@ -17,16 +14,13 @@ public class CallTaskRepository {
 
     private final CallTaskMapper callTaskMapper;
     private final ShardingRouter shardingRouter;
-    private final ShardProperties shardProperties;
 
     public CallTaskRepository(
             CallTaskMapper callTaskMapper,
-            ShardingRouter shardingRouter,
-            ShardProperties shardProperties
+            ShardingRouter shardingRouter
     ) {
         this.callTaskMapper = callTaskMapper;
         this.shardingRouter = shardingRouter;
-        this.shardProperties = shardProperties;
     }
 
     public void insert(CallTaskEntity entity) {
@@ -55,18 +49,6 @@ public class CallTaskRepository {
             query.eq("tenant_id", tenantId).orderByDesc("updated_at");
             return callTaskMapper.selectList(query);
         });
-    }
-
-    public List<CallTaskEntity> loadRunningTasks() {
-        List<CallTaskEntity> tasks = new ArrayList<>();
-        for (int dbIndex = 0; dbIndex < shardProperties.getDbCount(); dbIndex++) {
-            tasks.addAll(withDbRoute(dbIndex, () -> {
-                QueryWrapper<CallTaskEntity> query = new QueryWrapper<>();
-                query.eq("status", CallTaskStatus.RUNNING.name()).orderByAsc("id");
-                return callTaskMapper.selectList(query);
-            }));
-        }
-        return tasks;
     }
 
     private void withTenantRoute(long tenantId, Runnable action) {

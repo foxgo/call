@@ -1,6 +1,7 @@
 package com.callcenter.task.dispatch;
 
 import com.callcenter.common.entity.CallDialUnitEntity;
+import com.callcenter.task.config.CallTaskDispatchProperties;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
@@ -17,25 +18,32 @@ public class RedisDialUnitQueue {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final RedisQueueScriptRepository scriptRepository;
+    private final TaskPartitioner taskPartitioner;
 
     public RedisDialUnitQueue(
             StringRedisTemplate stringRedisTemplate,
-            RedisQueueScriptRepository scriptRepository
+            RedisQueueScriptRepository scriptRepository,
+            CallTaskDispatchProperties properties
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.scriptRepository = scriptRepository;
+        this.taskPartitioner = new TaskPartitioner(properties.getPartitionCount());
     }
 
-    public List<Long> claimReady(Long taskId, int shard, int batchSize, Instant expireAt) {
+    public List<Long> claimReady(Long tenantId, Long taskId, int shard, int batchSize, Instant expireAt) {
         List<String> keys = List.of(
                 RedisQueueKeys.ready(taskId, shard),
-                RedisQueueKeys.processing(taskId, shard)
+                RedisQueueKeys.processing(taskId, shard),
+                RedisQueueKeys.processingTimeout(taskPartitioner.partitionOf(taskId))
         );
         List<?> raw = stringRedisTemplate.execute(
                 scriptRepository.claimReadyScript(),
                 keys,
                 String.valueOf(batchSize),
-                String.valueOf(expireAt.toEpochMilli())
+                String.valueOf(expireAt.toEpochMilli()),
+                String.valueOf(tenantId),
+                String.valueOf(taskId),
+                String.valueOf(shard)
         );
         if (raw == null) {
             return List.of();
@@ -54,17 +62,27 @@ public class RedisDialUnitQueue {
         }
     }
 
-    public void ackProcessing(Long taskId, int shard, Long dialUnitId) {
+    public void ackProcessing(Long tenantId, Long taskId, int shard, Long dialUnitId) {
         stringRedisTemplate.opsForZSet().remove(RedisQueueKeys.processing(taskId, shard), String.valueOf(dialUnitId));
+        stringRedisTemplate.opsForZSet().remove(
+                RedisQueueKeys.processingTimeout(taskPartitioner.partitionOf(taskId)),
+                RedisQueueKeys.processingTimeoutMember(tenantId, taskId, shard, dialUnitId)
+        );
     }
 
-    public void scheduleRetry(Long taskId, int shard, Long dialUnitId, Instant retryAt) {
+    public void scheduleRetry(Long tenantId, Long taskId, int shard, Long dialUnitId, Instant retryAt) {
         stringRedisTemplate.opsForZSet()
                 .add(RedisQueueKeys.retry(taskId, shard), String.valueOf(dialUnitId), retryAt.toEpochMilli());
+        stringRedisTemplate.opsForZSet()
+                .add(
+                        RedisQueueKeys.retryDue(taskPartitioner.partitionOf(taskId)),
+                        RedisQueueKeys.retryDueMember(tenantId, taskId, shard, dialUnitId),
+                        retryAt.toEpochMilli()
+                );
     }
 
-    public void returnReady(Long taskId, int shard, Long dialUnitId, double readyScore) {
-        ackProcessing(taskId, shard, dialUnitId);
+    public void returnReady(Long tenantId, Long taskId, int shard, Long dialUnitId, double readyScore) {
+        ackProcessing(tenantId, taskId, shard, dialUnitId);
         stringRedisTemplate.opsForZSet().add(RedisQueueKeys.ready(taskId, shard), String.valueOf(dialUnitId), readyScore);
     }
 
@@ -95,6 +113,50 @@ public class RedisDialUnitQueue {
                 String.valueOf(readyScore)
         );
         return normalizeIds(raw);
+    }
+
+    public List<RetryDueItem> popDueRetryItems(int partition, Instant now, int limit) {
+        List<?> raw = stringRedisTemplate.execute(
+                scriptRepository.popDueMembersScript(),
+                List.of(RedisQueueKeys.retryDue(partition)),
+                String.valueOf(now.toEpochMilli()),
+                String.valueOf(limit)
+        );
+        if (raw == null) {
+            return List.of();
+        }
+        return raw.stream().map(String::valueOf).map(RetryDueItem::parse).toList();
+    }
+
+    public List<ProcessingTimeoutItem> popExpiredProcessingItems(int partition, Instant now, int limit) {
+        List<?> raw = stringRedisTemplate.execute(
+                scriptRepository.popDueMembersScript(),
+                List.of(RedisQueueKeys.processingTimeout(partition)),
+                String.valueOf(now.toEpochMilli()),
+                String.valueOf(limit)
+        );
+        if (raw == null) {
+            return List.of();
+        }
+        return raw.stream().map(String::valueOf).map(ProcessingTimeoutItem::parse).toList();
+    }
+
+    public boolean requeueRetryUnit(Long taskId, int shard, Long dialUnitId, double readyScore) {
+        Long removed = stringRedisTemplate.opsForZSet().remove(RedisQueueKeys.retry(taskId, shard), String.valueOf(dialUnitId));
+        if (zeroIfNull(removed) == 0L) {
+            return false;
+        }
+        stringRedisTemplate.opsForZSet().add(RedisQueueKeys.ready(taskId, shard), String.valueOf(dialUnitId), readyScore);
+        return true;
+    }
+
+    public boolean recoverExpiredProcessingUnit(Long taskId, int shard, Long dialUnitId, double readyScore) {
+        Long removed = stringRedisTemplate.opsForZSet().remove(RedisQueueKeys.processing(taskId, shard), String.valueOf(dialUnitId));
+        if (zeroIfNull(removed) == 0L) {
+            return false;
+        }
+        stringRedisTemplate.opsForZSet().add(RedisQueueKeys.ready(taskId, shard), String.valueOf(dialUnitId), readyScore);
+        return true;
     }
 
     private double resolveReadyScore(CallDialUnitEntity unit) {

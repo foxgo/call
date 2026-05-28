@@ -13,10 +13,10 @@ public record TaskSummaryResponse(
         Integer dialingCount,
         Integer successCount,
         Integer failedCount,
+        Integer priority,
         Integer maxConcurrency,
         LocalDateTime startTime,
-        LocalDateTime endTime,
-        LocalDateTime nextDispatchTime
+        LocalDateTime endTime
 ) {
 
     public static TaskSummaryResponse from(CallTaskEntity entity) {
@@ -30,10 +30,10 @@ public record TaskSummaryResponse(
                 entity.getDialingCount(),
                 entity.getSuccessCount(),
                 entity.getFailedCount(),
+                entity.getPriority(),
                 entity.getMaxConcurrency(),
                 entity.getStartTime(),
-                entity.getEndTime(),
-                entity.getNextDispatchTime()
+                entity.getEndTime()
         );
     }
 }

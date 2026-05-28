@@ -16,6 +16,7 @@ public class CallTaskDispatchProperties {
     private Duration processingRecoveryInterval = Duration.ofSeconds(5);
     private Duration processingTimeout = Duration.ofMinutes(5);
     private Duration retryBackoff = Duration.ofSeconds(30);
+    private Duration partitionLeaseTtl = Duration.ofSeconds(30);
 
     @Min(1)
     private int dispatchBatchSize = 100;
@@ -31,6 +32,9 @@ public class CallTaskDispatchProperties {
 
     @Min(1)
     private int shardCount = 16;
+
+    @Min(1)
+    private int partitionCount = 128;
 
     public Duration getPollInterval() {
         return pollInterval;
@@ -72,6 +76,14 @@ public class CallTaskDispatchProperties {
         this.retryBackoff = retryBackoff;
     }
 
+    public Duration getPartitionLeaseTtl() {
+        return partitionLeaseTtl;
+    }
+
+    public void setPartitionLeaseTtl(Duration partitionLeaseTtl) {
+        this.partitionLeaseTtl = partitionLeaseTtl;
+    }
+
     public int getDispatchBatchSize() {
         return dispatchBatchSize;
     }
@@ -110,5 +122,13 @@ public class CallTaskDispatchProperties {
 
     public void setShardCount(int shardCount) {
         this.shardCount = shardCount;
+    }
+
+    public int getPartitionCount() {
+        return partitionCount;
+    }
+
+    public void setPartitionCount(int partitionCount) {
+        this.partitionCount = partitionCount;
     }
 }

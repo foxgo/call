@@ -12,6 +12,6 @@ class CallTaskEntityTest {
     void shouldExposeTaskStatusesForLifecycleFlow() {
         assertEquals(CallTaskStatus.INIT, CallTaskStatus.valueOf("INIT"));
         assertEquals(CallTaskStatus.RUNNING, CallTaskStatus.valueOf("RUNNING"));
-        assertEquals(CallDialUnitStatus.QUEUED, CallDialUnitStatus.valueOf("QUEUED"));
+        assertEquals(CallDialUnitStatus.READY, CallDialUnitStatus.valueOf("READY"));
     }
 }

@@ -5,11 +5,13 @@ import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
+import java.time.LocalDateTime;
 import com.callcenter.task.repository.CallDialUnitRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,7 +33,13 @@ class DialUnitPreloadServiceTest {
         when(queue.windowSize(1001L, 1)).thenReturn(0L);
         CallDialUnitEntity unit = new CallDialUnitEntity();
         unit.setId(11L);
-        when(repository.claimPendingForQueue(new ShardKey(9L, 0, 1, "dial"), 1001L, 50)).thenReturn(List.of(unit));
+        when(repository.claimPendingToReady(
+                eq(new ShardKey(9L, 0, 1, "dial")),
+                eq(1001L),
+                eq(50),
+                any(LocalDateTime.class)
+        ))
+                .thenReturn(List.of(unit));
 
         DialUnitPreloadService service = new DialUnitPreloadService(queue, repository, properties, shardingRouter);
         CallTaskEntity task = new CallTaskEntity();
@@ -41,6 +49,7 @@ class DialUnitPreloadServiceTest {
         service.preloadRunningTask(task);
 
         verify(queue).offerReady(eq(1001L), eq(1), anyList());
+        verify(repository).claimPendingToReady(eq(new ShardKey(9L, 0, 1, "dial")), eq(1001L), eq(50), any(LocalDateTime.class));
     }
 
     @Test
@@ -61,6 +70,11 @@ class DialUnitPreloadServiceTest {
 
         service.preloadRunningTask(task);
 
-        verify(repository, never()).claimPendingForQueue(new ShardKey(9L, 0, 1, "dial"), 1001L, properties.getPreloadBatchSize());
+        verify(repository, never()).claimPendingToReady(
+                eq(new ShardKey(9L, 0, 1, "dial")),
+                eq(1001L),
+                eq(properties.getPreloadBatchSize()),
+                any(LocalDateTime.class)
+        );
     }
 }

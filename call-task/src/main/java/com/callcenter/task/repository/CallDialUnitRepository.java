@@ -3,6 +3,7 @@ package com.callcenter.task.repository;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.callcenter.common.context.ShardContextHolder;
+import com.callcenter.common.config.ShardProperties;
 import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.enums.CallDialUnitStatus;
 import com.callcenter.common.mapper.CallDialUnitMapper;
@@ -10,16 +11,21 @@ import com.callcenter.common.route.ShardKey;
 import com.callcenter.task.model.RetryDecision;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class CallDialUnitRepository {
 
     private final CallDialUnitMapper callDialUnitMapper;
+    private final ShardProperties shardProperties;
 
-    public CallDialUnitRepository(CallDialUnitMapper callDialUnitMapper) {
+    public CallDialUnitRepository(CallDialUnitMapper callDialUnitMapper, ShardProperties shardProperties) {
         this.callDialUnitMapper = callDialUnitMapper;
+        this.shardProperties = shardProperties;
     }
 
     public int batchInsert(ShardKey shardKey, List<CallDialUnitEntity> entities) {
@@ -42,26 +48,101 @@ public class CallDialUnitRepository {
         }
     }
 
-    public List<CallDialUnitEntity> claimPendingForQueue(ShardKey shardKey, long taskId, int limit) {
+    public List<DuePendingTask> findDuePendingTasks(LocalDateTime now, int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        Map<String, DuePendingTask> tasks = new LinkedHashMap<>();
+        for (ShardKey shardKey : allDialShards()) {
+            if (tasks.size() >= limit) {
+                break;
+            }
+            ShardContextHolder.set(shardKey.toContext());
+            try {
+                QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+                query.select("tenant_id", "task_id")
+                        .eq("status", CallDialUnitStatus.PENDING.name())
+                        .le("next_call_time", now)
+                        .orderByAsc("next_call_time")
+                        .orderByAsc("id")
+                        .last("LIMIT " + limit);
+                List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
+                for (CallDialUnitEntity unit : units) {
+                    String key = unit.getTenantId() + ":" + unit.getTaskId();
+                    tasks.putIfAbsent(key, new DuePendingTask(unit.getTenantId(), unit.getTaskId()));
+                    if (tasks.size() >= limit) {
+                        break;
+                    }
+                }
+            } finally {
+                ShardContextHolder.clear();
+            }
+        }
+        return List.copyOf(tasks.values());
+    }
+
+    public List<ExpiredDialingBatch> findExpiredDialingBatches(LocalDateTime now, int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        Map<String, ExpiredDialingBatchBuilder> batches = new LinkedHashMap<>();
+        int collected = 0;
+        for (ShardKey shardKey : allDialShards()) {
+            if (collected >= limit) {
+                break;
+            }
+            ShardContextHolder.set(shardKey.toContext());
+            try {
+                QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+                query.select("id", "tenant_id", "task_id")
+                        .eq("status", CallDialUnitStatus.DIALING.name())
+                        .le("inflight_expire_at", now)
+                        .orderByAsc("inflight_expire_at")
+                        .orderByAsc("id")
+                        .last("LIMIT " + limit);
+                List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
+                for (CallDialUnitEntity unit : units) {
+                    String key = unit.getTenantId() + ":" + unit.getTaskId();
+                    ExpiredDialingBatchBuilder batch = batches.computeIfAbsent(
+                            key,
+                            ignored -> new ExpiredDialingBatchBuilder(unit.getTenantId(), unit.getTaskId())
+                    );
+                    batch.dialUnitIds().add(unit.getId());
+                    collected++;
+                    if (collected >= limit) {
+                        break;
+                    }
+                }
+            } finally {
+                ShardContextHolder.clear();
+            }
+        }
+        return batches.values().stream()
+                .map(builder -> new ExpiredDialingBatch(builder.tenantId(), builder.taskId(), List.copyOf(builder.dialUnitIds())))
+                .toList();
+    }
+
+    public List<CallDialUnitEntity> claimPendingToReady(ShardKey shardKey, long taskId, int limit, LocalDateTime now) {
         ShardContextHolder.set(shardKey.toContext());
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
             query.eq("task_id", taskId)
                     .eq("status", CallDialUnitStatus.PENDING.name())
+                    .le("next_call_time", now)
                     .orderByAsc("next_call_time")
                     .orderByAsc("id")
                     .last("LIMIT " + limit);
             List<CallDialUnitEntity> pending = callDialUnitMapper.selectList(query);
             return pending.stream()
-                    .filter(unit -> markQueued(taskId, unit.getId()))
-                    .peek(unit -> unit.setStatus(CallDialUnitStatus.QUEUED.name()))
+                    .filter(unit -> markReady(taskId, unit.getId()))
+                    .peek(unit -> unit.setStatus(CallDialUnitStatus.READY.name()))
                     .toList();
         } finally {
             ShardContextHolder.clear();
         }
     }
 
-    public List<CallDialUnitEntity> markDialing(
+    public List<CallDialUnitEntity> markDialingFromReady(
             ShardKey shardKey,
             long taskId,
             List<Long> ids,
@@ -75,7 +156,7 @@ public class CallDialUnitRepository {
             query.eq("task_id", taskId).in("id", ids).orderByAsc("id");
             List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
             return units.stream()
-                    .filter(unit -> updateDialing(taskId, unit.getId(), dispatchToken, callTime, inflightExpireAt))
+                    .filter(unit -> updateDialingFromReady(taskId, unit.getId(), dispatchToken, callTime, inflightExpireAt))
                     .peek(unit -> {
                         unit.setStatus(CallDialUnitStatus.DIALING.name());
                         unit.setDispatchToken(dispatchToken);
@@ -105,7 +186,7 @@ public class CallDialUnitRepository {
         }
     }
 
-    public RetryDecision markFailedOrRetry(
+    public RetryDecision markFailedForRetry(
             ShardKey shardKey,
             long taskId,
             long dialUnitId,
@@ -140,7 +221,7 @@ public class CallDialUnitRepository {
                     .set("failure_reason", failureReason)
                     .set("updated_at", now);
             if (shouldRetry) {
-                update.set("status", CallDialUnitStatus.QUEUED.name())
+                update.set("status", CallDialUnitStatus.PENDING.name())
                         .set("next_call_time", LocalDateTime.ofInstant(retryAt, ZoneOffset.UTC))
                         .set("dispatch_token", null)
                         .set("inflight_expire_at", null);
@@ -168,7 +249,7 @@ public class CallDialUnitRepository {
                     .eq("id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
-                    .set("status", CallDialUnitStatus.QUEUED.name())
+                    .set("status", CallDialUnitStatus.PENDING.name())
                     .set("dispatch_token", null)
                     .set("inflight_expire_at", null)
                     .set("next_call_time", nextCallTime)
@@ -203,7 +284,7 @@ public class CallDialUnitRepository {
                 int maxRetryCount = unit.getMaxRetryCount() == null ? 0 : unit.getMaxRetryCount();
                 int nextRetryCount = (unit.getRetryCount() == null ? 0 : unit.getRetryCount()) + 1;
                 if (nextRetryCount <= maxRetryCount) {
-                    update.set("status", CallDialUnitStatus.QUEUED.name())
+                    update.set("status", CallDialUnitStatus.PENDING.name())
                             .set("next_call_time", nextCallTime)
                             .set("dispatch_token", null)
                             .set("inflight_expire_at", null);
@@ -220,16 +301,16 @@ public class CallDialUnitRepository {
         }
     }
 
-    private boolean markQueued(long taskId, long unitId) {
+    private boolean markReady(long taskId, long unitId) {
         UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
         update.eq("task_id", taskId)
                 .eq("id", unitId)
                 .eq("status", CallDialUnitStatus.PENDING.name())
-                .set("status", CallDialUnitStatus.QUEUED.name());
+                .set("status", CallDialUnitStatus.READY.name());
         return callDialUnitMapper.update(null, update) > 0;
     }
 
-    private boolean updateDialing(
+    private boolean updateDialingFromReady(
             long taskId,
             long unitId,
             String dispatchToken,
@@ -239,12 +320,34 @@ public class CallDialUnitRepository {
         UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
         update.eq("task_id", taskId)
                 .eq("id", unitId)
-                .eq("status", CallDialUnitStatus.QUEUED.name())
+                .eq("status", CallDialUnitStatus.READY.name())
                 .set("status", CallDialUnitStatus.DIALING.name())
                 .set("dispatch_token", dispatchToken)
                 .set("last_call_time", callTime)
                 .set("inflight_expire_at", inflightExpireAt)
                 .set("updated_at", callTime);
         return callDialUnitMapper.update(null, update) > 0;
+    }
+
+    private List<ShardKey> allDialShards() {
+        List<ShardKey> shards = new ArrayList<>(shardProperties.getDbCount() * shardProperties.getTableCount());
+        for (int dbIndex = 0; dbIndex < shardProperties.getDbCount(); dbIndex++) {
+            for (int tableIndex = 0; tableIndex < shardProperties.getTableCount(); tableIndex++) {
+                shards.add(new ShardKey(0L, dbIndex, tableIndex, "dial"));
+            }
+        }
+        return shards;
+    }
+
+    public record DuePendingTask(Long tenantId, Long taskId) {
+    }
+
+    public record ExpiredDialingBatch(Long tenantId, Long taskId, List<Long> dialUnitIds) {
+    }
+
+    private record ExpiredDialingBatchBuilder(Long tenantId, Long taskId, List<Long> dialUnitIds) {
+        private ExpiredDialingBatchBuilder(Long tenantId, Long taskId) {
+            this(tenantId, taskId, new ArrayList<>());
+        }
     }
 }

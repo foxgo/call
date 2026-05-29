@@ -54,7 +54,6 @@ public class DialResultWritebackService {
                     request.getDispatchToken()
             );
             if (updated) {
-                redisDialUnitQueue.ackProcessing(tenantId, request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
                 concurrencyLimiter.release(tenantId, request.getTaskId());
                 metrics.incrementWritebackSuccess();
                 taskActivationService.activate(tenantId, request.getTaskId());
@@ -62,7 +61,7 @@ public class DialResultWritebackService {
             return;
         }
 
-        RetryDecision decision = callDialUnitRepository.markFailedOrRetry(
+        RetryDecision decision = callDialUnitRepository.markFailedForRetry(
                 shardKey,
                 request.getTaskId(),
                 request.getDialUnitId(),
@@ -74,18 +73,8 @@ public class DialResultWritebackService {
         if (!decision.processed()) {
             return;
         }
-        redisDialUnitQueue.ackProcessing(tenantId, request.getTaskId(), shardKey.tableIndex(), request.getDialUnitId());
         concurrencyLimiter.release(tenantId, request.getTaskId());
         metrics.incrementWritebackFailure();
         taskActivationService.activate(tenantId, request.getTaskId());
-        if (decision.shouldRetry()) {
-            redisDialUnitQueue.scheduleRetry(
-                    tenantId,
-                    request.getTaskId(),
-                    shardKey.tableIndex(),
-                    request.getDialUnitId(),
-                    decision.retryAt()
-            );
-        }
     }
 }

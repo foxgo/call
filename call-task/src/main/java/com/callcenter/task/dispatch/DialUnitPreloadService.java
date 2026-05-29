@@ -5,6 +5,7 @@ import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.repository.CallDialUnitRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -34,10 +35,11 @@ public class DialUnitPreloadService {
         if (windowSize >= properties.getPreloadThreshold()) {
             return;
         }
-        List<com.callcenter.common.entity.CallDialUnitEntity> units = callDialUnitRepository.claimPendingForQueue(
+        List<com.callcenter.common.entity.CallDialUnitEntity> units = callDialUnitRepository.claimPendingToReady(
                 shardKey,
                 task.getId(),
-                properties.getPreloadBatchSize()
+                properties.getPreloadBatchSize(),
+                LocalDateTime.now()
         );
         if (!units.isEmpty()) {
             redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), units);

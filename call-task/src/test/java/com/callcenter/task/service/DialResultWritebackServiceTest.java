@@ -2,6 +2,7 @@ package com.callcenter.task.service;
 
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.common.enums.CallDialUnitStatus;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;
 import com.callcenter.task.dispatch.RedisDialUnitQueue;
@@ -18,12 +19,18 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class DialResultWritebackServiceTest {
 
     @Test
-    void shouldAckProcessingAndReleaseQuotaWhenDialSucceeds() {
+    void shouldExposeReadyDialUnitStatus() {
+        org.junit.jupiter.api.Assertions.assertEquals(CallDialUnitStatus.READY, CallDialUnitStatus.valueOf("READY"));
+    }
+
+    @Test
+    void shouldReleaseQuotaWhenDialSucceedsWithoutRedisProcessingCleanup() {
         CallDialUnitRepository repository = mock(CallDialUnitRepository.class);
         RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
         DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
@@ -51,7 +58,7 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue).ackProcessing(9L, 1001L, 1, 11L);
+        verifyNoInteractions(queue);
         verify(limiter).release(9L, 1001L);
         verify(activationService).activate(9L, 1001L);
     }
@@ -85,13 +92,13 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue, never()).ackProcessing(9L, 1001L, 1, 11L);
+        verifyNoInteractions(queue);
         verify(limiter, never()).release(9L, 1001L);
         verify(activationService, never()).activate(9L, 1001L);
     }
 
     @Test
-    void shouldScheduleRetryWhenDialFailsBeforeRetryLimit() {
+    void shouldMoveFailedDialBackToPendingWithoutRedisRetryQueue() {
         CallDialUnitRepository repository = mock(CallDialUnitRepository.class);
         RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
         DispatchConcurrencyLimiter limiter = mock(DispatchConcurrencyLimiter.class);
@@ -99,7 +106,7 @@ class DialResultWritebackServiceTest {
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markFailedOrRetry(any(), eq(1001L), eq(11L), eq("token-1"), any(), any(), any()))
+        when(repository.markFailedForRetry(any(), eq(1001L), eq(11L), eq("token-1"), any(), any(), any()))
                 .thenReturn(RetryDecision.retryAt(Instant.now().plusSeconds(30)));
 
         DialResultWritebackService service = new DialResultWritebackService(
@@ -120,7 +127,7 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue).scheduleRetry(eq(9L), eq(1001L), eq(1), eq(11L), any());
+        verifyNoInteractions(queue);
         verify(limiter).release(9L, 1001L);
         verify(activationService).activate(9L, 1001L);
     }
@@ -134,7 +141,7 @@ class DialResultWritebackServiceTest {
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markFailedOrRetry(any(), eq(1001L), eq(11L), eq("token-old"), any(), any(), any()))
+        when(repository.markFailedForRetry(any(), eq(1001L), eq(11L), eq("token-old"), any(), any(), any()))
                 .thenReturn(RetryDecision.stale());
 
         DialResultWritebackService service = new DialResultWritebackService(
@@ -155,7 +162,7 @@ class DialResultWritebackServiceTest {
 
         service.handleCallback(9L, request);
 
-        verify(queue, never()).ackProcessing(9L, 1001L, 1, 11L);
+        verifyNoInteractions(queue);
         verify(limiter, never()).release(9L, 1001L);
         verify(activationService, never()).activate(9L, 1001L);
     }

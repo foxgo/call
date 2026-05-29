@@ -12,8 +12,10 @@ import com.callcenter.task.repository.CallDialUnitRepository;
 import com.callcenter.task.repository.CallTaskRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -99,7 +101,7 @@ public class PartitionSchedulerWorker {
         }
 
         String dispatchToken = UUID.randomUUID().toString();
-        List<CallDialUnitEntity> units = callDialUnitRepository.markDialing(
+        List<CallDialUnitEntity> units = callDialUnitRepository.markDialingFromReady(
                 shardKey,
                 task.getId(),
                 ids,
@@ -107,6 +109,10 @@ public class PartitionSchedulerWorker {
                 LocalDateTime.now(),
                 LocalDateTime.now().plus(properties.getProcessingTimeout())
         );
+        List<CallDialUnitEntity> missedUnits = toMissedReadyUnits(ids, units);
+        if (!missedUnits.isEmpty()) {
+            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), missedUnits);
+        }
 
         if (units.size() < ids.size()) {
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), ids.size() - units.size());
@@ -130,5 +136,19 @@ public class PartitionSchedulerWorker {
         } else {
             activeTaskQueue.reactivate(task.getId(), nextFairScore);
         }
+    }
+
+    private List<CallDialUnitEntity> toMissedReadyUnits(List<Long> claimedIds, List<CallDialUnitEntity> transitionedUnits) {
+        Set<Long> transitionedIds = transitionedUnits.stream()
+                .map(CallDialUnitEntity::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return claimedIds.stream()
+                .filter(id -> !transitionedIds.contains(id))
+                .map(id -> {
+                    CallDialUnitEntity unit = new CallDialUnitEntity();
+                    unit.setId(id);
+                    return unit;
+                })
+                .toList();
     }
 }

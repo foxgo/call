@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,7 +34,14 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
-        when(fixture.dialUnitRepository.markDialing(any(), eq(1001L), eq(List.of(11L, 12L, 13L)), any(), any(), any()))
+        when(fixture.dialUnitRepository.markDialingFromReady(
+                any(),
+                eq(1001L),
+                eq(List.of(11L, 12L, 13L)),
+                any(),
+                any(),
+                any()
+        ))
                 .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
 
         fixture.worker().runPartition(7);
@@ -67,7 +75,7 @@ class PartitionSchedulerWorkerTest {
 
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 3);
         verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
-        verify(fixture.dialUnitRepository, never()).markDialing(
+        verify(fixture.dialUnitRepository, never()).markDialingFromReady(
                 any(ShardKey.class),
                 anyLong(),
                 anyList(),
@@ -83,7 +91,14 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(4);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 4)).thenReturn(4);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(4), any())).thenReturn(List.of(11L, 12L, 13L));
-        when(fixture.dialUnitRepository.markDialing(any(), eq(1001L), eq(List.of(11L, 12L, 13L)), any(), any(), any()))
+        when(fixture.dialUnitRepository.markDialingFromReady(
+                any(),
+                eq(1001L),
+                eq(List.of(11L, 12L, 13L)),
+                any(),
+                any(),
+                any()
+        ))
                 .thenReturn(List.of(unit(11L)));
 
         fixture.worker().runPartition(7);
@@ -92,6 +107,30 @@ class PartitionSchedulerWorkerTest {
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 2);
         verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
         verify(fixture.publisher).publish(any(CallDialUnitEntity.class));
+    }
+
+    @Test
+    void shouldReofferIdsThatFailToTransitionFromReadyToDialing() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(3);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.dialUnitRepository.markDialingFromReady(
+                any(),
+                eq(1001L),
+                eq(List.of(11L, 12L, 13L)),
+                any(),
+                any(),
+                any()
+        )).thenReturn(List.of(unit(11L)));
+
+        fixture.worker().runPartition(7);
+
+        verify(fixture.queue).offerReady(
+                eq(1001L),
+                eq(1),
+                argThat(units -> units.stream().map(CallDialUnitEntity::getId).toList().equals(List.of(12L, 13L)))
+        );
     }
 
     private static CallDialUnitEntity unit(long id) {

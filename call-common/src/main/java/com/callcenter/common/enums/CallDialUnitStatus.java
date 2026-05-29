@@ -2,7 +2,7 @@ package com.callcenter.common.enums;
 
 public enum CallDialUnitStatus {
     PENDING,
-    QUEUED,
+    READY,
     DIALING,
     SUCCESS,
     FAILED

@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "title": "PartitionSchedulerWorker 内层派发时序图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 9,
+    "edges": 17,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "worker",
+      "label": "PartitionSchedulerWorker",
+      "type": "user"
+    },
+    {
+      "id": "active",
+      "label": "ActiveTaskQueue",
+      "type": "user"
+    },
+    {
+      "id": "taskRepo",
+      "label": "CallTaskRepository",
+      "type": "user"
+    },
+    {
+      "id": "preload",
+      "label": "DialUnitPreloadService",
+      "type": "user"
+    },
+    {
+      "id": "limiter",
+      "label": "DispatchConcurrencyLimiter",
+      "type": "user"
+    },
+    {
+      "id": "readyQueue",
+      "label": "RedisDialUnitQueue",
+      "type": "user"
+    },
+    {
+      "id": "dialRepo",
+      "label": "CallDialUnitRepository",
+      "type": "user"
+    },
+    {
+      "id": "publisher",
+      "label": "DialDispatchPublisher",
+      "type": "user"
+    },
+    {
+      "id": "metrics",
+      "label": "CallTaskMetrics",
+      "type": "user"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "worker",
+      "to": "active",
+      "type": "primary",
+      "label": "pollNextTaskWithMeta(partition)"
+    },
+    {
+      "id": "edge-2",
+      "from": "active",
+      "to": "worker",
+      "type": "data",
+      "label": "empty / taskId + meta"
+    },
+    {
+      "id": "edge-3",
+      "from": "worker",
+      "to": "taskRepo",
+      "type": "primary",
+      "label": "findRequired(tenantId, taskId)"
+    },
+    {
+      "id": "edge-4",
+      "from": "worker",
+      "to": "active",
+      "type": "optional",
+      "label": "block(meta, PAUSED)"
+    },
+    {
+      "id": "edge-5",
+      "from": "worker",
+      "to": "preload",
+      "type": "primary",
+      "label": "preloadRunningTask(task)"
+    },
+    {
+      "id": "edge-6",
+      "from": "worker",
+      "to": "limiter",
+      "type": "primary",
+      "label": "tryAcquireBatch(...)"
+    },
+    {
+      "id": "edge-7",
+      "from": "worker",
+      "to": "active",
+      "type": "optional",
+      "label": "block(meta, CONCURRENCY_FULL)"
+    },
+    {
+      "id": "edge-8",
+      "from": "worker",
+      "to": "readyQueue",
+      "type": "primary",
+      "label": "claimReady(...)"
+    },
+    {
+      "id": "edge-9",
+      "from": "worker",
+      "to": "limiter",
+      "type": "optional",
+      "label": "releaseBatch(granted)"
+    },
+    {
+      "id": "edge-10",
+      "from": "worker",
+      "to": "active",
+      "type": "optional",
+      "label": "block(meta, EMPTY)"
+    },
+    {
+      "id": "edge-11",
+      "from": "worker",
+      "to": "dialRepo",
+      "type": "primary",
+      "label": "markDialingFromReady(...)"
+    },
+    {
+      "id": "edge-12",
+      "from": "worker",
+      "to": "readyQueue",
+      "type": "optional",
+      "label": "offerReady(missedIds)"
+    },
+    {
+      "id": "edge-13",
+      "from": "worker",
+      "to": "limiter",
+      "type": "optional",
+      "label": "releaseBatch(delta)"
+    },
+    {
+      "id": "edge-14",
+      "from": "worker",
+      "to": "publisher",
+      "type": "primary",
+      "label": "publish(unit)"
+    },
+    {
+      "id": "edge-15",
+      "from": "worker",
+      "to": "metrics",
+      "type": "optional",
+      "label": "incrementDispatchPublished()"
+    },
+    {
+      "id": "edge-16",
+      "from": "worker",
+      "to": "active",
+      "type": "primary",
+      "label": "reactivate(meta, nextFairScore) / block(meta, ...)"
+    },
+    {
+      "id": "edge-17",
+      "from": "worker",
+      "to": "worker",
+      "type": "data",
+      "label": "return true / false"
+    }
+  ],
+  "modules": []
+}

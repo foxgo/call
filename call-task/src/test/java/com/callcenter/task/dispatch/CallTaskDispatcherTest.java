@@ -1,10 +1,13 @@
 package com.callcenter.task.dispatch;
 
 import com.callcenter.task.config.CallTaskDispatchProperties;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,7 +15,7 @@ import static org.mockito.Mockito.when;
 class CallTaskDispatcherTest {
 
     @Test
-    void shouldDispatchOwnedPartitionsUntilPerTickLimit() {
+    void shouldSubmitOwnedPartitionsToExecutorAndDrainEachPartitionUntilPerTickLimit() {
         TaskPartitionManager partitionManager = mock(TaskPartitionManager.class);
         PartitionSchedulerWorker worker = mock(PartitionSchedulerWorker.class);
         when(partitionManager.ownedPartitions()).thenReturn(List.of(7, 8));
@@ -21,11 +24,74 @@ class CallTaskDispatcherTest {
 
         CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
         properties.setMaxTasksPerPartitionTick(3);
-        CallTaskDispatcher dispatcher = new CallTaskDispatcher(partitionManager, worker, properties);
+        RecordingExecutor executor = new RecordingExecutor();
+        CallTaskDispatcher dispatcher = new CallTaskDispatcher(partitionManager, worker, properties, executor);
 
         dispatcher.dispatchOwnedPartitions();
 
+        assertEquals(2, executor.size());
+        verify(worker, never()).runPartition(7);
+        verify(worker, never()).runPartition(8);
+
+        executor.runAll();
+
         verify(worker, times(3)).runPartition(7);
         verify(worker, times(3)).runPartition(8);
+    }
+
+    @Test
+    void shouldNotResubmitPartitionWhilePreviousDrainIsStillRunning() {
+        TaskPartitionManager partitionManager = mock(TaskPartitionManager.class);
+        PartitionSchedulerWorker worker = mock(PartitionSchedulerWorker.class);
+        when(partitionManager.ownedPartitions()).thenReturn(List.of(7));
+        when(worker.runPartition(7)).thenReturn(false);
+
+        CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
+        RecordingExecutor executor = new RecordingExecutor();
+        CallTaskDispatcher dispatcher = new CallTaskDispatcher(partitionManager, worker, properties, executor);
+
+        dispatcher.dispatchOwnedPartitions();
+        dispatcher.dispatchOwnedPartitions();
+
+        assertEquals(1, executor.size());
+        verify(worker, never()).runPartition(7);
+    }
+
+    @Test
+    void shouldAllowPartitionToBeSubmittedAgainAfterDrainCompletes() {
+        TaskPartitionManager partitionManager = mock(TaskPartitionManager.class);
+        PartitionSchedulerWorker worker = mock(PartitionSchedulerWorker.class);
+        when(partitionManager.ownedPartitions()).thenReturn(List.of(7));
+        when(worker.runPartition(7)).thenReturn(false);
+
+        CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
+        RecordingExecutor executor = new RecordingExecutor();
+        CallTaskDispatcher dispatcher = new CallTaskDispatcher(partitionManager, worker, properties, executor);
+
+        dispatcher.dispatchOwnedPartitions();
+        executor.runAll();
+        dispatcher.dispatchOwnedPartitions();
+
+        assertEquals(1, executor.size());
+        verify(worker, times(1)).runPartition(7);
+    }
+
+    private static final class RecordingExecutor implements java.util.concurrent.Executor {
+        private final List<Runnable> tasks = new ArrayList<>();
+
+        @Override
+        public void execute(Runnable command) {
+            tasks.add(command);
+        }
+
+        private int size() {
+            return tasks.size();
+        }
+
+        private void runAll() {
+            List<Runnable> submitted = List.copyOf(tasks);
+            tasks.clear();
+            submitted.forEach(Runnable::run);
+        }
     }
 }

@@ -1,0 +1,52 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: horizontal
+  canvas: 1700x980
+  routing: orthogonal
+  title: CallTaskDispatcher 外层调度时序图
+  description: 聚焦 dispatchOwnedPartitions 的外层调度行为：按 owned partitions 遍历，并在每个 partition 上限制 runPartition 次数。
+nodes:
+  - id: timer
+    label: Spring Scheduler
+    type: user
+  - id: dispatcher
+    label: CallTaskDispatcher
+    type: user
+  - id: tpm
+    label: TaskPartitionManager
+    type: user
+  - id: worker
+    label: PartitionSchedulerWorker
+    type: user
+edges:
+  - from: timer
+    to: dispatcher
+    type: primary
+    label: '@Scheduled dispatchOwnedPartitions()'
+  - from: dispatcher
+    to: tpm
+    type: primary
+    label: ownedPartitions()
+  - from: tpm
+    to: dispatcher
+    type: data
+    label: owned partitions
+  - from: dispatcher
+    to: worker
+    type: primary
+    label: runPartition(partition)
+  - from: worker
+    to: dispatcher
+    type: data
+    label: false -> break / true -> continue
+  - from: dispatcher
+    to: worker
+    type: primary
+    label: next runPartition(partition)
+  - from: worker
+    to: dispatcher
+    type: data
+    label: until limit or no work
+modules: []

@@ -43,6 +43,7 @@ call:
       max-retries: ${CALL_TASK_MAX_RETRIES:3}
       shard-count: ${CALL_TASK_SHARD_COUNT:16}
       max-tasks-per-partition-tick: ${CALL_TASK_MAX_TASKS_PER_PARTITION_TICK:8}
+      dispatcher-parallelism: ${CALL_TASK_DISPATCHER_PARALLELISM:4}
     concurrency:
       global-max: ${CALL_TASK_GLOBAL_MAX_CONCURRENCY:10000}
       tenant-default-max: ${CALL_TASK_TENANT_DEFAULT_MAX_CONCURRENCY:1000}

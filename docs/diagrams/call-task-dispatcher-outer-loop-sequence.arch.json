@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "title": "CallTaskDispatcher 外层调度时序图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 4,
+    "edges": 7,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "timer",
+      "label": "Spring Scheduler",
+      "type": "user"
+    },
+    {
+      "id": "dispatcher",
+      "label": "CallTaskDispatcher",
+      "type": "user"
+    },
+    {
+      "id": "tpm",
+      "label": "TaskPartitionManager",
+      "type": "user"
+    },
+    {
+      "id": "worker",
+      "label": "PartitionSchedulerWorker",
+      "type": "user"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "timer",
+      "to": "dispatcher",
+      "type": "primary",
+      "label": "@Scheduled dispatchOwnedPartitions()"
+    },
+    {
+      "id": "edge-2",
+      "from": "dispatcher",
+      "to": "tpm",
+      "type": "primary",
+      "label": "ownedPartitions()"
+    },
+    {
+      "id": "edge-3",
+      "from": "tpm",
+      "to": "dispatcher",
+      "type": "data",
+      "label": "owned partitions"
+    },
+    {
+      "id": "edge-4",
+      "from": "dispatcher",
+      "to": "worker",
+      "type": "primary",
+      "label": "runPartition(partition)"
+    },
+    {
+      "id": "edge-5",
+      "from": "worker",
+      "to": "dispatcher",
+      "type": "data",
+      "label": "false -> break / true -> continue"
+    },
+    {
+      "id": "edge-6",
+      "from": "dispatcher",
+      "to": "worker",
+      "type": "primary",
+      "label": "next runPartition(partition)"
+    },
+    {
+      "id": "edge-7",
+      "from": "worker",
+      "to": "dispatcher",
+      "type": "data",
+      "label": "until limit or no work"
+    }
+  ],
+  "modules": []
+}

@@ -39,6 +39,9 @@ public class CallTaskDispatchProperties {
     @Min(1)
     private int maxTasksPerPartitionTick = 8;
 
+    @Min(1)
+    private int dispatcherParallelism = 4;
+
     public Duration getPollInterval() {
         return pollInterval;
     }
@@ -141,5 +144,13 @@ public class CallTaskDispatchProperties {
 
     public void setMaxTasksPerPartitionTick(int maxTasksPerPartitionTick) {
         this.maxTasksPerPartitionTick = maxTasksPerPartitionTick;
+    }
+
+    public int getDispatcherParallelism() {
+        return dispatcherParallelism;
+    }
+
+    public void setDispatcherParallelism(int dispatcherParallelism) {
+        this.dispatcherParallelism = dispatcherParallelism;
     }
 }

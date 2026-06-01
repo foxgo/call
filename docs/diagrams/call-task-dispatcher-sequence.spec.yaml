@@ -1,0 +1,108 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: horizontal
+  canvas: 2800x1800
+  routing: orthogonal
+  title: CallTaskDispatcher 调度时序图
+  description: 展示 dispatchOwnedPartitions 单轮调度中 partition 遍历、runPartition 调用、空任务中断和成功派发路径。
+nodes:
+  - id: timer
+    label: Spring Scheduler
+    type: user
+  - id: dispatcher
+    label: CallTaskDispatcher
+    type: user
+  - id: tpm
+    label: TaskPartitionManager
+    type: user
+  - id: worker
+    label: PartitionSchedulerWorker
+    type: user
+  - id: active
+    label: ActiveTaskQueue
+    type: user
+  - id: taskRepo
+    label: CallTaskRepository
+    type: user
+  - id: preload
+    label: DialUnitPreloadService
+    type: user
+  - id: limiter
+    label: DispatchConcurrencyLimiter
+    type: user
+  - id: readyQueue
+    label: RedisDialUnitQueue
+    type: user
+  - id: dialRepo
+    label: CallDialUnitRepository
+    type: user
+  - id: publisher
+    label: DialDispatchPublisher
+    type: user
+  - id: metrics
+    label: CallTaskMetrics
+    type: user
+edges:
+  - from: timer
+    to: dispatcher
+    type: primary
+    label: '@Scheduled tick'
+  - from: dispatcher
+    to: tpm
+    type: primary
+    label: ownedPartitions()
+  - from: tpm
+    to: dispatcher
+    type: data
+    label: owned partitions
+  - from: dispatcher
+    to: worker
+    type: primary
+    label: runPartition(partition)
+  - from: worker
+    to: active
+    type: primary
+    label: pollNextTaskWithMeta(partition)
+  - from: active
+    to: worker
+    type: data
+    label: empty or taskId + meta
+  - from: worker
+    to: taskRepo
+    type: primary
+    label: 'findRequired(tenantId, taskId)'
+  - from: worker
+    to: preload
+    type: primary
+    label: preloadRunningTask(task)
+  - from: worker
+    to: limiter
+    type: primary
+    label: tryAcquireBatch(...)
+  - from: worker
+    to: readyQueue
+    type: primary
+    label: claimReady(...)
+  - from: worker
+    to: dialRepo
+    type: primary
+    label: markDialingFromReady(...)
+  - from: worker
+    to: publisher
+    type: primary
+    label: publish(unit)
+  - from: worker
+    to: metrics
+    type: optional
+    label: incrementDispatchPublished()
+  - from: worker
+    to: active
+    type: primary
+    label: 'reactivate(meta, nextFairScore) / block(meta, ...)'
+  - from: worker
+    to: dispatcher
+    type: data
+    label: true / false
+modules: []

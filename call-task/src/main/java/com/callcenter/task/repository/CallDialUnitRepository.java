@@ -133,10 +133,25 @@ public class CallDialUnitRepository {
                     .orderByAsc("id")
                     .last("LIMIT " + limit);
             List<CallDialUnitEntity> pending = callDialUnitMapper.selectList(query);
-            return pending.stream()
-                    .filter(unit -> markReady(taskId, unit.getId()))
-                    .peek(unit -> unit.setStatus(CallDialUnitStatus.READY.name()))
-                    .toList();
+            List<Long> ids = pending.stream().map(CallDialUnitEntity::getId).toList();
+            if (ids.isEmpty()) {
+                return List.of();
+            }
+            UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
+            update.eq("task_id", taskId)
+                    .in("id", ids)
+                    .eq("status", CallDialUnitStatus.PENDING.name())
+                    .le("next_call_time", now)
+                    .set("status", CallDialUnitStatus.READY.name())
+                    .set("updated_at", now);
+            callDialUnitMapper.update(null, update);
+
+            QueryWrapper<CallDialUnitEntity> readyQuery = new QueryWrapper<>();
+            readyQuery.eq("task_id", taskId)
+                    .in("id", ids)
+                    .eq("status", CallDialUnitStatus.READY.name())
+                    .orderByAsc("id");
+            return callDialUnitMapper.selectList(readyQuery);
         } finally {
             ShardContextHolder.clear();
         }
@@ -155,16 +170,28 @@ public class CallDialUnitRepository {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
             query.eq("task_id", taskId).in("id", ids).orderByAsc("id");
             List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
-            return units.stream()
-                    .filter(unit -> updateDialingFromReady(taskId, unit.getId(), dispatchToken, callTime, inflightExpireAt))
-                    .peek(unit -> {
-                        unit.setStatus(CallDialUnitStatus.DIALING.name());
-                        unit.setDispatchToken(dispatchToken);
-                        unit.setLastCallTime(callTime);
-                        unit.setInflightExpireAt(inflightExpireAt);
-                        unit.setUpdatedAt(callTime);
-                    })
-                    .toList();
+            List<Long> readyIds = units.stream().map(CallDialUnitEntity::getId).toList();
+            if (readyIds.isEmpty()) {
+                return List.of();
+            }
+            UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
+            update.eq("task_id", taskId)
+                    .in("id", readyIds)
+                    .eq("status", CallDialUnitStatus.READY.name())
+                    .set("status", CallDialUnitStatus.DIALING.name())
+                    .set("dispatch_token", dispatchToken)
+                    .set("last_call_time", callTime)
+                    .set("inflight_expire_at", inflightExpireAt)
+                    .set("updated_at", callTime);
+            callDialUnitMapper.update(null, update);
+
+            QueryWrapper<CallDialUnitEntity> dialingQuery = new QueryWrapper<>();
+            dialingQuery.eq("task_id", taskId)
+                    .in("id", readyIds)
+                    .eq("status", CallDialUnitStatus.DIALING.name())
+                    .eq("dispatch_token", dispatchToken)
+                    .orderByAsc("id");
+            return callDialUnitMapper.selectList(dialingQuery);
         } finally {
             ShardContextHolder.clear();
         }
@@ -299,34 +326,6 @@ public class CallDialUnitRepository {
         } finally {
             ShardContextHolder.clear();
         }
-    }
-
-    private boolean markReady(long taskId, long unitId) {
-        UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
-        update.eq("task_id", taskId)
-                .eq("id", unitId)
-                .eq("status", CallDialUnitStatus.PENDING.name())
-                .set("status", CallDialUnitStatus.READY.name());
-        return callDialUnitMapper.update(null, update) > 0;
-    }
-
-    private boolean updateDialingFromReady(
-            long taskId,
-            long unitId,
-            String dispatchToken,
-            LocalDateTime callTime,
-            LocalDateTime inflightExpireAt
-    ) {
-        UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
-        update.eq("task_id", taskId)
-                .eq("id", unitId)
-                .eq("status", CallDialUnitStatus.READY.name())
-                .set("status", CallDialUnitStatus.DIALING.name())
-                .set("dispatch_token", dispatchToken)
-                .set("last_call_time", callTime)
-                .set("inflight_expire_at", inflightExpireAt)
-                .set("updated_at", callTime);
-        return callDialUnitMapper.update(null, update) > 0;
     }
 
     private List<ShardKey> allDialShards() {

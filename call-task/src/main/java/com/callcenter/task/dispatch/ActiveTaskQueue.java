@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -59,13 +60,31 @@ public class ActiveTaskQueue {
         return Optional.of(Long.parseLong(taskId));
     }
 
+    public Optional<ActiveTaskEntry> pollNextTaskWithMeta(int partition) {
+        TypedTuple<String> tuple = stringRedisTemplate.opsForZSet().popMin(activeKey(partition));
+        if (tuple == null || tuple.getValue() == null) {
+            return Optional.empty();
+        }
+        Long taskId = Long.parseLong(tuple.getValue());
+        return loadMeta(taskId).map(meta -> new ActiveTaskEntry(taskId, meta));
+    }
+
     public void reactivate(Long taskId, long fairScore) {
         updateMeta(taskId, fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
         loadMeta(taskId).ifPresent(meta -> activate(meta.partition(), taskId, fairScore));
     }
 
+    public void reactivate(TaskSchedulingMeta meta, long fairScore) {
+        updateMeta(meta.taskId(), fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
+        activate(meta.partition(), meta.taskId(), fairScore);
+    }
+
     public void block(Long taskId, TaskBlockReason reason) {
         loadMeta(taskId).ifPresent(meta -> updateMeta(taskId, meta.fairScore(), TaskSchedulingState.BLOCKED, reason));
+    }
+
+    public void block(TaskSchedulingMeta meta, TaskBlockReason reason) {
+        updateMeta(meta.taskId(), meta.fairScore(), TaskSchedulingState.BLOCKED, reason);
     }
 
     public void deactivate(Long taskId) {
@@ -84,5 +103,8 @@ public class ActiveTaskQueue {
         stringRedisTemplate.opsForHash().put(metaKey(taskId), "fairScore", String.valueOf(fairScore));
         stringRedisTemplate.opsForHash().put(metaKey(taskId), "state", state.name());
         stringRedisTemplate.opsForHash().put(metaKey(taskId), "blockedReason", blockedReason.name());
+    }
+
+    record ActiveTaskEntry(Long taskId, TaskSchedulingMeta meta) {
     }
 }

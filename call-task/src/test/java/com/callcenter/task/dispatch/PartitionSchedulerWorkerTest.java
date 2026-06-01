@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -27,6 +29,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PartitionSchedulerWorkerTest {
+
+    @Test
+    void shouldReportNoWorkWhenPartitionHasNoActiveTask() {
+        Fixture fixture = new Fixture();
+        when(fixture.activeTaskQueue.pollNextTaskWithMeta(7)).thenReturn(Optional.empty());
+
+        assertFalse(fixture.worker().runPartition(7));
+    }
 
     @Test
     void shouldReactivateTaskWithUpdatedFairScoreAfterSuccessfulDispatch() {
@@ -44,10 +54,10 @@ class PartitionSchedulerWorkerTest {
         ))
                 .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
 
-        fixture.worker().runPartition(7);
+        assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.preloadService).preloadRunningTask(fixture.task);
-        verify(fixture.activeTaskQueue).reactivate(1001L, 375L);
+        verify(fixture.activeTaskQueue).reactivate(fixture.entry.meta(), 375L);
         verify(fixture.publisher, times(3)).publish(any(CallDialUnitEntity.class));
     }
 
@@ -57,9 +67,9 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(0);
 
-        fixture.worker().runPartition(7);
+        assertTrue(fixture.worker().runPartition(7));
 
-        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.CONCURRENCY_FULL);
+        verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.CONCURRENCY_FULL);
         verify(fixture.queue, never()).claimReady(anyLong(), anyLong(), anyInt(), anyInt(), any());
         verify(fixture.publisher, never()).publish(any());
     }
@@ -71,10 +81,10 @@ class PartitionSchedulerWorkerTest {
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of());
 
-        fixture.worker().runPartition(7);
+        assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 3);
-        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
+        verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.EMPTY);
         verify(fixture.dialUnitRepository, never()).markDialingFromReady(
                 any(ShardKey.class),
                 anyLong(),
@@ -101,11 +111,11 @@ class PartitionSchedulerWorkerTest {
         ))
                 .thenReturn(List.of(unit(11L)));
 
-        fixture.worker().runPartition(7);
+        assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 1);
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 2);
-        verify(fixture.activeTaskQueue).block(1001L, TaskBlockReason.EMPTY);
+        verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.EMPTY);
         verify(fixture.publisher).publish(any(CallDialUnitEntity.class));
     }
 
@@ -124,7 +134,7 @@ class PartitionSchedulerWorkerTest {
                 any()
         )).thenReturn(List.of(unit(11L)));
 
-        fixture.worker().runPartition(7);
+        assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.queue).offerReady(
                 eq(1001L),
@@ -154,12 +164,13 @@ class PartitionSchedulerWorkerTest {
         private final CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         private final CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
         private final CallTaskEntity task = runningTask();
+        private final ActiveTaskQueue.ActiveTaskEntry entry = new ActiveTaskQueue.ActiveTaskEntry(
+                1001L,
+                new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, 0L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)
+        );
 
         private Fixture() {
-            when(activeTaskQueue.pollNextTask(7)).thenReturn(Optional.of(1001L));
-            when(activeTaskQueue.loadMeta(1001L)).thenReturn(Optional.of(
-                    new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, 0L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)
-            ));
+            when(activeTaskQueue.pollNextTaskWithMeta(7)).thenReturn(Optional.of(entry));
             when(taskRepository.findRequired(9L, 1001L)).thenReturn(task);
             when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
         }

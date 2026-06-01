@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -26,6 +27,26 @@ class ActiveTaskQueueTest {
         assertEquals(Optional.of(1001L), queue.pollNextTask(3));
         assertEquals(Optional.of(1002L), queue.pollNextTask(3));
         assertEquals(Optional.empty(), queue.pollNextTask(3));
+    }
+
+    @Test
+    void shouldPopLowestFairScoreTaskWithMetaAtomically() {
+        StringRedisTemplate redisTemplate = newStubRedisTemplate();
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+
+        queue.upsertMeta(1001L, 9L, 1, 8, 3, 10L);
+        queue.upsertMeta(1002L, 9L, 1, 8, 3, 20L);
+        queue.activate(3, 1002L, 20L);
+        queue.activate(3, 1001L, 10L);
+
+        assertEquals(
+                Optional.of(new ActiveTaskQueue.ActiveTaskEntry(
+                        1001L,
+                        new TaskSchedulingMeta(1001L, 9L, 1, 8, 3, 10L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)
+                )),
+                queue.pollNextTaskWithMeta(3)
+        );
+        assertEquals(Optional.of(1002L), queue.pollNextTask(3));
     }
 
     @Test
@@ -103,6 +124,18 @@ class ActiveTaskQueueTest {
                                 .map(Map.Entry::getKey)
                                 .limit(((Long) args[2]) - ((Long) args[1]) + 1)
                                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                    }
+                    if ("popMin".equals(method.getName()) && key.equals(args[0])) {
+                        Map.Entry<String, Double> entry = scores.entrySet().stream()
+                                .sorted(Map.Entry.<String, Double>comparingByValue()
+                                        .thenComparing(Map.Entry.comparingByKey()))
+                                .findFirst()
+                                .orElse(null);
+                        if (entry == null) {
+                            return null;
+                        }
+                        scores.remove(entry.getKey());
+                        return TypedTuple.of(entry.getKey(), entry.getValue());
                     }
                     if ("remove".equals(method.getName()) && key.equals(args[0])) {
                         long removed = 0L;

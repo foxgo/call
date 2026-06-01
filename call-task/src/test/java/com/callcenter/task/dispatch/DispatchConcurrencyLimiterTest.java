@@ -4,10 +4,11 @@ import com.callcenter.task.config.CallTaskConcurrencyProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,28 +17,43 @@ class DispatchConcurrencyLimiterTest {
     @Test
     void shouldGrantRequestedBatchWhenAllQuotasAllowIt() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
-        @SuppressWarnings("unchecked")
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment("call:concurrency:global")).thenReturn(1L, 2L, 3L);
-        when(valueOperations.increment("call:concurrency:tenant:9")).thenReturn(1L, 2L, 3L);
-        when(valueOperations.increment("call:concurrency:task:1001")).thenReturn(1L, 2L, 3L);
+        when(redisTemplate.execute(
+                org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                org.mockito.ArgumentMatchers.eq(java.util.List.of(
+                        "call:concurrency:global",
+                        "call:concurrency:tenant:9",
+                        "call:concurrency:task:1001"
+                )),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        )).thenReturn(3L);
 
         CallTaskConcurrencyProperties properties = new CallTaskConcurrencyProperties();
         DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(redisTemplate, properties);
 
         assertEquals(3, limiter.tryAcquireBatch(9L, 1001L, 10, 3));
+        verify(redisTemplate, never()).opsForValue();
     }
 
     @Test
     void shouldPartiallyGrantWhenTaskQuotaIsTight() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
-        @SuppressWarnings("unchecked")
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment("call:concurrency:global")).thenReturn(1L, 2L, 3L);
-        when(valueOperations.increment("call:concurrency:tenant:9")).thenReturn(1L, 2L, 3L);
-        when(valueOperations.increment("call:concurrency:task:1001")).thenReturn(4L, 5L, 6L);
+        when(redisTemplate.execute(
+                org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                org.mockito.ArgumentMatchers.eq(java.util.List.of(
+                        "call:concurrency:global",
+                        "call:concurrency:tenant:9",
+                        "call:concurrency:task:1001"
+                )),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        )).thenReturn(2L);
 
         CallTaskConcurrencyProperties properties = new CallTaskConcurrencyProperties();
         DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(redisTemplate, properties);
@@ -57,8 +73,16 @@ class DispatchConcurrencyLimiterTest {
 
         limiter.releaseBatch(9L, 1001L, 2);
 
-        verify(valueOperations, times(2)).decrement("call:concurrency:global");
-        verify(valueOperations, times(2)).decrement("call:concurrency:tenant:9");
-        verify(valueOperations, times(2)).decrement("call:concurrency:task:1001");
+        verify(redisTemplate).execute(
+                org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                org.mockito.ArgumentMatchers.eq(java.util.List.of(
+                        "call:concurrency:global",
+                        "call:concurrency:tenant:9",
+                        "call:concurrency:task:1001"
+                )),
+                org.mockito.ArgumentMatchers.eq("2"),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+        verify(valueOperations, never()).decrement("call:concurrency:global");
     }
 }

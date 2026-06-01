@@ -36,6 +36,9 @@ public class CallTaskDispatchProperties {
     @Min(1)
     private int partitionCount = 128;
 
+    @Min(1)
+    private int maxTasksPerPartitionTick = 8;
+
     public Duration getPollInterval() {
         return pollInterval;
     }
@@ -130,5 +133,13 @@ public class CallTaskDispatchProperties {
 
     public void setPartitionCount(int partitionCount) {
         this.partitionCount = partitionCount;
+    }
+
+    public int getMaxTasksPerPartitionTick() {
+        return maxTasksPerPartitionTick;
+    }
+
+    public void setMaxTasksPerPartitionTick(int maxTasksPerPartitionTick) {
+        this.maxTasksPerPartitionTick = maxTasksPerPartitionTick;
     }
 }

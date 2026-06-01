@@ -57,43 +57,41 @@ public class PartitionSchedulerWorker {
         this.metrics = metrics;
     }
 
-    public void runPartition(int partition) {
-        Optional<Long> taskId = activeTaskQueue.pollNextTask(partition);
-        if (taskId.isEmpty()) {
-            return;
+    public boolean runPartition(int partition) {
+        Optional<ActiveTaskQueue.ActiveTaskEntry> activeTask = activeTaskQueue.pollNextTaskWithMeta(partition);
+        if (activeTask.isEmpty()) {
+            return false;
         }
 
-        Optional<TaskSchedulingMeta> meta = activeTaskQueue.loadMeta(taskId.get());
-        if (meta.isEmpty()) {
-            return;
-        }
-
-        CallTaskEntity task = callTaskRepository.findRequired(meta.get().tenantId(), taskId.get());
+        TaskSchedulingMeta meta = activeTask.get().meta();
+        Long taskId = activeTask.get().taskId();
+        CallTaskEntity task = callTaskRepository.findRequired(meta.tenantId(), taskId);
         if (!CallTaskStatus.RUNNING.name().equals(task.getStatus())) {
-            activeTaskQueue.block(task.getId(), TaskBlockReason.PAUSED);
-            return;
+            activeTaskQueue.block(meta, TaskBlockReason.PAUSED);
+            return true;
         }
         dialUnitPreloadService.preloadRunningTask(task);
 
         int requested = Math.min(properties.getDispatchBatchSize(), task.getMaxConcurrency());
         int granted = concurrencyLimiter.tryAcquireBatch(task.getTenantId(), task.getId(), task.getMaxConcurrency(), requested);
         if (granted <= 0) {
-            activeTaskQueue.block(task.getId(), TaskBlockReason.CONCURRENCY_FULL);
-            return;
+            activeTaskQueue.block(meta, TaskBlockReason.CONCURRENCY_FULL);
+            return true;
         }
 
         ShardKey shardKey = shardingRouter.routeDialUnit(task.getTenantId(), task.getId());
+        Instant processingExpireAt = Instant.now().plus(properties.getProcessingTimeout());
         List<Long> ids = redisDialUnitQueue.claimReady(
                 task.getTenantId(),
                 task.getId(),
                 shardKey.tableIndex(),
                 granted,
-                Instant.now().plus(properties.getProcessingTimeout())
+                processingExpireAt
         );
         if (ids.isEmpty()) {
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), granted);
-            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
-            return;
+            activeTaskQueue.block(meta, TaskBlockReason.EMPTY);
+            return true;
         }
 
         if (ids.size() < granted) {
@@ -101,13 +99,14 @@ public class PartitionSchedulerWorker {
         }
 
         String dispatchToken = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
         List<CallDialUnitEntity> units = callDialUnitRepository.markDialingFromReady(
                 shardKey,
                 task.getId(),
                 ids,
                 dispatchToken,
-                LocalDateTime.now(),
-                LocalDateTime.now().plus(properties.getProcessingTimeout())
+                now,
+                now.plus(properties.getProcessingTimeout())
         );
         List<CallDialUnitEntity> missedUnits = toMissedReadyUnits(ids, units);
         if (!missedUnits.isEmpty()) {
@@ -124,18 +123,19 @@ public class PartitionSchedulerWorker {
         }
 
         if (units.isEmpty()) {
-            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
-            return;
+            activeTaskQueue.block(meta, TaskBlockReason.EMPTY);
+            return true;
         }
 
-        long nextFairScore = meta.get().fairScore() + ((long) units.size() * 1000 / meta.get().weight());
+        long nextFairScore = meta.fairScore() + ((long) units.size() * 1000 / meta.weight());
         if (units.size() < ids.size()) {
-            activeTaskQueue.block(task.getId(), TaskBlockReason.EMPTY);
+            activeTaskQueue.block(meta, TaskBlockReason.EMPTY);
         } else if (granted < requested) {
-            activeTaskQueue.block(task.getId(), TaskBlockReason.CONCURRENCY_FULL);
+            activeTaskQueue.block(meta, TaskBlockReason.CONCURRENCY_FULL);
         } else {
-            activeTaskQueue.reactivate(task.getId(), nextFairScore);
+            activeTaskQueue.reactivate(meta, nextFairScore);
         }
+        return true;
     }
 
     private List<CallDialUnitEntity> toMissedReadyUnits(List<Long> claimedIds, List<CallDialUnitEntity> transitionedUnits) {

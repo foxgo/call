@@ -2,6 +2,7 @@ package com.callcenter.task.dispatch;
 
 import java.util.Optional;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
@@ -31,6 +32,7 @@ public class ActiveTaskQueue {
                 "state", TaskSchedulingState.ACTIVE.name(),
                 "blockedReason", TaskBlockReason.NONE.name()
         ));
+        stringRedisTemplate.opsForSet().add(knownTasksKey(), String.valueOf(taskId));
     }
 
     public Optional<TaskSchedulingMeta> loadMeta(Long taskId) {
@@ -91,12 +93,28 @@ public class ActiveTaskQueue {
         loadMeta(taskId).ifPresent(meta -> updateMeta(taskId, meta.fairScore(), TaskSchedulingState.INACTIVE, meta.blockedReason()));
     }
 
+    public List<TaskSchedulingMeta> listKnownMetas() {
+        Set<String> taskIds = stringRedisTemplate.opsForSet().members(knownTasksKey());
+        if (taskIds == null || taskIds.isEmpty()) {
+            return List.of();
+        }
+        return taskIds.stream()
+                .map(Long::parseLong)
+                .map(this::loadMeta)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
     private String activeKey(int partition) {
         return "call:scheduler:partition:%d:active".formatted(partition);
     }
 
     private String metaKey(Long taskId) {
         return "call:scheduler:task:%d:meta".formatted(taskId);
+    }
+
+    private String knownTasksKey() {
+        return "call:scheduler:tasks:known";
     }
 
     private void updateMeta(Long taskId, long fairScore, TaskSchedulingState state, TaskBlockReason blockedReason) {

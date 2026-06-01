@@ -5,9 +5,12 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
@@ -106,6 +109,7 @@ class ActiveTaskQueueTest {
     private static StringRedisTemplate newStubRedisTemplate() {
         Map<String, Double> scores = new TreeMap<>();
         Map<String, Map<Object, Object>> hashes = new HashMap<>();
+        Set<String> knownTasks = new HashSet<>();
 
         @SuppressWarnings("unchecked")
         ZSetOperations<String, String> zSetOperations = (ZSetOperations<String, String>) Proxy.newProxyInstance(
@@ -171,6 +175,27 @@ class ActiveTaskQueueTest {
                     throw new UnsupportedOperationException(method.getName());
                 }
         );
+        @SuppressWarnings("unchecked")
+        SetOperations<String, String> setOperations = (SetOperations<String, String>) Proxy.newProxyInstance(
+                SetOperations.class.getClassLoader(),
+                new Class<?>[]{SetOperations.class},
+                (proxy, method, args) -> {
+                    if ("add".equals(method.getName()) && "call:scheduler:tasks:known".equals(args[0])) {
+                        long added = 0L;
+                        Object[] values = (Object[]) args[1];
+                        for (Object value : values) {
+                            if (knownTasks.add(String.valueOf(value))) {
+                                added++;
+                            }
+                        }
+                        return added;
+                    }
+                    if ("members".equals(method.getName()) && "call:scheduler:tasks:known".equals(args[0])) {
+                        return new HashSet<>(knownTasks);
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                }
+        );
 
         return new StringRedisTemplate() {
             @Override
@@ -182,6 +207,12 @@ class ActiveTaskQueueTest {
             @SuppressWarnings("unchecked")
             public HashOperations<String, Object, Object> opsForHash() {
                 return hashOperations;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public SetOperations<String, String> opsForSet() {
+                return setOperations;
             }
         };
     }

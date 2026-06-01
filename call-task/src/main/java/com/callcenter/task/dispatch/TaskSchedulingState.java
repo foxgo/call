@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-enum TaskSchedulingState {
+public enum TaskSchedulingState {
     ACTIVE,
     BLOCKED,
     INACTIVE

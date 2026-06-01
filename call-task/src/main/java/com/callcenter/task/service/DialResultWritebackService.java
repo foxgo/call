@@ -55,7 +55,7 @@ public class DialResultWritebackService {
             );
             if (updated) {
                 concurrencyLimiter.release(tenantId, request.getTaskId());
-                metrics.incrementWritebackSuccess();
+                metrics.incrementWritebackSuccess(request.getTaskId());
                 taskActivationService.activate(tenantId, request.getTaskId());
             }
             return;
@@ -74,7 +74,7 @@ public class DialResultWritebackService {
             return;
         }
         concurrencyLimiter.release(tenantId, request.getTaskId());
-        metrics.incrementWritebackFailure();
+        metrics.incrementWritebackFailure(request.getTaskId());
         taskActivationService.activate(tenantId, request.getTaskId());
     }
 }

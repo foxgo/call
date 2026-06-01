@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-record TaskSchedulingMeta(
+public record TaskSchedulingMeta(
         Long taskId,
         Long tenantId,
         int priority,

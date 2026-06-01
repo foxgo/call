@@ -48,6 +48,19 @@ public class CallDialUnitRepository {
         }
     }
 
+    public long countRemainingDialUnits(ShardKey shardKey, long taskId) {
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+            query.eq("task_id", taskId)
+                    .in("status", CallDialUnitStatus.PENDING.name(), CallDialUnitStatus.READY.name());
+            Long count = callDialUnitMapper.selectCount(query);
+            return count == null ? 0L : count;
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
     public List<DuePendingTask> findDuePendingTasks(LocalDateTime now, int limit) {
         if (limit <= 0) {
             return List.of();

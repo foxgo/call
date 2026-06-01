@@ -31,6 +31,17 @@ management:
 
 call:
   task:
+    capacity:
+      control-interval: ${CALL_TASK_CAPACITY_CONTROL_INTERVAL:PT10S}
+      metrics-interval: ${CALL_TASK_CAPACITY_METRICS_INTERVAL:PT5S}
+      cooldown: ${CALL_TASK_CAPACITY_COOLDOWN:PT30S}
+      deadband-ratio: ${CALL_TASK_CAPACITY_DEADBAND_RATIO:0.05}
+      max-adjust-ratio: ${CALL_TASK_CAPACITY_MAX_ADJUST_RATIO:0.10}
+      pool-key: ${CALL_TASK_CAPACITY_POOL_KEY:ai-default}
+      pool-hard-max: ${CALL_TASK_CAPACITY_POOL_HARD_MAX:1000}
+      task-min-target: ${CALL_TASK_CAPACITY_TASK_MIN_TARGET:1}
+      task-base-share: ${CALL_TASK_CAPACITY_TASK_BASE_SHARE:1}
+      ewma-alpha: ${CALL_TASK_CAPACITY_EWMA_ALPHA:0.25}
     dispatch:
       poll-interval: ${CALL_TASK_DISPATCH_POLL_INTERVAL:PT1S}
       retry-scan-interval: ${CALL_TASK_RETRY_SCAN_INTERVAL:PT5S}

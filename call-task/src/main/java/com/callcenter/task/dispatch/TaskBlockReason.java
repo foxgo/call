@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-enum TaskBlockReason {
+public enum TaskBlockReason {
     NONE,
     CONCURRENCY_FULL,
     EMPTY,

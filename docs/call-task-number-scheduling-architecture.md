@@ -1,11 +1,14 @@
 # Call Task 号码调度总体架构
 
-**文档日期：** 2026-05-28  
+**文档日期：** 2026-06-01  
 **适用范围：** `call-task` 模块当前已落地的号码调度链路  
 **目标读者：** 架构设计、后端开发、运维排障
 
 > 2026-05-28 更新：
 > 已完成活跃任务队列真实消费、`fairScore` 重排、主派发链路并发占用/回滚、运行中任务导入后自动激活。
+>
+> 2026-06-01 更新：
+> 已接入单 AI 能力池容量控制平面，支持池级目标并发、任务级动态目标并发、控制冷却/死区/步长限制，以及容量相关指标埋点。
 
 ## 1. 文档目标
 
@@ -38,15 +41,21 @@
 - `RetryQueueScheduler`
 - `ProcessingTimeoutRecoveryJob`
 - `DispatchConcurrencyLimiter`
+- `SinglePoolCapacityProvider`
+- `DispatchMetricsCollector`
+- `CapacityControlEngine`
+- `TaskTargetAllocator`
+- `TaskTargetConcurrencyRegistry`
+- `CapacityControlJob`
 
 ### 2.2 总体结论
 
 当前号码调度架构采用 `MySQL + Redis + RocketMQ` 的分层方案：
 
 - `MySQL` 保存任务与号码真实状态，是最终真相
-- `Redis` 保存活跃任务、热号码窗口、重试到期索引、处理超时索引，是高频调度面
+- `Redis` 保存活跃任务、热号码窗口、并发计数、容量目标和任务控制态，是高频调度面
 - `RocketMQ` 承担实际拨号投递
-- `call-task` 内部通过“分区租约 + 活跃任务队列 + 事件回写再激活”组织整个闭环
+- `call-task` 内部通过“分区租约 + 活跃任务队列 + 容量控制平面 + 事件回写再激活”组织整个闭环
 
 这个设计方向已经在代码里形成闭环，当前已具备：
 
@@ -185,6 +194,8 @@
   - 分区活跃任务队列，ZSET
 - `call:scheduler:task:{taskId}:meta`
   - 任务调度元数据，HASH
+- `call:scheduler:tasks:known`
+  - 已知任务集合，SET，供容量控制平面遍历控制态
 - `queue:ready:{taskId}:{shard}`
   - 待派发号码队列，ZSET
 - `queue:processing:{taskId}:{shard}`
@@ -195,6 +206,20 @@
   - 分区级 retry 到期索引
 - `queue:processing-timeout:{partition}`
   - 分区级 processing 超时索引
+- `call:concurrency:global`
+  - 全局在途并发计数
+- `call:concurrency:tenant:{tenantId}`
+  - 租户在途并发计数
+- `call:concurrency:task:{taskId}`
+  - 任务在途并发计数
+- `call:capacity:pool:{poolKey}:target`
+  - 单 AI 能力池目标并发
+- `call:capacity:pool:{poolKey}:busy`
+  - 单 AI 能力池当前在途计数
+- `call:capacity:pool:{poolKey}:health`
+  - 单 AI 能力池健康分
+- `call:capacity:task:{taskId}:control-meta`
+  - 任务动态目标并发与控制冷却元数据
 
 ## 6. 总体架构图
 
@@ -210,6 +235,7 @@ flowchart LR
         B6["PartitionSchedulerWorker"]
         B7["RetryQueueScheduler / ProcessingTimeoutRecoveryJob"]
         B8["DialResultWritebackService"]
+        B9["CapacityControlJob / DispatchMetricsCollector / CapacityControlEngine"]
     end
 
     B --> B1
@@ -224,6 +250,8 @@ flowchart LR
     B7 --> C
     B8 --> C
     B8 --> D
+    B9 --> D
+    B9 --> C
 
     F["Dialer / 外部拨号系统"] -->|消费派发消息| E
     F -->|拨号结果回调| A
@@ -243,6 +271,17 @@ flowchart LR
 6. `RedisDialUnitQueue` 原子把号码从 `ready` claim 到 `processing`，并写入超时索引。
 7. `CallDialUnitRepository` 把号码真实状态从 `QUEUED` 更新成 `DIALING`，写入 `dispatchToken` 和 `inflightExpireAt`。
 8. `DialDispatchPublisher` 把拨号消息发到 RocketMQ，进入外部拨号链路。
+
+在 2026-06-01 之后，这条执行链路前面还增加了一层容量控制平面：
+
+1. `SinglePoolCapacityProvider` 暴露单 AI 能力池总量、已用量和健康分。
+2. `DispatchMetricsCollector` 聚合任务级接通率、occupancy、remainingCalls 和 activeCalls。
+3. `CapacityControlEngine` 根据 EWMA 接通率、occupancy、线路健康和池负载，计算任务期望目标并发。
+4. `TaskTargetAllocator` 在单池总额度内，为活跃任务分配最终 `taskTargetConcurrency`。
+5. `TaskTargetConcurrencyRegistry` 将池目标和任务目标写入 Redis。
+6. `DispatchConcurrencyLimiter` 在主派发链路申请额度时，同时检查全局、池、租户、任务静态上限和任务动态目标。
+
+因此当前系统已经从“静态并发调度器”演进为“静态执行面 + 动态容量控制平面”的组合架构。
 
 ### 7.2 主调度流程图
 

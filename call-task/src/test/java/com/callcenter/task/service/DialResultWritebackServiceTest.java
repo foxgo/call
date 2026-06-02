@@ -2,7 +2,9 @@ package com.callcenter.task.service;
 
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.enums.CallDialUnitStatus;
+import com.callcenter.task.caller.CallerIdHealthService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;
 import com.callcenter.task.dispatch.RedisDialUnitQueue;
@@ -37,8 +39,10 @@ class DialResultWritebackServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
+        CallerIdHealthService healthService = mock(CallerIdHealthService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markSuccess(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-1")).thenReturn(true);
+        when(repository.findDialingByDispatchToken(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-1")).thenReturn(dialingUnit());
+        when(repository.markSuccess(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-1", 3, 45, "NORMAL")).thenReturn(true);
 
         DialResultWritebackService service = new DialResultWritebackService(
                 repository,
@@ -47,7 +51,8 @@ class DialResultWritebackServiceTest {
                 new CallTaskDispatchProperties(),
                 shardingRouter,
                 metrics,
-                activationService
+                activationService,
+                healthService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -55,12 +60,16 @@ class DialResultWritebackServiceTest {
         request.setDialUnitId(11L);
         request.setDispatchToken("token-1");
         request.setResultStatus("SUCCESS");
+        request.setRingDurationSeconds(3);
+        request.setTalkDurationSeconds(45);
+        request.setHangupCode("NORMAL");
 
         service.handleCallback(9L, request);
 
         verifyNoInteractions(queue);
         verify(limiter).release(9L, 1001L);
         verify(activationService).activate(9L, 1001L);
+        verify(healthService).recordFeedback(any());
     }
 
     @Test
@@ -71,8 +80,8 @@ class DialResultWritebackServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
+        CallerIdHealthService healthService = mock(CallerIdHealthService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markSuccess(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-old")).thenReturn(false);
 
         DialResultWritebackService service = new DialResultWritebackService(
                 repository,
@@ -81,7 +90,8 @@ class DialResultWritebackServiceTest {
                 new CallTaskDispatchProperties(),
                 shardingRouter,
                 metrics,
-                activationService
+                activationService,
+                healthService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -105,8 +115,10 @@ class DialResultWritebackServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
+        CallerIdHealthService healthService = mock(CallerIdHealthService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markFailedForRetry(any(), eq(1001L), eq(11L), eq("token-1"), any(), any(), any()))
+        when(repository.findDialingByDispatchToken(new ShardKey(9L, 0, 1, "dial"), 1001L, 11L, "token-1")).thenReturn(dialingUnit());
+        when(repository.markFailedForRetry(any(), eq(1001L), eq(11L), eq("token-1"), any(), any(), any(), eq(4), eq(0), eq("USER_BUSY")))
                 .thenReturn(RetryDecision.retryAt(Instant.now().plusSeconds(30)));
 
         DialResultWritebackService service = new DialResultWritebackService(
@@ -116,7 +128,8 @@ class DialResultWritebackServiceTest {
                 new CallTaskDispatchProperties(),
                 shardingRouter,
                 metrics,
-                activationService
+                activationService,
+                healthService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -124,12 +137,16 @@ class DialResultWritebackServiceTest {
         request.setDialUnitId(11L);
         request.setDispatchToken("token-1");
         request.setResultStatus("FAILED");
+        request.setRingDurationSeconds(4);
+        request.setTalkDurationSeconds(0);
+        request.setHangupCode("USER_BUSY");
 
         service.handleCallback(9L, request);
 
         verifyNoInteractions(queue);
         verify(limiter).release(9L, 1001L);
         verify(activationService).activate(9L, 1001L);
+        verify(healthService).recordFeedback(any());
     }
 
     @Test
@@ -140,9 +157,8 @@ class DialResultWritebackServiceTest {
         ShardingRouter shardingRouter = mock(ShardingRouter.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         TaskActivationService activationService = mock(TaskActivationService.class);
+        CallerIdHealthService healthService = mock(CallerIdHealthService.class);
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(repository.markFailedForRetry(any(), eq(1001L), eq(11L), eq("token-old"), any(), any(), any()))
-                .thenReturn(RetryDecision.stale());
 
         DialResultWritebackService service = new DialResultWritebackService(
                 repository,
@@ -151,7 +167,8 @@ class DialResultWritebackServiceTest {
                 new CallTaskDispatchProperties(),
                 shardingRouter,
                 metrics,
-                activationService
+                activationService,
+                healthService
         );
 
         DialResultCallbackRequest request = new DialResultCallbackRequest();
@@ -165,5 +182,16 @@ class DialResultWritebackServiceTest {
         verifyNoInteractions(queue);
         verify(limiter, never()).release(9L, 1001L);
         verify(activationService, never()).activate(9L, 1001L);
+    }
+
+    private static CallDialUnitEntity dialingUnit() {
+        CallDialUnitEntity entity = new CallDialUnitEntity();
+        entity.setId(11L);
+        entity.setTaskId(1001L);
+        entity.setTenantId(9L);
+        entity.setSelectedCallerId(3001L);
+        entity.setAttemptStage("FIRST_ATTEMPT");
+        entity.setRetryCount(0);
+        return entity;
     }
 }

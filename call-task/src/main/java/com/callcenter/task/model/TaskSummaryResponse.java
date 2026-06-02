@@ -15,6 +15,15 @@ public record TaskSummaryResponse(
         Integer failedCount,
         Integer priority,
         Integer maxConcurrency,
+        String callerIdMode,
+        String optimizationGoal,
+        Double answerWeight,
+        Double conversionWeight,
+        Double costWeight,
+        Double riskWeight,
+        Boolean localPresenceEnabled,
+        Integer sameCallerCooldownSeconds,
+        Integer maxCallerExposurePerHour,
         LocalDateTime startTime,
         LocalDateTime endTime
 ) {
@@ -32,6 +41,15 @@ public record TaskSummaryResponse(
                 entity.getFailedCount(),
                 entity.getPriority(),
                 entity.getMaxConcurrency(),
+                entity.getCallerIdMode(),
+                entity.getOptimizationGoal(),
+                entity.getAnswerWeight(),
+                entity.getConversionWeight(),
+                entity.getCostWeight(),
+                entity.getRiskWeight(),
+                entity.getLocalPresenceEnabled(),
+                entity.getSameCallerCooldownSeconds(),
+                entity.getMaxCallerExposurePerHour(),
                 entity.getStartTime(),
                 entity.getEndTime()
         );

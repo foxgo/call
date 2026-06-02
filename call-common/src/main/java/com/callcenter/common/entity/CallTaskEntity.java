@@ -19,6 +19,15 @@ public class CallTaskEntity {
     private Integer failedCount;
     private Integer priority;
     private Integer maxConcurrency;
+    private String callerIdMode;
+    private String optimizationGoal;
+    private Double answerWeight;
+    private Double conversionWeight;
+    private Double costWeight;
+    private Double riskWeight;
+    private Boolean localPresenceEnabled;
+    private Integer sameCallerCooldownSeconds;
+    private Integer maxCallerExposurePerHour;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Integer version;
@@ -111,6 +120,78 @@ public class CallTaskEntity {
 
     public void setMaxConcurrency(Integer maxConcurrency) {
         this.maxConcurrency = maxConcurrency;
+    }
+
+    public String getCallerIdMode() {
+        return callerIdMode;
+    }
+
+    public void setCallerIdMode(String callerIdMode) {
+        this.callerIdMode = callerIdMode;
+    }
+
+    public String getOptimizationGoal() {
+        return optimizationGoal;
+    }
+
+    public void setOptimizationGoal(String optimizationGoal) {
+        this.optimizationGoal = optimizationGoal;
+    }
+
+    public Double getAnswerWeight() {
+        return answerWeight;
+    }
+
+    public void setAnswerWeight(Double answerWeight) {
+        this.answerWeight = answerWeight;
+    }
+
+    public Double getConversionWeight() {
+        return conversionWeight;
+    }
+
+    public void setConversionWeight(Double conversionWeight) {
+        this.conversionWeight = conversionWeight;
+    }
+
+    public Double getCostWeight() {
+        return costWeight;
+    }
+
+    public void setCostWeight(Double costWeight) {
+        this.costWeight = costWeight;
+    }
+
+    public Double getRiskWeight() {
+        return riskWeight;
+    }
+
+    public void setRiskWeight(Double riskWeight) {
+        this.riskWeight = riskWeight;
+    }
+
+    public Boolean getLocalPresenceEnabled() {
+        return localPresenceEnabled;
+    }
+
+    public void setLocalPresenceEnabled(Boolean localPresenceEnabled) {
+        this.localPresenceEnabled = localPresenceEnabled;
+    }
+
+    public Integer getSameCallerCooldownSeconds() {
+        return sameCallerCooldownSeconds;
+    }
+
+    public void setSameCallerCooldownSeconds(Integer sameCallerCooldownSeconds) {
+        this.sameCallerCooldownSeconds = sameCallerCooldownSeconds;
+    }
+
+    public Integer getMaxCallerExposurePerHour() {
+        return maxCallerExposurePerHour;
+    }
+
+    public void setMaxCallerExposurePerHour(Integer maxCallerExposurePerHour) {
+        this.maxCallerExposurePerHour = maxCallerExposurePerHour;
     }
 
     public LocalDateTime getStartTime() {

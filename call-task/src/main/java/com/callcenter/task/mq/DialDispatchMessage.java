@@ -5,6 +5,9 @@ public record DialDispatchMessage(
         Long tenantId,
         Long taskId,
         String phone,
-        String dispatchToken
+        String dispatchToken,
+        String callerId,
+        String attemptStage,
+        Double selectionScore
 ) {
 }

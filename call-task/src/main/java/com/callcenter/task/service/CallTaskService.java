@@ -44,6 +44,15 @@ public class CallTaskService {
         entity.setFailedCount(0);
         entity.setPriority(request.getPriority());
         entity.setMaxConcurrency(request.getMaxConcurrency());
+        entity.setCallerIdMode(defaultString(request.getCallerIdMode(), "HYBRID"));
+        entity.setOptimizationGoal(defaultString(request.getOptimizationGoal(), "ANSWER"));
+        entity.setAnswerWeight(defaultDouble(request.getAnswerWeight(), 1D));
+        entity.setConversionWeight(defaultDouble(request.getConversionWeight(), 0D));
+        entity.setCostWeight(defaultDouble(request.getCostWeight(), 0D));
+        entity.setRiskWeight(defaultDouble(request.getRiskWeight(), 0D));
+        entity.setLocalPresenceEnabled(request.getLocalPresenceEnabled() != null && request.getLocalPresenceEnabled());
+        entity.setSameCallerCooldownSeconds(defaultInteger(request.getSameCallerCooldownSeconds(), 3600));
+        entity.setMaxCallerExposurePerHour(defaultInteger(request.getMaxCallerExposurePerHour(), 200));
         entity.setStartTime(request.getStartTime());
         entity.setVersion(0);
         entity.setCreatedAt(now);
@@ -98,5 +107,17 @@ public class CallTaskService {
 
     private CallTaskEntity loadTask(Long tenantId, Long taskId) {
         return callTaskRepository.findRequired(tenantId, taskId);
+    }
+
+    private static String defaultString(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static Double defaultDouble(Double value, Double fallback) {
+        return value == null ? fallback : value;
+    }
+
+    private static Integer defaultInteger(Integer value, Integer fallback) {
+        return value == null ? fallback : value;
     }
 }

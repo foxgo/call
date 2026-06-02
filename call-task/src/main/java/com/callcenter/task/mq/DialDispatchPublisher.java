@@ -22,7 +22,10 @@ public class DialDispatchPublisher {
                 entity.getTenantId(),
                 entity.getTaskId(),
                 entity.getPhone(),
-                entity.getDispatchToken()
+                entity.getDispatchToken(),
+                entity.getSelectedCallerNumber(),
+                entity.getAttemptStage(),
+                entity.getCallerIdSelectionScore()
         );
         rocketMQTemplate.syncSend(properties.getTopics().getDispatch(), message);
     }

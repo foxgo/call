@@ -4,6 +4,13 @@ import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.caller.AttemptStage;
+import com.callcenter.task.caller.CallerIdCandidate;
+import com.callcenter.task.caller.CallerIdCandidateService;
+import com.callcenter.task.caller.CallerIdSelection;
+import com.callcenter.task.caller.CallerIdSelector;
+import com.callcenter.task.caller.TaskCallerIdPolicy;
+import com.callcenter.task.caller.TaskCallerIdPolicyService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.mq.DialDispatchPublisher;
@@ -44,11 +51,16 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
-        when(fixture.dialUnitRepository.markDialingFromReady(
+        when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
+                .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
+        when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
+                .thenReturn(List.of(candidate(3001L, "02166668888")));
+        when(fixture.selector.select(eq(9L), any(), any(), any()))
+                .thenReturn(Optional.of(selection(3001L, "02166668888")));
+        when(fixture.dialUnitRepository.markDialingSelectionsFromReady(
                 any(),
                 eq(1001L),
-                eq(List.of(11L, 12L, 13L)),
-                any(),
+                anyList(),
                 any(),
                 any()
         ))
@@ -85,11 +97,10 @@ class PartitionSchedulerWorkerTest {
 
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 3);
         verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.EMPTY);
-        verify(fixture.dialUnitRepository, never()).markDialingFromReady(
+        verify(fixture.dialUnitRepository, never()).markDialingSelectionsFromReady(
                 any(ShardKey.class),
                 anyLong(),
                 anyList(),
-                anyString(),
                 any(),
                 any()
         );
@@ -101,11 +112,16 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(4);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 4)).thenReturn(4);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(4), any())).thenReturn(List.of(11L, 12L, 13L));
-        when(fixture.dialUnitRepository.markDialingFromReady(
+        when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
+                .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
+        when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
+                .thenReturn(List.of(candidate(3001L, "02166668888")));
+        when(fixture.selector.select(eq(9L), any(), any(), any()))
+                .thenReturn(Optional.of(selection(3001L, "02166668888")));
+        when(fixture.dialUnitRepository.markDialingSelectionsFromReady(
                 any(),
                 eq(1001L),
-                eq(List.of(11L, 12L, 13L)),
-                any(),
+                anyList(),
                 any(),
                 any()
         ))
@@ -125,11 +141,16 @@ class PartitionSchedulerWorkerTest {
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
         when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
-        when(fixture.dialUnitRepository.markDialingFromReady(
+        when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
+                .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
+        when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
+                .thenReturn(List.of(candidate(3001L, "02166668888")));
+        when(fixture.selector.select(eq(9L), any(), any(), any()))
+                .thenReturn(Optional.of(selection(3001L, "02166668888")));
+        when(fixture.dialUnitRepository.markDialingSelectionsFromReady(
                 any(),
                 eq(1001L),
-                eq(List.of(11L, 12L, 13L)),
-                any(),
+                anyList(),
                 any(),
                 any()
         )).thenReturn(List.of(unit(11L)));
@@ -143,6 +164,27 @@ class PartitionSchedulerWorkerTest {
         );
     }
 
+    @Test
+    void shouldReofferReadyUnitsWhenNoCallerCandidateCanBeSelected() {
+        Fixture fixture = new Fixture();
+        fixture.properties.setDispatchBatchSize(2);
+        when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 2)).thenReturn(2);
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(2), any())).thenReturn(List.of(11L, 12L));
+        when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L))))
+                .thenReturn(List.of(unit(11L), unit(12L)));
+        when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any())).thenReturn(List.of());
+        when(fixture.selector.select(eq(9L), any(), any(), any())).thenReturn(Optional.empty());
+
+        assertTrue(fixture.worker().runPartition(7));
+
+        verify(fixture.queue).offerReady(
+                eq(1001L),
+                eq(1),
+                argThat(units -> units.stream().map(CallDialUnitEntity::getId).toList().equals(List.of(11L, 12L)))
+        );
+        verify(fixture.publisher, never()).publish(any());
+    }
+
     private static CallDialUnitEntity unit(long id) {
         CallDialUnitEntity unit = new CallDialUnitEntity();
         unit.setId(id);
@@ -150,6 +192,14 @@ class PartitionSchedulerWorkerTest {
         unit.setTenantId(9L);
         unit.setPhone("1380013800" + id);
         return unit;
+    }
+
+    private static CallerIdCandidate candidate(long callerIdId, String callerId) {
+        return new CallerIdCandidate(callerIdId, callerId, "SHARED", 0D, 1D, 0);
+    }
+
+    private static CallerIdSelection selection(long callerIdId, String callerId) {
+        return new CallerIdSelection(callerIdId, callerId, AttemptStage.FIRST_ATTEMPT, 98D, "answerRate=0.80");
     }
 
     private static final class Fixture {
@@ -160,6 +210,9 @@ class PartitionSchedulerWorkerTest {
         private final CallDialUnitRepository dialUnitRepository = mock(CallDialUnitRepository.class);
         private final DispatchConcurrencyLimiter concurrencyLimiter = mock(DispatchConcurrencyLimiter.class);
         private final DialDispatchPublisher publisher = mock(DialDispatchPublisher.class);
+        private final TaskCallerIdPolicyService policyService = mock(TaskCallerIdPolicyService.class);
+        private final CallerIdCandidateService candidateService = mock(CallerIdCandidateService.class);
+        private final CallerIdSelector selector = mock(CallerIdSelector.class);
         private final ShardingRouter shardingRouter = mock(ShardingRouter.class);
         private final CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         private final CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
@@ -173,6 +226,7 @@ class PartitionSchedulerWorkerTest {
             when(activeTaskQueue.pollNextTaskWithMeta(7)).thenReturn(Optional.of(entry));
             when(taskRepository.findRequired(9L, 1001L)).thenReturn(task);
             when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
+            when(policyService.toPolicy(task)).thenReturn(new TaskCallerIdPolicy("HYBRID", "ANSWER", 1D, 0D, 0D, 0D, false, 3600, 200));
         }
 
         private PartitionSchedulerWorker worker() {
@@ -184,6 +238,9 @@ class PartitionSchedulerWorkerTest {
                     dialUnitRepository,
                     concurrencyLimiter,
                     publisher,
+                    policyService,
+                    candidateService,
+                    selector,
                     properties,
                     shardingRouter,
                     metrics

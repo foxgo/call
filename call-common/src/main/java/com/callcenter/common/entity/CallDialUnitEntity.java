@@ -1,6 +1,7 @@
 package com.callcenter.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
@@ -20,6 +21,15 @@ public class CallDialUnitEntity {
     private LocalDateTime lastCallTime;
     private LocalDateTime nextCallTime;
     private String dispatchToken;
+    private Long selectedCallerId;
+    private Double callerIdSelectionScore;
+    private String callerIdSelectionReason;
+    private String attemptStage;
+    private Integer ringDurationSeconds;
+    private Integer talkDurationSeconds;
+    private String hangupCode;
+    @TableField(exist = false)
+    private String selectedCallerNumber;
     private LocalDateTime inflightExpireAt;
     private String bizIdempotencyKey;
     private String failureCode;
@@ -121,6 +131,70 @@ public class CallDialUnitEntity {
 
     public void setDispatchToken(String dispatchToken) {
         this.dispatchToken = dispatchToken;
+    }
+
+    public Long getSelectedCallerId() {
+        return selectedCallerId;
+    }
+
+    public void setSelectedCallerId(Long selectedCallerId) {
+        this.selectedCallerId = selectedCallerId;
+    }
+
+    public Double getCallerIdSelectionScore() {
+        return callerIdSelectionScore;
+    }
+
+    public void setCallerIdSelectionScore(Double callerIdSelectionScore) {
+        this.callerIdSelectionScore = callerIdSelectionScore;
+    }
+
+    public String getCallerIdSelectionReason() {
+        return callerIdSelectionReason;
+    }
+
+    public void setCallerIdSelectionReason(String callerIdSelectionReason) {
+        this.callerIdSelectionReason = callerIdSelectionReason;
+    }
+
+    public String getAttemptStage() {
+        return attemptStage;
+    }
+
+    public void setAttemptStage(String attemptStage) {
+        this.attemptStage = attemptStage;
+    }
+
+    public Integer getRingDurationSeconds() {
+        return ringDurationSeconds;
+    }
+
+    public void setRingDurationSeconds(Integer ringDurationSeconds) {
+        this.ringDurationSeconds = ringDurationSeconds;
+    }
+
+    public Integer getTalkDurationSeconds() {
+        return talkDurationSeconds;
+    }
+
+    public void setTalkDurationSeconds(Integer talkDurationSeconds) {
+        this.talkDurationSeconds = talkDurationSeconds;
+    }
+
+    public String getHangupCode() {
+        return hangupCode;
+    }
+
+    public void setHangupCode(String hangupCode) {
+        this.hangupCode = hangupCode;
+    }
+
+    public String getSelectedCallerNumber() {
+        return selectedCallerNumber;
+    }
+
+    public void setSelectedCallerNumber(String selectedCallerNumber) {
+        this.selectedCallerNumber = selectedCallerNumber;
     }
 
     public LocalDateTime getInflightExpireAt() {

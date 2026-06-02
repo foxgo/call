@@ -29,7 +29,10 @@ class DialResultCallbackControllerTest {
                                   "taskId": 1001,
                                   "dialUnitId": 11,
                                   "dispatchToken": "token-1",
-                                  "resultStatus": "SUCCESS"
+                                  "resultStatus": "SUCCESS",
+                                  "ringDurationSeconds": 8,
+                                  "talkDurationSeconds": 45,
+                                  "hangupCode": "NORMAL_CLEARING"
                                 }
                                 """))
                 .andExpect(status().isOk());

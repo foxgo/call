@@ -81,6 +81,15 @@ class CallTaskControllerTest {
                 0,
                 4,
                 8,
+                "HYBRID",
+                "ANSWER",
+                1D,
+                0D,
+                0D,
+                0D,
+                false,
+                3600,
+                200,
                 null,
                 null
         );

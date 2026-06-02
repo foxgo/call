@@ -5,6 +5,12 @@ import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.caller.CallerIdCandidate;
+import com.callcenter.task.caller.CallerIdCandidateService;
+import com.callcenter.task.caller.CallerIdSelection;
+import com.callcenter.task.caller.CallerIdSelector;
+import com.callcenter.task.caller.TaskCallerIdPolicy;
+import com.callcenter.task.caller.TaskCallerIdPolicyService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.mq.DialDispatchPublisher;
@@ -12,6 +18,7 @@ import com.callcenter.task.repository.CallDialUnitRepository;
 import com.callcenter.task.repository.CallTaskRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +36,9 @@ public class PartitionSchedulerWorker {
     private final CallDialUnitRepository callDialUnitRepository;
     private final DispatchConcurrencyLimiter concurrencyLimiter;
     private final DialDispatchPublisher dialDispatchPublisher;
+    private final TaskCallerIdPolicyService taskCallerIdPolicyService;
+    private final CallerIdCandidateService callerIdCandidateService;
+    private final CallerIdSelector callerIdSelector;
     private final CallTaskDispatchProperties properties;
     private final ShardingRouter shardingRouter;
     private final CallTaskMetrics metrics;
@@ -41,6 +51,9 @@ public class PartitionSchedulerWorker {
             CallDialUnitRepository callDialUnitRepository,
             DispatchConcurrencyLimiter concurrencyLimiter,
             DialDispatchPublisher dialDispatchPublisher,
+            TaskCallerIdPolicyService taskCallerIdPolicyService,
+            CallerIdCandidateService callerIdCandidateService,
+            CallerIdSelector callerIdSelector,
             CallTaskDispatchProperties properties,
             ShardingRouter shardingRouter,
             CallTaskMetrics metrics
@@ -52,6 +65,9 @@ public class PartitionSchedulerWorker {
         this.callDialUnitRepository = callDialUnitRepository;
         this.concurrencyLimiter = concurrencyLimiter;
         this.dialDispatchPublisher = dialDispatchPublisher;
+        this.taskCallerIdPolicyService = taskCallerIdPolicyService;
+        this.callerIdCandidateService = callerIdCandidateService;
+        this.callerIdSelector = callerIdSelector;
         this.properties = properties;
         this.shardingRouter = shardingRouter;
         this.metrics = metrics;
@@ -98,23 +114,66 @@ public class PartitionSchedulerWorker {
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), granted - ids.size());
         }
 
-        String dispatchToken = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
-        List<CallDialUnitEntity> units = callDialUnitRepository.markDialingFromReady(
+        List<CallDialUnitEntity> claimedUnits = callDialUnitRepository.listByTaskIdAndIds(shardKey, task.getId(), ids);
+        TaskCallerIdPolicy policy = taskCallerIdPolicyService.toPolicy(task);
+        List<CallerIdCandidate> candidates = callerIdCandidateService.listCandidates(
+                task.getTenantId(),
+                task.getId(),
+                policy,
+                now
+        );
+        List<CallDialUnitEntity> missingClaimedUnits = toMissedReadyUnits(ids, claimedUnits);
+        List<CallDialUnitEntity> selectedUnits = new ArrayList<>();
+        List<CallDialUnitEntity> rejectedUnits = new ArrayList<>();
+        for (CallDialUnitEntity unit : claimedUnits) {
+            Optional<CallerIdSelection> selection = callerIdSelector.select(
+                    task.getTenantId(),
+                    unit,
+                    policy,
+                    candidates
+            );
+            if (selection.isEmpty()) {
+                CallDialUnitEntity rejected = new CallDialUnitEntity();
+                rejected.setId(unit.getId());
+                rejectedUnits.add(rejected);
+                continue;
+            }
+            CallerIdSelection chosen = selection.get();
+            unit.setDispatchToken(UUID.randomUUID().toString());
+            unit.setSelectedCallerId(chosen.callerIdId());
+            unit.setSelectedCallerNumber(chosen.callerId());
+            unit.setCallerIdSelectionScore(chosen.score());
+            unit.setCallerIdSelectionReason(chosen.reason());
+            unit.setAttemptStage(chosen.attemptStage().name());
+            selectedUnits.add(unit);
+        }
+        if (!missingClaimedUnits.isEmpty()) {
+            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), missingClaimedUnits);
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), missingClaimedUnits.size());
+        }
+        if (!rejectedUnits.isEmpty()) {
+            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), rejectedUnits);
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), rejectedUnits.size());
+        }
+
+        List<CallDialUnitEntity> units = callDialUnitRepository.markDialingSelectionsFromReady(
                 shardKey,
                 task.getId(),
-                ids,
-                dispatchToken,
+                selectedUnits,
                 now,
                 now.plus(properties.getProcessingTimeout())
         );
-        List<CallDialUnitEntity> missedUnits = toMissedReadyUnits(ids, units);
+        List<CallDialUnitEntity> missedUnits = toMissedReadyUnits(
+                selectedUnits.stream().map(CallDialUnitEntity::getId).toList(),
+                units
+        );
         if (!missedUnits.isEmpty()) {
             redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), missedUnits);
         }
 
-        if (units.size() < ids.size()) {
-            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), ids.size() - units.size());
+        if (units.size() < selectedUnits.size()) {
+            concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), selectedUnits.size() - units.size());
         }
 
         for (CallDialUnitEntity unit : units) {

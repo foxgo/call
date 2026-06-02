@@ -21,6 +21,12 @@ public class DialResultCallbackRequest {
 
     private String failureReason;
 
+    private Integer ringDurationSeconds;
+
+    private Integer talkDurationSeconds;
+
+    private String hangupCode;
+
     public Long getTaskId() {
         return taskId;
     }
@@ -67,6 +73,30 @@ public class DialResultCallbackRequest {
 
     public void setFailureReason(String failureReason) {
         this.failureReason = failureReason;
+    }
+
+    public Integer getRingDurationSeconds() {
+        return ringDurationSeconds;
+    }
+
+    public void setRingDurationSeconds(Integer ringDurationSeconds) {
+        this.ringDurationSeconds = ringDurationSeconds;
+    }
+
+    public Integer getTalkDurationSeconds() {
+        return talkDurationSeconds;
+    }
+
+    public void setTalkDurationSeconds(Integer talkDurationSeconds) {
+        this.talkDurationSeconds = talkDurationSeconds;
+    }
+
+    public String getHangupCode() {
+        return hangupCode;
+    }
+
+    public void setHangupCode(String hangupCode) {
+        this.hangupCode = hangupCode;
     }
 
     public boolean isSuccess() {

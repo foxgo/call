@@ -28,6 +28,8 @@ class TaskSchemaMigrationTest {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_call_task_tables.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V2__deprecate_call_task_next_dispatch_time.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V3__add_caller_id_selection_schema.sql"));
         }
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
@@ -35,9 +37,18 @@ class TaskSchemaMigrationTest {
         assertThat(tableExists(jdbcTemplate, "call_task_import_batch")).isTrue();
         assertThat(tableExists(jdbcTemplate, "call_dial_unit_00")).isTrue();
         assertThat(tableExists(jdbcTemplate, "call_dial_unit_15")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_caller_id")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_task_caller_id_binding")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "call_caller_id_stats")).isTrue();
+        assertThat(columns(jdbcTemplate, "call_task"))
+                .contains("caller_id_mode", "optimization_goal", "answer_weight", "max_caller_exposure_per_hour");
+        assertThat(columns(jdbcTemplate, "call_dial_unit_00"))
+                .contains("selected_caller_id", "caller_id_selection_score", "attempt_stage", "talk_duration_seconds");
         assertThat(indexExists(jdbcTemplate, "call_dial_unit_00", "uk_call_dial_unit_00_task_phone_biz")).isTrue();
         assertThat(indexColumns(jdbcTemplate, "call_dial_unit_00", "idx_call_dial_unit_00_task_status_next_call"))
                 .containsExactly("task_id", "status", "next_call_time", "id");
+        assertThat(indexExists(jdbcTemplate, "call_caller_id", "uk_call_caller_id_tenant_caller")).isTrue();
+        assertThat(indexExists(jdbcTemplate, "call_caller_id_stats", "uk_call_caller_id_stats_bucket")).isTrue();
     }
 
     private static boolean tableExists(JdbcTemplate jdbcTemplate, String tableName) {
@@ -83,6 +94,20 @@ class TaskSchemaMigrationTest {
                 String.class,
                 tableName,
                 indexName
+        );
+    }
+
+    private static List<String> columns(JdbcTemplate jdbcTemplate, String tableName) {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                ORDER BY ordinal_position
+                """,
+                String.class,
+                tableName
         );
     }
 

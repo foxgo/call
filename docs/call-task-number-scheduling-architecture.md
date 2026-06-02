@@ -9,6 +9,9 @@
 >
 > 2026-06-01 更新：
 > 已接入单 AI 能力池容量控制平面，支持池级目标并发、任务级动态目标并发、控制冷却/死区/步长限制，以及容量相关指标埋点。
+>
+> 2026-06-02 更新：
+> 已在 `call-task` 内嵌 Caller ID Selection 首版闭环，支持任务级号码策略、共享池与任务白名单/黑名单、首拨/重拨分层评分，以及回写驱动的主叫号码健康分更新。
 
 ## 1. 文档目标
 
@@ -38,6 +41,10 @@
 - `RedisDialUnitQueue`
 - `CallDialUnitRepository`
 - `DialResultWritebackService`
+- `TaskCallerIdPolicyService`
+- `CallerIdCandidateService`
+- `CallerIdSelector`
+- `CallerIdHealthService`
 - `RetryQueueScheduler`
 - `ProcessingTimeoutRecoveryJob`
 - `DispatchConcurrencyLimiter`
@@ -149,6 +156,10 @@
 | `RedisDialUnitQueue` | 管理 ready/processing/retry 与 due index | 高频队列状态机 |
 | `CallDialUnitRepository` | 号码状态真实迁移 | CAS 语义落在这里 |
 | `DialResultWritebackService` | 处理拨号成功/失败回写 | 释放并发、安排重试、再激活 |
+| `TaskCallerIdPolicyService` | 装配任务级 Caller ID 策略 | 将任务配置转换为运行时选号策略 |
+| `CallerIdCandidateService` | 组装候选号池 | 支持共享池、任务白名单、任务黑名单、冷却过滤 |
+| `CallerIdSelector` | 派发前选择主叫号码 | 根据首拨/重拨与号码统计输出最终 Caller ID |
+| `CallerIdHealthService` | 更新号码健康分 | 按回调结果回灌号码统计与健康度 |
 | `RetryQueueScheduler` | 处理 retry 到期 | retry -> ready |
 | `ProcessingTimeoutRecoveryJob` | 处理 processing 超时 | 托底回收 |
 | `DispatchConcurrencyLimiter` | 维护全局/租户/任务并发额度 | 已支持批量占用和批量回滚，主派发链路已接入 |
@@ -314,6 +325,7 @@ sequenceDiagram
     participant TPM as TaskPartitionManager
     participant D as CallTaskDispatcher
     participant W as PartitionSchedulerWorker
+    participant CID as CallerIdSelector
     participant Preload as DialUnitPreloadService
     participant DB as MySQL
     participant MQ as RocketMQ
@@ -333,7 +345,9 @@ sequenceDiagram
         Preload->>Redis: offerReady(task, shard, units)
     end
     W->>Redis: claimReady(ready -> processing)
-    W->>DB: markDialing(QUEUED -> DIALING)
+    W->>CID: select caller id for claimed units
+    CID-->>W: caller id + attempt stage + score
+    W->>DB: markDialing(READY -> DIALING + caller id attribution)
     W->>MQ: publish dispatch message
 ```
 

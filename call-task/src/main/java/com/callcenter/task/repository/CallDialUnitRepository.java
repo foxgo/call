@@ -48,6 +48,22 @@ public class CallDialUnitRepository {
         }
     }
 
+    public List<CallDialUnitEntity> listByTaskIdAndIds(ShardKey shardKey, long taskId, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+            query.eq("task_id", taskId)
+                    .in("id", ids)
+                    .orderByAsc("id");
+            return callDialUnitMapper.selectList(query);
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
     public long countRemainingDialUnits(ShardKey shardKey, long taskId) {
         ShardContextHolder.set(shardKey.toContext());
         try {
@@ -210,6 +226,54 @@ public class CallDialUnitRepository {
         }
     }
 
+    public List<CallDialUnitEntity> markDialingSelectionsFromReady(
+            ShardKey shardKey,
+            long taskId,
+            List<CallDialUnitEntity> units,
+            LocalDateTime callTime,
+            LocalDateTime inflightExpireAt
+    ) {
+        if (units == null || units.isEmpty()) {
+            return List.of();
+        }
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            List<CallDialUnitEntity> transitioned = new ArrayList<>();
+            for (CallDialUnitEntity unit : units) {
+                UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
+                update.eq("task_id", taskId)
+                        .eq("id", unit.getId())
+                        .eq("status", CallDialUnitStatus.READY.name())
+                        .set("status", CallDialUnitStatus.DIALING.name())
+                        .set("dispatch_token", unit.getDispatchToken())
+                        .set("selected_caller_id", unit.getSelectedCallerId())
+                        .set("caller_id_selection_score", unit.getCallerIdSelectionScore())
+                        .set("caller_id_selection_reason", unit.getCallerIdSelectionReason())
+                        .set("attempt_stage", unit.getAttemptStage())
+                        .set("last_call_time", callTime)
+                        .set("inflight_expire_at", inflightExpireAt)
+                        .set("updated_at", callTime);
+                if (callDialUnitMapper.update(null, update) <= 0) {
+                    continue;
+                }
+                QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+                query.eq("task_id", taskId)
+                        .eq("id", unit.getId())
+                        .eq("status", CallDialUnitStatus.DIALING.name())
+                        .eq("dispatch_token", unit.getDispatchToken())
+                        .last("LIMIT 1");
+                CallDialUnitEntity updated = callDialUnitMapper.selectOne(query);
+                if (updated != null) {
+                    updated.setSelectedCallerNumber(unit.getSelectedCallerNumber());
+                    transitioned.add(updated);
+                }
+            }
+            return transitioned;
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
     public boolean markSuccess(ShardKey shardKey, long taskId, long dialUnitId, String dispatchToken) {
         ShardContextHolder.set(shardKey.toContext());
         try {
@@ -226,6 +290,53 @@ public class CallDialUnitRepository {
         }
     }
 
+    public CallDialUnitEntity findDialingByDispatchToken(
+            ShardKey shardKey,
+            long taskId,
+            long dialUnitId,
+            String dispatchToken
+    ) {
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
+            query.eq("task_id", taskId)
+                    .eq("id", dialUnitId)
+                    .eq("status", CallDialUnitStatus.DIALING.name())
+                    .eq("dispatch_token", dispatchToken)
+                    .last("LIMIT 1");
+            return callDialUnitMapper.selectOne(query);
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
+    public boolean markSuccess(
+            ShardKey shardKey,
+            long taskId,
+            long dialUnitId,
+            String dispatchToken,
+            Integer ringDurationSeconds,
+            Integer talkDurationSeconds,
+            String hangupCode
+    ) {
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
+            update.eq("task_id", taskId)
+                    .eq("id", dialUnitId)
+                    .eq("status", CallDialUnitStatus.DIALING.name())
+                    .eq("dispatch_token", dispatchToken)
+                    .set("status", CallDialUnitStatus.SUCCESS.name())
+                    .set("ring_duration_seconds", ringDurationSeconds)
+                    .set("talk_duration_seconds", talkDurationSeconds)
+                    .set("hangup_code", hangupCode)
+                    .set("updated_at", LocalDateTime.now());
+            return callDialUnitMapper.update(null, update) > 0;
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
     public RetryDecision markFailedForRetry(
             ShardKey shardKey,
             long taskId,
@@ -233,7 +344,10 @@ public class CallDialUnitRepository {
             String dispatchToken,
             String failureCode,
             String failureReason,
-            java.time.Instant retryAt
+            java.time.Instant retryAt,
+            Integer ringDurationSeconds,
+            Integer talkDurationSeconds,
+            String hangupCode
     ) {
         ShardContextHolder.set(shardKey.toContext());
         try {
@@ -259,6 +373,9 @@ public class CallDialUnitRepository {
                     .set("retry_count", nextRetryCount)
                     .set("failure_code", failureCode)
                     .set("failure_reason", failureReason)
+                    .set("ring_duration_seconds", ringDurationSeconds)
+                    .set("talk_duration_seconds", talkDurationSeconds)
+                    .set("hangup_code", hangupCode)
                     .set("updated_at", now);
             if (shouldRetry) {
                 update.set("status", CallDialUnitStatus.PENDING.name())

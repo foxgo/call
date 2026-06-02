@@ -2,6 +2,9 @@ package com.callcenter.task.service;
 
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.caller.AttemptStage;
+import com.callcenter.task.caller.CallerIdHealthEvent;
+import com.callcenter.task.caller.CallerIdHealthService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;
 import com.callcenter.task.dispatch.RedisDialUnitQueue;
@@ -24,6 +27,7 @@ public class DialResultWritebackService {
     private final ShardingRouter shardingRouter;
     private final CallTaskMetrics metrics;
     private final TaskActivationService taskActivationService;
+    private final CallerIdHealthService callerIdHealthService;
 
     public DialResultWritebackService(
             CallDialUnitRepository callDialUnitRepository,
@@ -32,7 +36,8 @@ public class DialResultWritebackService {
             CallTaskDispatchProperties properties,
             ShardingRouter shardingRouter,
             CallTaskMetrics metrics,
-            TaskActivationService taskActivationService
+            TaskActivationService taskActivationService,
+            CallerIdHealthService callerIdHealthService
     ) {
         this.callDialUnitRepository = callDialUnitRepository;
         this.redisDialUnitQueue = redisDialUnitQueue;
@@ -41,19 +46,33 @@ public class DialResultWritebackService {
         this.shardingRouter = shardingRouter;
         this.metrics = metrics;
         this.taskActivationService = taskActivationService;
+        this.callerIdHealthService = callerIdHealthService;
     }
 
     @Transactional
     public void handleCallback(Long tenantId, DialResultCallbackRequest request) {
         ShardKey shardKey = shardingRouter.routeDialUnit(tenantId, request.getTaskId());
+        var dialingUnit = callDialUnitRepository.findDialingByDispatchToken(
+                shardKey,
+                request.getTaskId(),
+                request.getDialUnitId(),
+                request.getDispatchToken()
+        );
+        if (dialingUnit == null) {
+            return;
+        }
         if (request.isSuccess()) {
             boolean updated = callDialUnitRepository.markSuccess(
                     shardKey,
                     request.getTaskId(),
                     request.getDialUnitId(),
-                    request.getDispatchToken()
+                    request.getDispatchToken(),
+                    request.getRingDurationSeconds(),
+                    request.getTalkDurationSeconds(),
+                    request.getHangupCode()
             );
             if (updated) {
+                recordHealthEvent(tenantId, dialingUnit, request);
                 concurrencyLimiter.release(tenantId, request.getTaskId());
                 metrics.incrementWritebackSuccess(request.getTaskId());
                 taskActivationService.activate(tenantId, request.getTaskId());
@@ -68,13 +87,35 @@ public class DialResultWritebackService {
                 request.getDispatchToken(),
                 request.getFailureCode(),
                 request.getFailureReason(),
-                Instant.now().plus(properties.getRetryBackoff())
+                Instant.now().plus(properties.getRetryBackoff()),
+                request.getRingDurationSeconds(),
+                request.getTalkDurationSeconds(),
+                request.getHangupCode()
         );
         if (!decision.processed()) {
             return;
         }
+        recordHealthEvent(tenantId, dialingUnit, request);
         concurrencyLimiter.release(tenantId, request.getTaskId());
         metrics.incrementWritebackFailure(request.getTaskId());
         taskActivationService.activate(tenantId, request.getTaskId());
+    }
+
+    private void recordHealthEvent(Long tenantId, com.callcenter.common.entity.CallDialUnitEntity dialingUnit, DialResultCallbackRequest request) {
+        if (dialingUnit.getSelectedCallerId() == null) {
+            return;
+        }
+        AttemptStage attemptStage = dialingUnit.getAttemptStage() == null
+                ? AttemptStage.fromRetryCount(dialingUnit.getRetryCount())
+                : AttemptStage.valueOf(dialingUnit.getAttemptStage());
+        callerIdHealthService.recordFeedback(new CallerIdHealthEvent(
+                tenantId,
+                dialingUnit.getSelectedCallerId(),
+                attemptStage,
+                request.isSuccess(),
+                request.getRingDurationSeconds(),
+                request.getTalkDurationSeconds(),
+                request.getFailureCode()
+        ));
     }
 }

@@ -1,0 +1,321 @@
+{
+  "version": 1,
+  "title": "runPartition 智能选择 CallerId 流程图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "vertical",
+  "counts": {
+    "nodes": 24,
+    "edges": 26,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "label": "runPartition 已领取 claimedUnits",
+      "type": "terminal"
+    },
+    {
+      "id": "policy",
+      "label": "task -> TaskCallerIdPolicy",
+      "type": "process"
+    },
+    {
+      "id": "bindings",
+      "label": "读取任务绑定关系",
+      "type": "process"
+    },
+    {
+      "id": "splitBindings",
+      "label": "拆分 ALLOW boost\n和 DENY 黑名单",
+      "type": "process"
+    },
+    {
+      "id": "modeDecision",
+      "label": "callerIdMode\n是什么",
+      "type": "decision"
+    },
+    {
+      "id": "sharedPool",
+      "label": "纳入共享池\nSHARED CallerId",
+      "type": "process"
+    },
+    {
+      "id": "taskPool",
+      "label": "纳入任务白名单\nCallerId",
+      "type": "process"
+    },
+    {
+      "id": "filterCandidate",
+      "label": "过滤 inactive / deny /\ncooldown / 空 id",
+      "type": "process"
+    },
+    {
+      "id": "candidateReady",
+      "label": "得到 candidates\n候选号池",
+      "type": "process"
+    },
+    {
+      "id": "preloadStage",
+      "label": "按 claimedUnits 的 retryCount\n映射 AttemptStage",
+      "type": "process"
+    },
+    {
+      "id": "loadStats",
+      "label": "按阶段批量加载\ncallerId stats",
+      "type": "process"
+    },
+    {
+      "id": "iterateUnits",
+      "label": "遍历每个 claimedUnit",
+      "type": "process"
+    },
+    {
+      "id": "hasCandidates",
+      "label": "当前号码是否有候选\nCallerId",
+      "type": "decision"
+    },
+    {
+      "id": "rejectNoCandidate",
+      "label": "selection 为空\n加入 rejectedUnits",
+      "type": "process"
+    },
+    {
+      "id": "scoreInputs",
+      "label": "取 stats + policy + candidate\n准备打分因子",
+      "type": "process"
+    },
+    {
+      "id": "scoreFormula",
+      "label": "计算 score\nanswerRate / successRate /\nconversionProxy / trust / cost /\npriorityBoost / exposurePenalty / failurePenalty",
+      "type": "process"
+    },
+    {
+      "id": "chooseMax",
+      "label": "取 score 最大的\nCallerIdSelection",
+      "type": "process"
+    },
+    {
+      "id": "selectedDecision",
+      "label": "是否选中\nCallerId",
+      "type": "decision"
+    },
+    {
+      "id": "rejectAfterSelect",
+      "label": "仍为空\n加入 rejectedUnits",
+      "type": "process"
+    },
+    {
+      "id": "fillUnit",
+      "label": "回填 dispatchToken / selectedCallerId /\nselectedCallerNumber / score /\nreason / attemptStage",
+      "type": "process"
+    },
+    {
+      "id": "addSelected",
+      "label": "加入 selectedUnits",
+      "type": "process"
+    },
+    {
+      "id": "postLoop",
+      "label": "循环结束后\nrejectedUnits 回退 ready\n并 release 并发",
+      "type": "document"
+    },
+    {
+      "id": "markDialing",
+      "label": "selectedUnits 进入\nREADY -> DIALING",
+      "type": "process"
+    },
+    {
+      "id": "end",
+      "label": "进入异步下发前\n号码已带选中的 CallerId 信息",
+      "type": "terminal"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "start",
+      "to": "policy",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-2",
+      "from": "policy",
+      "to": "bindings",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-3",
+      "from": "bindings",
+      "to": "splitBindings",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-4",
+      "from": "splitBindings",
+      "to": "modeDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-5",
+      "from": "modeDecision",
+      "to": "sharedPool",
+      "type": "primary",
+      "label": "SHARED_ONLY / HYBRID"
+    },
+    {
+      "id": "edge-6",
+      "from": "modeDecision",
+      "to": "taskPool",
+      "type": "primary",
+      "label": "TASK_ONLY / HYBRID"
+    },
+    {
+      "id": "edge-7",
+      "from": "sharedPool",
+      "to": "filterCandidate",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-8",
+      "from": "taskPool",
+      "to": "filterCandidate",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-9",
+      "from": "filterCandidate",
+      "to": "candidateReady",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-10",
+      "from": "candidateReady",
+      "to": "preloadStage",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-11",
+      "from": "preloadStage",
+      "to": "loadStats",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-12",
+      "from": "loadStats",
+      "to": "iterateUnits",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-13",
+      "from": "iterateUnits",
+      "to": "hasCandidates",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-14",
+      "from": "hasCandidates",
+      "to": "rejectNoCandidate",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-15",
+      "from": "hasCandidates",
+      "to": "scoreInputs",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-16",
+      "from": "scoreInputs",
+      "to": "scoreFormula",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-17",
+      "from": "scoreFormula",
+      "to": "chooseMax",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-18",
+      "from": "chooseMax",
+      "to": "selectedDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-19",
+      "from": "selectedDecision",
+      "to": "rejectAfterSelect",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-20",
+      "from": "selectedDecision",
+      "to": "fillUnit",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-21",
+      "from": "fillUnit",
+      "to": "addSelected",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-22",
+      "from": "rejectNoCandidate",
+      "to": "postLoop",
+      "type": "data",
+      "label": "循环中累计 rejectedUnits"
+    },
+    {
+      "id": "edge-23",
+      "from": "rejectAfterSelect",
+      "to": "postLoop",
+      "type": "data",
+      "label": "循环中累计 rejectedUnits"
+    },
+    {
+      "id": "edge-24",
+      "from": "addSelected",
+      "to": "postLoop",
+      "type": "data",
+      "label": "循环中累计 selectedUnits"
+    },
+    {
+      "id": "edge-25",
+      "from": "postLoop",
+      "to": "markDialing",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-26",
+      "from": "markDialing",
+      "to": "end",
+      "type": "primary",
+      "label": null
+    }
+  ],
+  "modules": []
+}

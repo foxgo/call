@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "title": "CapacityControlJob 逻辑流程图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "vertical",
+  "counts": {
+    "nodes": 20,
+    "edges": 20,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "label": "定时触发\nrecalculateTargets()",
+      "type": "terminal"
+    },
+    {
+      "id": "snapshot",
+      "label": "capacityProvider.snapshot()\n读取池容量快照",
+      "type": "process"
+    },
+    {
+      "id": "init",
+      "label": "初始化 candidates / metaByTaskId /\ncurrentStateByTaskId",
+      "type": "process"
+    },
+    {
+      "id": "listKnown",
+      "label": "遍历 ActiveTaskQueue.listKnownMetas()",
+      "type": "process"
+    },
+    {
+      "id": "loadTask",
+      "label": "加载任务实体 CallTaskEntity",
+      "type": "process"
+    },
+    {
+      "id": "runningDecision",
+      "label": "任务状态\n是否 RUNNING",
+      "type": "decision"
+    },
+    {
+      "id": "skipTask",
+      "label": "跳过非 RUNNING 任务",
+      "type": "process"
+    },
+    {
+      "id": "loadCurrentState",
+      "label": "读取当前 TaskTargetState",
+      "type": "process"
+    },
+    {
+      "id": "collectMetrics",
+      "label": "collectForTask()\n采集 DispatchMetricsSnapshot",
+      "type": "process"
+    },
+    {
+      "id": "buildInput",
+      "label": "组装 ControlInput\n含 metrics / capacity / policy /\ncurrentConcurrency / currentTarget",
+      "type": "process"
+    },
+    {
+      "id": "decide",
+      "label": "capacityControlEngine.decide()",
+      "type": "process"
+    },
+    {
+      "id": "engineDetail",
+      "label": "子逻辑：\n冷却期保持当前值；\n否则按 connect / occupancy /\ntrunkHealth / llmLoad 调整，\n再做 step limit、bounds、deadband",
+      "type": "document"
+    },
+    {
+      "id": "addCandidate",
+      "label": "记录 desiredTarget + weight + maxConcurrency\n加入 TaskTargetAllocationCandidate",
+      "type": "process"
+    },
+    {
+      "id": "savePool",
+      "label": "savePoolTarget(poolKey,\ncapacitySnapshot.total)",
+      "type": "process"
+    },
+    {
+      "id": "allocate",
+      "label": "taskTargetAllocator.allocate()\n按池总量做任务间分配",
+      "type": "process"
+    },
+    {
+      "id": "allocatorDetail",
+      "label": "分配规则：\n1. 先给每个任务 baseline\n2. 再按 weight 分余量\n3. 仍有余量则二次补齐",
+      "type": "document"
+    },
+    {
+      "id": "saveTaskTarget",
+      "label": "saveTaskTarget(taskId, TaskTargetState)\n写入 targetConcurrency / reason / cooldownUntil",
+      "type": "process"
+    },
+    {
+      "id": "reactivateDecision",
+      "label": "之前是否因 CONCURRENCY_FULL 阻塞\n且本轮 target 变大",
+      "type": "decision"
+    },
+    {
+      "id": "reactivate",
+      "label": "taskActivationService.activate()",
+      "type": "process"
+    },
+    {
+      "id": "end",
+      "label": "后续 tryAcquireBatch 读取\npoolTarget / taskTarget\n参与 granted 计算",
+      "type": "terminal"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "start",
+      "to": "snapshot",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-2",
+      "from": "snapshot",
+      "to": "init",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-3",
+      "from": "init",
+      "to": "listKnown",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-4",
+      "from": "listKnown",
+      "to": "loadTask",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-5",
+      "from": "loadTask",
+      "to": "runningDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-6",
+      "from": "runningDecision",
+      "to": "skipTask",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-7",
+      "from": "runningDecision",
+      "to": "loadCurrentState",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-8",
+      "from": "loadCurrentState",
+      "to": "collectMetrics",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-9",
+      "from": "collectMetrics",
+      "to": "buildInput",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-10",
+      "from": "buildInput",
+      "to": "decide",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-11",
+      "from": "decide",
+      "to": "engineDetail",
+      "type": "data",
+      "label": "决策细节"
+    },
+    {
+      "id": "edge-12",
+      "from": "decide",
+      "to": "addCandidate",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-13",
+      "from": "addCandidate",
+      "to": "savePool",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-14",
+      "from": "savePool",
+      "to": "allocate",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-15",
+      "from": "allocate",
+      "to": "allocatorDetail",
+      "type": "data",
+      "label": "分配细节"
+    },
+    {
+      "id": "edge-16",
+      "from": "allocate",
+      "to": "saveTaskTarget",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-17",
+      "from": "saveTaskTarget",
+      "to": "reactivateDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-18",
+      "from": "reactivateDecision",
+      "to": "reactivate",
+      "type": "optional",
+      "label": "是"
+    },
+    {
+      "id": "edge-19",
+      "from": "reactivateDecision",
+      "to": "end",
+      "type": "primary",
+      "label": "否"
+    },
+    {
+      "id": "edge-20",
+      "from": "reactivate",
+      "to": "end",
+      "type": "primary",
+      "label": null
+    }
+  ],
+  "modules": []
+}

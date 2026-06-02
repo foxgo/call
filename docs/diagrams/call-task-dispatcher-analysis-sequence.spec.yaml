@@ -1,0 +1,172 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: horizontal
+  canvas: 3600x2200
+  routing: orthogonal
+  title: CallTaskDispatcher 调度与下发时序图
+  description: 以中文说明 CallTaskDispatcher 的分区调度、PartitionSchedulerWorker 的号码领取与异步下发，以及失败补偿和回写释放并发的闭环。
+nodes:
+  - id: timer
+    label: 定时调度器 / Spring Scheduler
+    type: user
+  - id: partitionManager
+    label: 分区租约管理 / TaskPartitionManager
+    type: user
+  - id: dispatcher
+    label: 分区调度器 / CallTaskDispatcher
+    type: user
+  - id: dispatchExecutor
+    label: 分区执行线程池 / callTaskDispatchExecutor
+    type: user
+  - id: worker
+    label: 分区工作器 / PartitionSchedulerWorker
+    type: user
+  - id: activeQueue
+    label: 活跃任务队列 / ActiveTaskQueue
+    type: user
+  - id: taskRepo
+    label: 任务仓库 / CallTaskRepository
+    type: user
+  - id: preload
+    label: 号码预加载 / DialUnitPreloadService
+    type: user
+  - id: limiter
+    label: 并发限流器 / DispatchConcurrencyLimiter
+    type: user
+  - id: readyQueue
+    label: Redis 号码队列 / RedisDialUnitQueue
+    type: user
+  - id: dialRepo
+    label: 号码仓库 / CallDialUnitRepository
+    type: user
+  - id: asyncDispatch
+    label: 异步下发服务 / AsyncDialDispatchService
+    type: user
+  - id: compensation
+    label: 下发补偿 / DialDispatchCompensationService
+    type: user
+  - id: dialPlatform
+    label: 外部拨号链路 / MQ + Dialer
+    type: user
+  - id: writeback
+    label: 回写服务 / DialResultWritebackService
+    type: user
+  - id: activation
+    label: 任务激活 / TaskActivationService
+    type: user
+edges:
+  - from: timer
+    to: dispatcher
+    type: primary
+    label: 定时触发 dispatchOwnedPartitions()
+  - from: dispatcher
+    to: partitionManager
+    type: primary
+    label: 读取 ownedPartitions()
+  - from: partitionManager
+    to: dispatcher
+    type: data
+    label: 返回当前实例持有的 partition 列表
+  - from: dispatcher
+    to: dispatchExecutor
+    type: primary
+    label: submitPartition(partition)，同 partition 未运行时才提交
+  - from: dispatchExecutor
+    to: worker
+    type: primary
+    label: 异步执行 drainPartition(partition)
+  - from: worker
+    to: activeQueue
+    type: primary
+    label: pollNextTaskWithMeta(partition)
+  - from: activeQueue
+    to: worker
+    type: data
+    label: 返回空 / taskId + meta，空则本轮 partition 停止
+  - from: worker
+    to: taskRepo
+    type: primary
+    label: findRequired(tenantId, taskId)
+  - from: taskRepo
+    to: worker
+    type: data
+    label: 返回任务实体；非 RUNNING 则 block(PAUSED)
+  - from: worker
+    to: preload
+    type: primary
+    label: preloadRunningTask(task)，不足阈值时把 PENDING 预热到 ready
+  - from: worker
+    to: limiter
+    type: primary
+    label: tryAcquireBatch(按全局/池/租户/任务申请并发)
+  - from: limiter
+    to: worker
+    type: data
+    label: granted，0 则 block(CONCURRENCY_FULL)
+  - from: worker
+    to: readyQueue
+    type: primary
+    label: claimReady(领取 ready 号码)
+  - from: readyQueue
+    to: worker
+    type: data
+    label: ids；为空则 releaseBatch + block(EMPTY)
+  - from: worker
+    to: dialRepo
+    type: primary
+    label: 读取号码 + 选号 + markDialingSelectionsFromReady()
+  - from: dialRepo
+    to: worker
+    type: data
+    label: 真正进入 DIALING 的号码；缺失/拒绝号码回退 ready 并回滚并发
+  - from: worker
+    to: asyncDispatch
+    type: primary
+    label: submit(unit)，逐条异步下发
+  - from: asyncDispatch
+    to: dialPlatform
+    type: primary
+    label: 校验通过后 publish 到外部拨号链路
+  - from: asyncDispatch
+    to: compensation
+    type: optional
+    label: 发送线程拒绝 / 校验失败 / 闸门拒绝 / 发布异常
+  - from: compensation
+    to: dialRepo
+    type: optional
+    label: revert DIALING -> READY
+  - from: compensation
+    to: readyQueue
+    type: optional
+    label: offerReady(回退到 ready)
+  - from: compensation
+    to: limiter
+    type: optional
+    label: release(释放被占并发)
+  - from: dialPlatform
+    to: writeback
+    type: data
+    label: 拨号结果回调，携带 dispatchToken
+  - from: writeback
+    to: dialRepo
+    type: primary
+    label: markSuccess / markFailedForRetry
+  - from: writeback
+    to: limiter
+    type: primary
+    label: release(成功或失败都释放并发)
+  - from: writeback
+    to: activation
+    type: primary
+    label: activate(task)，重新激活任务
+  - from: activation
+    to: activeQueue
+    type: primary
+    label: upsertMeta + activate，重新进入 active queue
+  - from: worker
+    to: activeQueue
+    type: data
+    label: 本轮结束前根据结果 reactivate(nextFairScore) 或 block
+modules: []

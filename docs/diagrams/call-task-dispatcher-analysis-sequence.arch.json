@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "title": "CallTaskDispatcher 调度与下发时序图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 16,
+    "edges": 28,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "timer",
+      "label": "定时调度器\nSpring Scheduler",
+      "type": "user"
+    },
+    {
+      "id": "partitionManager",
+      "label": "分区租约管理\nTaskPartitionManager",
+      "type": "user"
+    },
+    {
+      "id": "dispatcher",
+      "label": "分区调度器\nCallTaskDispatcher",
+      "type": "user"
+    },
+    {
+      "id": "dispatchExecutor",
+      "label": "分区执行线程池\ncallTaskDispatchExecutor",
+      "type": "user"
+    },
+    {
+      "id": "worker",
+      "label": "分区工作器\nPartitionSchedulerWorker",
+      "type": "user"
+    },
+    {
+      "id": "activeQueue",
+      "label": "活跃任务队列\nActiveTaskQueue",
+      "type": "user"
+    },
+    {
+      "id": "taskRepo",
+      "label": "任务仓库\nCallTaskRepository",
+      "type": "user"
+    },
+    {
+      "id": "preload",
+      "label": "号码预加载\nDialUnitPreloadService",
+      "type": "user"
+    },
+    {
+      "id": "limiter",
+      "label": "并发限流器\nDispatchConcurrencyLimiter",
+      "type": "user"
+    },
+    {
+      "id": "readyQueue",
+      "label": "Redis 号码队列\nRedisDialUnitQueue",
+      "type": "user"
+    },
+    {
+      "id": "dialRepo",
+      "label": "号码仓库\nCallDialUnitRepository",
+      "type": "user"
+    },
+    {
+      "id": "asyncDispatch",
+      "label": "异步下发服务\nAsyncDialDispatchService",
+      "type": "user"
+    },
+    {
+      "id": "compensation",
+      "label": "下发补偿\nDialDispatchCompensationService",
+      "type": "user"
+    },
+    {
+      "id": "dialPlatform",
+      "label": "外部拨号链路\nMQ + Dialer",
+      "type": "user"
+    },
+    {
+      "id": "writeback",
+      "label": "回写服务\nDialResultWritebackService",
+      "type": "user"
+    },
+    {
+      "id": "activation",
+      "label": "任务激活\nTaskActivationService",
+      "type": "user"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "timer",
+      "to": "dispatcher",
+      "type": "primary",
+      "label": "定时触发\ndispatchOwnedPartitions()"
+    },
+    {
+      "id": "edge-2",
+      "from": "dispatcher",
+      "to": "partitionManager",
+      "type": "primary",
+      "label": "读取 ownedPartitions()"
+    },
+    {
+      "id": "edge-3",
+      "from": "partitionManager",
+      "to": "dispatcher",
+      "type": "data",
+      "label": "返回当前实例持有的\npartition 列表"
+    },
+    {
+      "id": "edge-4",
+      "from": "dispatcher",
+      "to": "dispatchExecutor",
+      "type": "primary",
+      "label": "submitPartition(partition)\n同 partition 未运行时才提交"
+    },
+    {
+      "id": "edge-5",
+      "from": "dispatchExecutor",
+      "to": "worker",
+      "type": "primary",
+      "label": "异步执行\ndrainPartition(partition)"
+    },
+    {
+      "id": "edge-6",
+      "from": "worker",
+      "to": "activeQueue",
+      "type": "primary",
+      "label": "pollNextTaskWithMeta(partition)"
+    },
+    {
+      "id": "edge-7",
+      "from": "activeQueue",
+      "to": "worker",
+      "type": "data",
+      "label": "返回空 / taskId + meta\n空则本轮 partition 停止"
+    },
+    {
+      "id": "edge-8",
+      "from": "worker",
+      "to": "taskRepo",
+      "type": "primary",
+      "label": "findRequired(tenantId, taskId)"
+    },
+    {
+      "id": "edge-9",
+      "from": "taskRepo",
+      "to": "worker",
+      "type": "data",
+      "label": "返回任务实体\n非 RUNNING 则 block(PAUSED)"
+    },
+    {
+      "id": "edge-10",
+      "from": "worker",
+      "to": "preload",
+      "type": "primary",
+      "label": "preloadRunningTask(task)\n不足阈值时预热 ready"
+    },
+    {
+      "id": "edge-11",
+      "from": "worker",
+      "to": "limiter",
+      "type": "primary",
+      "label": "tryAcquireBatch\n按全局/池/租户/任务申请并发"
+    },
+    {
+      "id": "edge-12",
+      "from": "limiter",
+      "to": "worker",
+      "type": "data",
+      "label": "granted\n0 则 block(CONCURRENCY_FULL)"
+    },
+    {
+      "id": "edge-13",
+      "from": "worker",
+      "to": "readyQueue",
+      "type": "primary",
+      "label": "claimReady\n领取 ready 号码"
+    },
+    {
+      "id": "edge-14",
+      "from": "readyQueue",
+      "to": "worker",
+      "type": "data",
+      "label": "ids\n为空则 releaseBatch + block(EMPTY)"
+    },
+    {
+      "id": "edge-15",
+      "from": "worker",
+      "to": "dialRepo",
+      "type": "primary",
+      "label": "读取号码 + 选号 +\nmarkDialingSelectionsFromReady()"
+    },
+    {
+      "id": "edge-16",
+      "from": "dialRepo",
+      "to": "worker",
+      "type": "data",
+      "label": "真正进入 DIALING 的号码\n缺失/拒绝号码回退 ready 并回滚并发"
+    },
+    {
+      "id": "edge-17",
+      "from": "worker",
+      "to": "asyncDispatch",
+      "type": "primary",
+      "label": "submit(unit)\n逐条异步下发"
+    },
+    {
+      "id": "edge-18",
+      "from": "asyncDispatch",
+      "to": "dialPlatform",
+      "type": "primary",
+      "label": "校验通过后 publish\n到外部拨号链路"
+    },
+    {
+      "id": "edge-19",
+      "from": "asyncDispatch",
+      "to": "compensation",
+      "type": "optional",
+      "label": "发送线程拒绝 / 校验失败 /\n闸门拒绝 / 发布异常"
+    },
+    {
+      "id": "edge-20",
+      "from": "compensation",
+      "to": "dialRepo",
+      "type": "optional",
+      "label": "revert DIALING -> READY"
+    },
+    {
+      "id": "edge-21",
+      "from": "compensation",
+      "to": "readyQueue",
+      "type": "optional",
+      "label": "offerReady\n回退到 ready"
+    },
+    {
+      "id": "edge-22",
+      "from": "compensation",
+      "to": "limiter",
+      "type": "optional",
+      "label": "release\n释放被占并发"
+    },
+    {
+      "id": "edge-23",
+      "from": "dialPlatform",
+      "to": "writeback",
+      "type": "data",
+      "label": "拨号结果回调\n携带 dispatchToken"
+    },
+    {
+      "id": "edge-24",
+      "from": "writeback",
+      "to": "dialRepo",
+      "type": "primary",
+      "label": "markSuccess /\nmarkFailedForRetry"
+    },
+    {
+      "id": "edge-25",
+      "from": "writeback",
+      "to": "limiter",
+      "type": "primary",
+      "label": "release\n成功或失败都释放并发"
+    },
+    {
+      "id": "edge-26",
+      "from": "writeback",
+      "to": "activation",
+      "type": "primary",
+      "label": "activate(task)\n重新激活任务"
+    },
+    {
+      "id": "edge-27",
+      "from": "activation",
+      "to": "activeQueue",
+      "type": "primary",
+      "label": "upsertMeta + activate\n重新进入 active queue"
+    },
+    {
+      "id": "edge-28",
+      "from": "worker",
+      "to": "activeQueue",
+      "type": "data",
+      "label": "本轮结束前根据结果\nreactivate(nextFairScore) 或 block"
+    }
+  ],
+  "modules": []
+}

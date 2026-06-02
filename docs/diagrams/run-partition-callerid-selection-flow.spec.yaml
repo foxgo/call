@@ -1,0 +1,195 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: vertical
+  canvas: 2200x3000
+  routing: orthogonal
+  title: runPartition 智能选择 CallerId 流程图
+  description: 展示 runPartition 中 CallerId 候选号池构建、分阶段统计预加载、打分选择、回退和回填选择结果的完整流程。
+nodes:
+  - id: start
+    label: runPartition 已领取 claimedUnits
+    type: terminal
+    position: { x: 760, y: 40 }
+  - id: policy
+    label: task -> TaskCallerIdPolicy
+    type: process
+    position: { x: 760, y: 160 }
+  - id: bindings
+    label: 读取任务绑定关系
+    type: process
+    position: { x: 760, y: 280 }
+  - id: splitBindings
+    label: 拆分 ALLOW boost 和 DENY 黑名单
+    type: process
+    position: { x: 760, y: 400 }
+  - id: modeDecision
+    label: callerIdMode 是什么
+    type: decision
+    position: { x: 760, y: 530 }
+  - id: sharedPool
+    label: 纳入共享池 SHARED CallerId
+    type: process
+    position: { x: 430, y: 660 }
+  - id: taskPool
+    label: 纳入任务白名单 CallerId
+    type: process
+    position: { x: 1090, y: 660 }
+  - id: filterCandidate
+    label: 过滤 inactive / deny / cooldown / 空 id
+    type: process
+    position: { x: 760, y: 810 }
+  - id: candidateReady
+    label: 得到 candidates 候选号池
+    type: process
+    position: { x: 760, y: 930 }
+  - id: preloadStage
+    label: 按 claimedUnits 的 retryCount\n映射 AttemptStage
+    type: process
+    position: { x: 760, y: 1060 }
+  - id: loadStats
+    label: 按阶段批量加载 callerId stats
+    type: process
+    position: { x: 760, y: 1190 }
+  - id: iterateUnits
+    label: 遍历每个 claimedUnit
+    type: process
+    position: { x: 760, y: 1320 }
+  - id: hasCandidates
+    label: 当前号码是否有候选 CallerId
+    type: decision
+    position: { x: 760, y: 1450 }
+  - id: rejectNoCandidate
+    label: selection 为空\n加入 rejectedUnits
+    type: process
+    position: { x: 1110, y: 1450 }
+  - id: scoreInputs
+    label: 取 stats + policy + candidate\n准备打分因子
+    type: process
+    position: { x: 760, y: 1580 }
+  - id: scoreFormula
+    label: 计算 score\nanswerRate / successRate /\nconversionProxy / trust / cost /\npriorityBoost / exposurePenalty / failurePenalty
+    type: process
+    position: { x: 760, y: 1710 }
+  - id: chooseMax
+    label: 取 score 最大的 CallerIdSelection
+    type: process
+    position: { x: 760, y: 1860 }
+  - id: selectedDecision
+    label: 是否选中 CallerId
+    type: decision
+    position: { x: 760, y: 2000 }
+  - id: rejectAfterSelect
+    label: 仍为空\n加入 rejectedUnits
+    type: process
+    position: { x: 1110, y: 2000 }
+  - id: fillUnit
+    label: 回填 dispatchToken / selectedCallerId /\nselectedCallerNumber / score / reason / attemptStage
+    type: process
+    position: { x: 760, y: 2140 }
+  - id: addSelected
+    label: 加入 selectedUnits
+    type: process
+    position: { x: 760, y: 2270 }
+  - id: postLoop
+    label: 循环结束后\nrejectedUnits 回退 ready 并 release 并发
+    type: document
+    position: { x: 760, y: 2420 }
+  - id: markDialing
+    label: selectedUnits 进入\nREADY -> DIALING
+    type: process
+    position: { x: 760, y: 2560 }
+  - id: end
+    label: 进入异步下发前\n号码已带选中的 CallerId 信息
+    type: terminal
+    position: { x: 760, y: 2690 }
+edges:
+  - from: start
+    to: policy
+    type: primary
+  - from: policy
+    to: bindings
+    type: primary
+  - from: bindings
+    to: splitBindings
+    type: primary
+  - from: splitBindings
+    to: modeDecision
+    type: primary
+  - from: modeDecision
+    to: sharedPool
+    type: primary
+    label: SHARED_ONLY / HYBRID
+  - from: modeDecision
+    to: taskPool
+    type: primary
+    label: TASK_ONLY / HYBRID
+  - from: sharedPool
+    to: filterCandidate
+    type: primary
+  - from: taskPool
+    to: filterCandidate
+    type: primary
+  - from: filterCandidate
+    to: candidateReady
+    type: primary
+  - from: candidateReady
+    to: preloadStage
+    type: primary
+  - from: preloadStage
+    to: loadStats
+    type: primary
+  - from: loadStats
+    to: iterateUnits
+    type: primary
+  - from: iterateUnits
+    to: hasCandidates
+    type: primary
+  - from: hasCandidates
+    to: rejectNoCandidate
+    type: optional
+    label: 否
+  - from: hasCandidates
+    to: scoreInputs
+    type: primary
+    label: 是
+  - from: scoreInputs
+    to: scoreFormula
+    type: primary
+  - from: scoreFormula
+    to: chooseMax
+    type: primary
+  - from: chooseMax
+    to: selectedDecision
+    type: primary
+  - from: selectedDecision
+    to: rejectAfterSelect
+    type: optional
+    label: 否
+  - from: selectedDecision
+    to: fillUnit
+    type: primary
+    label: 是
+  - from: fillUnit
+    to: addSelected
+    type: primary
+  - from: rejectNoCandidate
+    to: postLoop
+    type: data
+    label: 循环中累计 rejectedUnits
+  - from: rejectAfterSelect
+    to: postLoop
+    type: data
+    label: 循环中累计 rejectedUnits
+  - from: addSelected
+    to: postLoop
+    type: data
+    label: 循环中累计 selectedUnits
+  - from: postLoop
+    to: markDialing
+    type: primary
+  - from: markDialing
+    to: end
+    type: primary
+modules: []

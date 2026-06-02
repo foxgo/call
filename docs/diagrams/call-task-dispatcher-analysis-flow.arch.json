@@ -1,0 +1,395 @@
+{
+  "version": 1,
+  "title": "CallTaskDispatcher 单分区调度流程图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "vertical",
+  "counts": {
+    "nodes": 29,
+    "edges": 33,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "label": "定时触发\ndispatchOwnedPartitions",
+      "type": "terminal"
+    },
+    {
+      "id": "owned",
+      "label": "读取当前实例持有的\npartitions",
+      "type": "process"
+    },
+    {
+      "id": "runningGate",
+      "label": "该 partition\n是否已在运行",
+      "type": "decision"
+    },
+    {
+      "id": "skip",
+      "label": "跳过本轮\n避免同 partition 重入",
+      "type": "process"
+    },
+    {
+      "id": "submit",
+      "label": "提交到 dispatchExecutor",
+      "type": "process"
+    },
+    {
+      "id": "drainLoop",
+      "label": "drainPartition 内循环\n最多执行 maxTasksPerPartitionTick 次",
+      "type": "process"
+    },
+    {
+      "id": "pollTask",
+      "label": "ActiveTaskQueue\n是否有活跃任务",
+      "type": "decision"
+    },
+    {
+      "id": "noTask",
+      "label": "runPartition 返回 false\n本 partition 本轮结束",
+      "type": "terminal"
+    },
+    {
+      "id": "loadTask",
+      "label": "加载任务实体并检查 RUNNING",
+      "type": "process"
+    },
+    {
+      "id": "taskRunning",
+      "label": "任务状态\n是否为 RUNNING",
+      "type": "decision"
+    },
+    {
+      "id": "blockPaused",
+      "label": "block(PAUSED)\nrunPartition 返回 true",
+      "type": "process"
+    },
+    {
+      "id": "preload",
+      "label": "预加载号码到 Redis ready 热窗口",
+      "type": "process"
+    },
+    {
+      "id": "acquire",
+      "label": "申请批量并发额度",
+      "type": "process"
+    },
+    {
+      "id": "quotaOk",
+      "label": "granted\n是否大于 0",
+      "type": "decision"
+    },
+    {
+      "id": "blockFull",
+      "label": "block(CONCURRENCY_FULL)\nrunPartition 返回 true",
+      "type": "process"
+    },
+    {
+      "id": "claim",
+      "label": "claimReady 领取 ready 号码",
+      "type": "process"
+    },
+    {
+      "id": "idsOk",
+      "label": "是否领到号码",
+      "type": "decision"
+    },
+    {
+      "id": "emptyAndRelease",
+      "label": "releaseBatch(granted)\nblock(EMPTY)\nrunPartition 返回 true",
+      "type": "process"
+    },
+    {
+      "id": "selectCaller",
+      "label": "加载号码、候选主叫与统计\n逐条选号",
+      "type": "process"
+    },
+    {
+      "id": "reofferRejected",
+      "label": "选号失败或号码缺失\n回退 ready 并释放差额并发",
+      "type": "document"
+    },
+    {
+      "id": "markDialing",
+      "label": "READY -> DIALING\n条件更新",
+      "type": "process"
+    },
+    {
+      "id": "transitionOk",
+      "label": "实际进入 DIALING 的数量\n是否大于 0",
+      "type": "decision"
+    },
+    {
+      "id": "blockAfterTransition",
+      "label": "回退未成功迁移号码\nblock(EMPTY)\nrunPartition 返回 true",
+      "type": "process"
+    },
+    {
+      "id": "asyncSubmit",
+      "label": "AsyncDialDispatchService.submit\n异步下发到外部拨号链路",
+      "type": "process"
+    },
+    {
+      "id": "reactivateDecision",
+      "label": "本轮结果决定\nblock 还是 reactivate",
+      "type": "decision"
+    },
+    {
+      "id": "blockResult",
+      "label": "ready 不足或并发未拿满\nblock(EMPTY/CONCURRENCY_FULL)",
+      "type": "process"
+    },
+    {
+      "id": "reactivate",
+      "label": "更新 fairScore\nreactivate(nextFairScore)",
+      "type": "process"
+    },
+    {
+      "id": "returnTrue",
+      "label": "runPartition 返回 true\ndispatcher 可继续本 partition 下一轮",
+      "type": "terminal"
+    },
+    {
+      "id": "sideLoop",
+      "label": "下发闭环补充：\n1. 发送失败时补偿回滚到 READY 并 release\n2. 回调成功/失败后 release 并重新 activate 任务",
+      "type": "document"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "start",
+      "to": "owned",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-2",
+      "from": "owned",
+      "to": "runningGate",
+      "type": "primary",
+      "label": "遍历每个 owned partition"
+    },
+    {
+      "id": "edge-3",
+      "from": "runningGate",
+      "to": "skip",
+      "type": "optional",
+      "label": "是"
+    },
+    {
+      "id": "edge-4",
+      "from": "runningGate",
+      "to": "submit",
+      "type": "primary",
+      "label": "否"
+    },
+    {
+      "id": "edge-5",
+      "from": "submit",
+      "to": "drainLoop",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-6",
+      "from": "drainLoop",
+      "to": "pollTask",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-7",
+      "from": "pollTask",
+      "to": "noTask",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-8",
+      "from": "pollTask",
+      "to": "loadTask",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-9",
+      "from": "loadTask",
+      "to": "taskRunning",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-10",
+      "from": "taskRunning",
+      "to": "blockPaused",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-11",
+      "from": "taskRunning",
+      "to": "preload",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-12",
+      "from": "preload",
+      "to": "acquire",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-13",
+      "from": "acquire",
+      "to": "quotaOk",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-14",
+      "from": "quotaOk",
+      "to": "blockFull",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-15",
+      "from": "quotaOk",
+      "to": "claim",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-16",
+      "from": "claim",
+      "to": "idsOk",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-17",
+      "from": "idsOk",
+      "to": "emptyAndRelease",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-18",
+      "from": "idsOk",
+      "to": "selectCaller",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-19",
+      "from": "selectCaller",
+      "to": "reofferRejected",
+      "type": "data",
+      "label": "缺失 / 选不中"
+    },
+    {
+      "id": "edge-20",
+      "from": "selectCaller",
+      "to": "markDialing",
+      "type": "primary",
+      "label": "选中的号码"
+    },
+    {
+      "id": "edge-21",
+      "from": "markDialing",
+      "to": "transitionOk",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-22",
+      "from": "transitionOk",
+      "to": "blockAfterTransition",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-23",
+      "from": "transitionOk",
+      "to": "asyncSubmit",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-24",
+      "from": "asyncSubmit",
+      "to": "sideLoop",
+      "type": "data",
+      "label": "补偿 / 回写闭环"
+    },
+    {
+      "id": "edge-25",
+      "from": "asyncSubmit",
+      "to": "reactivateDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-26",
+      "from": "reactivateDecision",
+      "to": "blockResult",
+      "type": "optional",
+      "label": "ready 不足或并发未拿满"
+    },
+    {
+      "id": "edge-27",
+      "from": "reactivateDecision",
+      "to": "reactivate",
+      "type": "primary",
+      "label": "仍可继续"
+    },
+    {
+      "id": "edge-28",
+      "from": "blockPaused",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-29",
+      "from": "blockFull",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-30",
+      "from": "emptyAndRelease",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-31",
+      "from": "blockAfterTransition",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-32",
+      "from": "blockResult",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-33",
+      "from": "reactivate",
+      "to": "returnTrue",
+      "type": "primary",
+      "label": null
+    }
+  ],
+  "modules": []
+}

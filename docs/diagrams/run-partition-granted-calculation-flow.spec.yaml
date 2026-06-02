@@ -1,0 +1,185 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: vertical
+  canvas: 2200x2600
+  routing: orthogonal
+  title: runPartition 获取 granted 流程图
+  description: 展示 runPartition 中 requested 的计算、DispatchConcurrencyLimiter.tryAcquireBatch 的动态目标读取、Lua 中 available 计算、granted 最小值规则，以及 reject reason 回写。
+nodes:
+  - id: start
+    label: runPartition 进入并发申请阶段
+    type: terminal
+    position: { x: 780, y: 40 }
+  - id: capacitySource
+    label: 前置来源：CapacityControlJob 已把\npoolTarget / taskTarget 写入 Redis
+    type: document
+    position: { x: 1220, y: 120 }
+  - id: requested
+    label: requested = min(dispatchBatchSize, task.maxConcurrency)
+    type: process
+    position: { x: 720, y: 160 }
+  - id: requestedValid
+    label: requested 是否大于 0
+    type: decision
+    position: { x: 780, y: 300 }
+  - id: returnZeroEarly
+    label: 直接返回 0
+    type: process
+    position: { x: 1120, y: 300 }
+  - id: loadPoolTarget
+    label: loadPoolTarget(poolKey)\n取不到则用 poolHardMax
+    type: process
+    position: { x: 720, y: 430 }
+  - id: loadTaskTarget
+    label: loadTaskTarget(taskId)\n取不到则用 taskMaxConcurrency
+    type: process
+    position: { x: 720, y: 560 }
+  - id: runLua
+    label: 执行 acquireBatch Lua
+    type: process
+    position: { x: 720, y: 690 }
+  - id: readCurrent
+    label: 读取 currentGlobal / currentPool /\ncurrentTenant / currentTask
+    type: process
+    position: { x: 720, y: 820 }
+  - id: computeAvailable
+    label: 计算 availableGlobal / availablePool /\navailableTenant / availableTask /\navailableTaskTarget
+    type: process
+    position: { x: 720, y: 960 }
+  - id: minGranted
+    label: granted = min(requested,\navailableGlobal, availablePool,\navailableTenant, availableTask,\navailableTaskTarget)
+    type: process
+    position: { x: 720, y: 1120 }
+  - id: grantedPositive
+    label: granted 是否大于 0
+    type: decision
+    position: { x: 780, y: 1280 }
+  - id: recordReject
+    label: recordRejectReason\n按 global -> tenant -> pool -> taskStatic -> taskTarget 记录指标
+    type: process
+    position: { x: 1110, y: 1280 }
+  - id: returnZero
+    label: 返回 0\nrunPartition 里 block(CONCURRENCY_FULL)
+    type: process
+    position: { x: 1110, y: 1440 }
+  - id: incrBusy
+    label: 对 global / pool / tenant / task\n四个 busy key INCRBY(granted)
+    type: process
+    position: { x: 720, y: 1440 }
+  - id: refreshTtl
+    label: 刷新四个 key 的 TTL
+    type: process
+    position: { x: 720, y: 1570 }
+  - id: returnGranted
+    label: 返回 granted
+    type: process
+    position: { x: 720, y: 1700 }
+  - id: useGranted
+    label: runPartition 用 granted 去 claimReady
+    type: process
+    position: { x: 720, y: 1830 }
+  - id: rollbackDecision
+    label: 实际消耗是否小于 granted
+    type: decision
+    position: { x: 780, y: 1970 }
+  - id: releaseDiff
+    label: releaseBatch 差额\n如 ids.size < granted 或 DB 迁移少于 selected
+    type: process
+    position: { x: 1110, y: 1970 }
+  - id: finalState
+    label: 后续由 ids / units / requested 对比\n决定 EMPTY、CONCURRENCY_FULL 或 reactivate
+    type: document
+    position: { x: 720, y: 2120 }
+  - id: end
+    label: granted 影响本轮可派发的最大批量
+    type: terminal
+    position: { x: 760, y: 2270 }
+edges:
+  - from: start
+    to: requested
+    type: primary
+  - from: capacitySource
+    to: loadPoolTarget
+    type: data
+    label: 读取 poolTarget 来源
+  - from: capacitySource
+    to: loadTaskTarget
+    type: data
+    label: 读取 taskTarget 来源
+  - from: requested
+    to: requestedValid
+    type: primary
+  - from: requestedValid
+    to: returnZeroEarly
+    type: optional
+    label: 否
+  - from: requestedValid
+    to: loadPoolTarget
+    type: primary
+    label: 是
+  - from: loadPoolTarget
+    to: loadTaskTarget
+    type: primary
+  - from: loadTaskTarget
+    to: runLua
+    type: primary
+  - from: runLua
+    to: readCurrent
+    type: primary
+  - from: readCurrent
+    to: computeAvailable
+    type: primary
+  - from: computeAvailable
+    to: minGranted
+    type: primary
+  - from: minGranted
+    to: grantedPositive
+    type: primary
+  - from: grantedPositive
+    to: recordReject
+    type: optional
+    label: 否
+  - from: recordReject
+    to: returnZero
+    type: primary
+  - from: grantedPositive
+    to: incrBusy
+    type: primary
+    label: 是
+  - from: incrBusy
+    to: refreshTtl
+    type: primary
+  - from: refreshTtl
+    to: returnGranted
+    type: primary
+  - from: returnGranted
+    to: useGranted
+    type: primary
+  - from: useGranted
+    to: rollbackDecision
+    type: primary
+  - from: rollbackDecision
+    to: releaseDiff
+    type: optional
+    label: 是
+  - from: rollbackDecision
+    to: finalState
+    type: primary
+    label: 否
+  - from: releaseDiff
+    to: finalState
+    type: primary
+  - from: returnZeroEarly
+    to: end
+    type: data
+    label: granted = 0
+  - from: returnZero
+    to: end
+    type: data
+    label: granted = 0
+  - from: finalState
+    to: end
+    type: primary
+modules: []

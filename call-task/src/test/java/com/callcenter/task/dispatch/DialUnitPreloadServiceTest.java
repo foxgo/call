@@ -30,7 +30,7 @@ class DialUnitPreloadServiceTest {
         properties.setPreloadBatchSize(50);
 
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(queue.windowSize(1001L, 1)).thenReturn(0L);
+        when(queue.windowSize(9L, 1001L)).thenReturn(0L);
         CallDialUnitEntity unit = new CallDialUnitEntity();
         unit.setId(11L);
         when(repository.claimPendingToReady(
@@ -48,7 +48,7 @@ class DialUnitPreloadServiceTest {
 
         service.preloadRunningTask(task);
 
-        verify(queue).offerReady(eq(1001L), eq(1), anyList());
+        verify(queue).offerReady(eq(9L), eq(1001L), anyList());
         verify(repository).claimPendingToReady(eq(new ShardKey(9L, 0, 1, "dial")), eq(1001L), eq(50), any(LocalDateTime.class));
     }
 
@@ -61,7 +61,7 @@ class DialUnitPreloadServiceTest {
         properties.setPreloadThreshold(2);
 
         when(shardingRouter.routeDialUnit(9L, 1001L)).thenReturn(new ShardKey(9L, 0, 1, "dial"));
-        when(queue.windowSize(1001L, 1)).thenReturn(2L);
+        when(queue.windowSize(9L, 1001L)).thenReturn(2L);
 
         DialUnitPreloadService service = new DialUnitPreloadService(queue, repository, properties, shardingRouter);
         CallTaskEntity task = new CallTaskEntity();

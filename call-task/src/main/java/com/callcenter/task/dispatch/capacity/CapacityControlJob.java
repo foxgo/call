@@ -68,7 +68,7 @@ public class CapacityControlJob {
             if (!CallTaskStatus.RUNNING.name().equals(task.getStatus())) {
                 continue;
             }
-            TaskTargetState currentState = taskTargetConcurrencyRegistry.loadTaskTarget(meta.taskId()).orElse(null);
+            TaskTargetState currentState = taskTargetConcurrencyRegistry.loadTaskTarget(meta.tenantId(), meta.taskId()).orElse(null);
             currentStateByTaskId.put(meta.taskId(), currentState);
 
             DispatchMetricsSnapshot metrics = dispatchMetricsCollector.collectForTask(meta.tenantId(), meta.taskId());
@@ -92,6 +92,7 @@ public class CapacityControlJob {
         for (TaskTargetAllocationCandidate candidate : candidates) {
             int targetConcurrency = allocations.getOrDefault(candidate.taskId(), properties.getTaskMinTarget());
             taskTargetConcurrencyRegistry.saveTaskTarget(
+                    metaByTaskId.get(candidate.taskId()).tenantId(),
                     candidate.taskId(),
                     new TaskTargetState(
                             targetConcurrency,

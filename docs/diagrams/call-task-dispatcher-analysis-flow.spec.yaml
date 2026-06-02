@@ -1,0 +1,245 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: vertical
+  canvas: 2200x2600
+  routing: orthogonal
+  title: CallTaskDispatcher 单分区调度流程图
+  description: 聚焦 CallTaskDispatcher 的 submit 与 drain 行为，以及 PartitionSchedulerWorker.runPartition 的主要判断、回滚和重新激活逻辑。
+nodes:
+  - id: start
+    label: 定时触发 dispatchOwnedPartitions
+    type: terminal
+    position: { x: 640, y: 40 }
+  - id: owned
+    label: 读取当前实例持有的 partitions
+    type: process
+    position: { x: 640, y: 160 }
+  - id: runningGate
+    label: 该 partition 是否已在运行
+    type: decision
+    position: { x: 640, y: 300 }
+  - id: skip
+    label: 跳过本轮，避免同 partition 重入
+    type: process
+    position: { x: 980, y: 300 }
+  - id: submit
+    label: 提交到 dispatchExecutor
+    type: process
+    position: { x: 640, y: 440 }
+  - id: drainLoop
+    label: drainPartition 内循环\n最多执行 maxTasksPerPartitionTick 次
+    type: process
+    position: { x: 640, y: 580 }
+  - id: pollTask
+    label: ActiveTaskQueue 是否有活跃任务
+    type: decision
+    position: { x: 640, y: 740 }
+  - id: noTask
+    label: runPartition 返回 false\n本 partition 本轮结束
+    type: terminal
+    position: { x: 980, y: 740 }
+  - id: loadTask
+    label: 加载任务实体并检查 RUNNING
+    type: process
+    position: { x: 640, y: 900 }
+  - id: taskRunning
+    label: 任务状态是否为 RUNNING
+    type: decision
+    position: { x: 640, y: 1040 }
+  - id: blockPaused
+    label: block(PAUSED)\nrunPartition 返回 true
+    type: process
+    position: { x: 980, y: 1040 }
+  - id: preload
+    label: 预加载号码到 Redis ready 热窗口
+    type: process
+    position: { x: 640, y: 1180 }
+  - id: acquire
+    label: 申请批量并发额度
+    type: process
+    position: { x: 640, y: 1320 }
+  - id: quotaOk
+    label: granted 是否大于 0
+    type: decision
+    position: { x: 640, y: 1460 }
+  - id: blockFull
+    label: block(CONCURRENCY_FULL)\nrunPartition 返回 true
+    type: process
+    position: { x: 980, y: 1460 }
+  - id: claim
+    label: claimReady 领取 ready 号码
+    type: process
+    position: { x: 640, y: 1600 }
+  - id: idsOk
+    label: 是否领到号码
+    type: decision
+    position: { x: 640, y: 1740 }
+  - id: emptyAndRelease
+    label: releaseBatch(granted)\nblock(EMPTY)\nrunPartition 返回 true
+    type: process
+    position: { x: 980, y: 1740 }
+  - id: selectCaller
+    label: 加载号码、候选主叫与统计\n逐条选号
+    type: process
+    position: { x: 640, y: 1880 }
+  - id: reofferRejected
+    label: 选号失败或号码缺失\n回退 ready 并释放差额并发
+    type: document
+    position: { x: 1080, y: 1880 }
+  - id: markDialing
+    label: READY -> DIALING 条件更新
+    type: process
+    position: { x: 640, y: 2020 }
+  - id: transitionOk
+    label: 实际进入 DIALING 的数量是否大于 0
+    type: decision
+    position: { x: 640, y: 2160 }
+  - id: blockAfterTransition
+    label: 回退未成功迁移号码\nblock(EMPTY)\nrunPartition 返回 true
+    type: process
+    position: { x: 980, y: 2160 }
+  - id: asyncSubmit
+    label: AsyncDialDispatchService.submit\n异步下发到外部拨号链路
+    type: process
+    position: { x: 640, y: 2300 }
+  - id: reactivateDecision
+    label: 本轮结果决定 block 还是 reactivate
+    type: decision
+    position: { x: 640, y: 2440 }
+  - id: blockResult
+    label: ready 不足或并发受限\nblock(EMPTY/CONCURRENCY_FULL)
+    type: process
+    position: { x: 340, y: 2580 }
+  - id: reactivate
+    label: 更新 fairScore\nreactivate(nextFairScore)
+    type: process
+    position: { x: 940, y: 2580 }
+  - id: returnTrue
+    label: runPartition 返回 true\ndispatcher 可继续本 partition 下一轮
+    type: terminal
+    position: { x: 640, y: 2720 }
+  - id: sideLoop
+    label: 下发闭环补充：\n1. 发送失败时补偿回滚到 READY 并 release\n2. 回调成功/失败后 release 并重新 activate 任务
+    type: document
+    position: { x: 1380, y: 2360 }
+edges:
+  - from: start
+    to: owned
+    type: primary
+  - from: owned
+    to: runningGate
+    type: primary
+    label: 遍历每个 owned partition
+  - from: runningGate
+    to: skip
+    type: optional
+    label: 是
+  - from: runningGate
+    to: submit
+    type: primary
+    label: 否
+  - from: submit
+    to: drainLoop
+    type: primary
+  - from: drainLoop
+    to: pollTask
+    type: primary
+  - from: pollTask
+    to: noTask
+    type: optional
+    label: 否
+  - from: pollTask
+    to: loadTask
+    type: primary
+    label: 是
+  - from: loadTask
+    to: taskRunning
+    type: primary
+  - from: taskRunning
+    to: blockPaused
+    type: optional
+    label: 否
+  - from: taskRunning
+    to: preload
+    type: primary
+    label: 是
+  - from: preload
+    to: acquire
+    type: primary
+  - from: acquire
+    to: quotaOk
+    type: primary
+  - from: quotaOk
+    to: blockFull
+    type: optional
+    label: 否
+  - from: quotaOk
+    to: claim
+    type: primary
+    label: 是
+  - from: claim
+    to: idsOk
+    type: primary
+  - from: idsOk
+    to: emptyAndRelease
+    type: optional
+    label: 否
+  - from: idsOk
+    to: selectCaller
+    type: primary
+    label: 是
+  - from: selectCaller
+    to: reofferRejected
+    type: data
+    label: 缺失 / 选不中
+  - from: selectCaller
+    to: markDialing
+    type: primary
+    label: 选中的号码
+  - from: markDialing
+    to: transitionOk
+    type: primary
+  - from: transitionOk
+    to: blockAfterTransition
+    type: optional
+    label: 否
+  - from: transitionOk
+    to: asyncSubmit
+    type: primary
+    label: 是
+  - from: asyncSubmit
+    to: sideLoop
+    type: data
+    label: 补偿 / 回写闭环
+  - from: asyncSubmit
+    to: reactivateDecision
+    type: primary
+  - from: reactivateDecision
+    to: blockResult
+    type: optional
+    label: ready 不足或并发未拿满
+  - from: reactivateDecision
+    to: reactivate
+    type: primary
+    label: 仍可继续
+  - from: blockPaused
+    to: returnTrue
+    type: primary
+  - from: blockFull
+    to: returnTrue
+    type: primary
+  - from: emptyAndRelease
+    to: returnTrue
+    type: primary
+  - from: blockAfterTransition
+    to: returnTrue
+    type: primary
+  - from: blockResult
+    to: returnTrue
+    type: primary
+  - from: reactivate
+    to: returnTrue
+    type: primary
+modules: []

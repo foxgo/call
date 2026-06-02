@@ -1,6 +1,8 @@
 package com.callcenter.task.dispatch;
 
 import com.callcenter.common.entity.CallTaskEntity;
+import com.callcenter.common.config.ShardProperties;
+import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.repository.CallTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -57,11 +59,12 @@ class TaskActivationServiceTest {
         private int metaPartition;
         private long metaFairScore;
         private int activePartition;
+        private Long activeTenantId;
         private Long activeTaskId;
         private long activeFairScore;
 
         private CapturingActiveTaskQueue() {
-            super(new StringRedisTemplate());
+            super(new StringRedisTemplate(), new ShardingRouter(new ShardProperties()));
         }
 
         @Override
@@ -75,8 +78,9 @@ class TaskActivationServiceTest {
         }
 
         @Override
-        public void activate(int partition, Long taskId, long fairScore) {
+        public void activate(int partition, Long tenantId, Long taskId, long fairScore) {
             this.activePartition = partition;
+            this.activeTenantId = tenantId;
             this.activeTaskId = taskId;
             this.activeFairScore = fairScore;
         }

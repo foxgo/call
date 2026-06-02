@@ -61,10 +61,10 @@ class CapacityControlJobTest {
         when(engine.decide(eq(new ControlInput(snapshot(1002L), provider.snapshot(), new TaskPolicy(10, 1, 10), 12, 8)), eq(
                 new TaskTargetState(8, Instant.parse("2026-06-01T00:00:00Z"), "old", Instant.parse("2026-06-01T00:00:30Z"))
         ), org.mockito.ArgumentMatchers.any())).thenReturn(new ControlDecision(8, "adjusted"));
-        when(registry.loadTaskTarget(1001L)).thenReturn(Optional.of(
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(Optional.of(
                 new TaskTargetState(10, Instant.parse("2026-06-01T00:00:00Z"), "old", Instant.parse("2026-06-01T00:00:30Z"))
         ));
-        when(registry.loadTaskTarget(1002L)).thenReturn(Optional.of(
+        when(registry.loadTaskTarget(9L, 1002L)).thenReturn(Optional.of(
                 new TaskTargetState(8, Instant.parse("2026-06-01T00:00:00Z"), "old", Instant.parse("2026-06-01T00:00:30Z"))
         ));
 
@@ -84,11 +84,11 @@ class CapacityControlJobTest {
         job.recalculateTargets();
 
         verify(registry).savePoolTarget("ai-default", 40);
-        verify(registry).saveTaskTarget(eq(1001L), argThat(state -> state.targetConcurrency() == 20));
-        verify(registry).saveTaskTarget(eq(1002L), argThat(state -> state.targetConcurrency() == 8));
+        verify(registry).saveTaskTarget(eq(9L), eq(1001L), argThat(state -> state.targetConcurrency() == 20));
+        verify(registry).saveTaskTarget(eq(9L), eq(1002L), argThat(state -> state.targetConcurrency() == 8));
         verify(activationService).activate(9L, 1001L);
         verify(activationService, never()).activate(9L, 1002L);
-        verify(registry, never()).saveTaskTarget(eq(1003L), org.mockito.ArgumentMatchers.any());
+        verify(registry, never()).saveTaskTarget(eq(9L), eq(1003L), org.mockito.ArgumentMatchers.any());
     }
 
     private static CallTaskEntity task(Long taskId, Long tenantId, String status, int maxConcurrency) {

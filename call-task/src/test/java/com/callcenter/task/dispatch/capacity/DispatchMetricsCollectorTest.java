@@ -28,8 +28,8 @@ class DispatchMetricsCollectorTest {
         CallTaskCapacityControlProperties properties = new CallTaskCapacityControlProperties();
         properties.setEwmaAlpha(0.25d);
 
-        when(limiter.currentTaskInFlight(1001L)).thenReturn(12);
-        when(registry.loadTaskTarget(1001L)).thenReturn(java.util.Optional.of(
+        when(limiter.currentTaskInFlight(9L, 1001L)).thenReturn(12);
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(java.util.Optional.of(
                 new TaskTargetState(20, Instant.parse("2026-06-01T00:00:00Z"), "steady", Instant.parse("2026-06-01T00:00:30Z"))
         ));
         when(provider.snapshot()).thenReturn(new CapacitySnapshot(
@@ -81,8 +81,8 @@ class DispatchMetricsCollectorTest {
         CallTaskCapacityControlProperties properties = new CallTaskCapacityControlProperties();
         properties.setEwmaAlpha(0.25d);
 
-        when(limiter.currentTaskInFlight(1001L)).thenReturn(4);
-        when(registry.loadTaskTarget(1001L)).thenReturn(java.util.Optional.of(
+        when(limiter.currentTaskInFlight(9L, 1001L)).thenReturn(4);
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(java.util.Optional.of(
                 new TaskTargetState(10, Instant.parse("2026-06-01T00:00:00Z"), "steady", Instant.parse("2026-06-01T00:00:30Z"))
         ));
         when(provider.snapshot()).thenReturn(new CapacitySnapshot(

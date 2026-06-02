@@ -1,6 +1,7 @@
 package com.callcenter.task.dispatch;
 
 import com.callcenter.common.entity.CallDialUnitEntity;
+import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -17,18 +18,21 @@ public class RedisDialUnitQueue {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final RedisQueueScriptRepository scriptRepository;
+    private final ShardingRouter shardingRouter;
 
     public RedisDialUnitQueue(
             StringRedisTemplate stringRedisTemplate,
             RedisQueueScriptRepository scriptRepository,
-            CallTaskDispatchProperties properties
+            CallTaskDispatchProperties properties,
+            ShardingRouter shardingRouter
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.scriptRepository = scriptRepository;
+        this.shardingRouter = shardingRouter;
     }
 
-    public List<Long> claimReady(Long tenantId, Long taskId, int shard, int batchSize, Instant expireAt) {
-        List<String> keys = List.of(RedisQueueKeys.ready(taskId, shard));
+    public List<Long> claimReady(Long tenantId, Long taskId, int batchSize, Instant expireAt) {
+        List<String> keys = List.of(RedisQueueKeys.ready(shardingRouter.dbIndex(tenantId), taskId));
         List<?> raw = stringRedisTemplate.execute(
                 scriptRepository.claimReadyScript(),
                 keys,
@@ -40,19 +44,22 @@ public class RedisDialUnitQueue {
         return raw.stream().map(String::valueOf).map(Long::parseLong).toList();
     }
 
-    public void offerReady(Long taskId, int shard, List<CallDialUnitEntity> units) {
+    public void offerReady(Long tenantId, Long taskId, List<CallDialUnitEntity> units) {
         Set<TypedTuple<String>> tuples = new LinkedHashSet<>();
         for (CallDialUnitEntity unit : units) {
             double score = resolveReadyScore(unit);
             tuples.add(new DefaultTypedTuple<>(String.valueOf(unit.getId()), score));
         }
         if (!tuples.isEmpty()) {
-            stringRedisTemplate.opsForZSet().add(RedisQueueKeys.ready(taskId, shard), tuples);
+            stringRedisTemplate.opsForZSet().add(
+                    RedisQueueKeys.ready(shardingRouter.dbIndex(tenantId), taskId),
+                    tuples
+            );
         }
     }
 
-    public long windowSize(Long taskId, int shard) {
-        Long ready = stringRedisTemplate.opsForZSet().zCard(RedisQueueKeys.ready(taskId, shard));
+    public long windowSize(Long tenantId, Long taskId) {
+        Long ready = stringRedisTemplate.opsForZSet().zCard(RedisQueueKeys.ready(shardingRouter.dbIndex(tenantId), taskId));
         return zeroIfNull(ready);
     }
 

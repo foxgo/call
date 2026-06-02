@@ -1,5 +1,7 @@
 package com.callcenter.task.dispatch;
 
+import com.callcenter.common.config.ShardProperties;
+import com.callcenter.common.route.ShardingRouter;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -22,10 +24,10 @@ class ActiveTaskQueueTest {
     @Test
     void shouldPopLowestFairScoreTask() {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
-        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate, newShardingRouter());
 
-        queue.activate(3, 1001L, 10L);
-        queue.activate(3, 1002L, 20L);
+        queue.activate(3, 9L, 1001L, 10L);
+        queue.activate(3, 9L, 1002L, 20L);
 
         assertEquals(Optional.of(1001L), queue.pollNextTask(3));
         assertEquals(Optional.of(1002L), queue.pollNextTask(3));
@@ -35,12 +37,12 @@ class ActiveTaskQueueTest {
     @Test
     void shouldPopLowestFairScoreTaskWithMetaAtomically() {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
-        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate, newShardingRouter());
 
         queue.upsertMeta(1001L, 9L, 1, 8, 3, 10L);
         queue.upsertMeta(1002L, 9L, 1, 8, 3, 20L);
-        queue.activate(3, 1002L, 20L);
-        queue.activate(3, 1001L, 10L);
+        queue.activate(3, 9L, 1002L, 20L);
+        queue.activate(3, 9L, 1001L, 10L);
 
         assertEquals(
                 Optional.of(new ActiveTaskQueue.ActiveTaskEntry(
@@ -55,29 +57,29 @@ class ActiveTaskQueueTest {
     @Test
     void shouldRoundTripSchedulingMeta() {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
-        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate, newShardingRouter());
 
         queue.upsertMeta(1001L, 9L, 1, 8, 7, 0L);
 
         assertEquals(
                 Optional.of(new TaskSchedulingMeta(1001L, 9L, 1, 8, 7, 0L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)),
-                queue.loadMeta(1001L)
+                queue.loadMeta(9L, 1001L)
         );
     }
 
     @Test
     void shouldReactivateTaskWithUpdatedFairScore() {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
-        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate, newShardingRouter());
 
         queue.upsertMeta(1001L, 9L, 1, 16, 3, 0L);
-        queue.activate(3, 1002L, 20L);
+        queue.activate(3, 9L, 1002L, 20L);
 
-        queue.reactivate(1001L, 80L);
+        queue.reactivate(9L, 1001L, 80L);
 
         assertEquals(
                 Optional.of(new TaskSchedulingMeta(1001L, 9L, 1, 16, 3, 80L, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE)),
-                queue.loadMeta(1001L)
+                queue.loadMeta(9L, 1001L)
         );
         assertEquals(Optional.of(1002L), queue.pollNextTask(3));
         assertEquals(Optional.of(1001L), queue.pollNextTask(3));
@@ -86,10 +88,10 @@ class ActiveTaskQueueTest {
     @Test
     void shouldBlockTaskWithReason() {
         StringRedisTemplate redisTemplate = newStubRedisTemplate();
-        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate);
+        ActiveTaskQueue queue = new ActiveTaskQueue(redisTemplate, newShardingRouter());
 
         queue.upsertMeta(1001L, 9L, 1, 16, 7, 0L);
-        queue.block(1001L, TaskBlockReason.CONCURRENCY_FULL);
+        queue.block(9L, 1001L, TaskBlockReason.CONCURRENCY_FULL);
 
         assertEquals(
                 Optional.of(new TaskSchedulingMeta(
@@ -102,8 +104,12 @@ class ActiveTaskQueueTest {
                         TaskSchedulingState.BLOCKED,
                         TaskBlockReason.CONCURRENCY_FULL
                 )),
-                queue.loadMeta(1001L)
+                queue.loadMeta(9L, 1001L)
         );
+    }
+
+    private static ShardingRouter newShardingRouter() {
+        return new ShardingRouter(new ShardProperties());
     }
 
     private static StringRedisTemplate newStubRedisTemplate() {

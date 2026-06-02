@@ -1,0 +1,373 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9">
+  <diagram name="Page-1" id="0">
+    <mxGraphModel dx="1234" dy="798" grid="1" gridSize="8" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3800" pageHeight="2420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="定时调度器&amp;nbsp;&lt;div&gt;Spring Scheduler&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="132" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="分区租约管理 TaskPartitionManager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="274" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="366" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="分区调度器&amp;nbsp;&lt;div&gt;CallTaskDispatcher&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="508" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="600" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="分区执行线程池 callTaskDispatchExecutor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="742" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="834" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="分区工作器 PartitionSchedulerWorker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="976" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="1068" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="活跃任务队列&amp;nbsp;&lt;div&gt;ActiveTaskQueue&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="1210" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="1302" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="任务仓库&amp;nbsp;&lt;div&gt;CallTaskRepository&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="1444" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="1536" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="号码预加载 DialUnitPreloadService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="1678" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="1770" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="并发限流器 DispatchConcurrencyLimiter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="1912" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="2004" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="Redis 号码队列 RedisDialUnitQueue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="2146" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="2238" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="号码仓库&amp;nbsp;&lt;div&gt;CallDialUnitRepository&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="2380" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="2472" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="异步下发服务 AsyncDialDispatchService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="2614" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="2706" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="下发补偿 DialDispatchCompensationService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="2848" y="72" width="208" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="2940" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="外部拨号链路&amp;nbsp;&lt;div&gt;MQ + Dialer&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="3082" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="3174" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="回写服务 DialResultWritebackService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="3316" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="3408" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="任务激活&amp;nbsp;&lt;div&gt;TaskActivationService&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#0f172a;fontStyle=1;align=center;verticalAlign=middle;arcSize=12;" parent="1" vertex="1">
+          <mxGeometry x="3550" y="72" width="184" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="" style="shape=line;strokeColor=#94a3b8;dashed=1;dashPattern=8 8;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="3642" y="132" width="1" height="1860" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="外层循环：遍历 owned partitions，并将未运行的 partition 交给执行线程池" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#93c5fd;fontColor=#1e3a8a;align=left;verticalAlign=top;spacingTop=8;spacingLeft=12;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
+          <mxGeometry x="220" y="150" width="3340" height="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="内层循环：drainPartition 最多执行 maxTasksPerPartitionTick 次 runPartition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10b981;fontColor=#1e3a8a;align=left;verticalAlign=top;spacingTop=8;spacingLeft=12;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
+          <mxGeometry x="720" y="430" width="2560" height="1260" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="128" y="206" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="596" y="206" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="定时触发 dispatchOwnedPartitions()" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="36" target="37" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="596" y="268" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="362" y="268" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="读取 ownedPartitions()" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="39" target="40" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="362" y="330" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="596" y="330" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="返回当前实例持有的 partition 列表" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="42" target="43" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="596" y="392" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="830" y="392" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="submitPartition(partition) 同 partition 未运行时才提交" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="45" target="46" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="830" y="454" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="49" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="454" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="异步执行 drainPartition(partition)" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" edge="1">
+          <mxGeometry x="0.0088" y="8" relative="1" as="geometry">
+            <mxPoint x="838" y="496" as="sourcePoint" />
+            <mxPoint x="1064" y="496" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="51" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="516" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1298" y="516" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="pollNextTaskWithMeta(partition)" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="51" target="52" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1298" y="578" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="578" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="返回空 / taskId + meta 空则本轮 partition 停止" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="54" target="55" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="57" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="640" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="58" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1532" y="640" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="59" value="findRequired(tenantId, taskId)" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="57" target="58" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="60" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1532" y="702" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="61" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="702" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="62" value="返回任务实体 非 RUNNING 则 block(PAUSED)" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="60" target="61" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="63" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="764" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="64" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1766" y="764" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="65" value="preloadRunningTask(task) 不足阈值时预热 ready" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="63" target="64" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="66" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="826" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="67" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2000" y="826" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="68" value="tryAcquireBatch 按全局/池/租户/任务申请并发" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="66" target="67" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="69" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2000" y="888" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="70" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="888" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="71" value="granted 0 则 block(CONCURRENCY_FULL)" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="69" target="70" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="72" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="950" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="73" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2234" y="950" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="74" value="claimReady 领取 ready 号码" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="72" target="73" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="75" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2234" y="1012" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="76" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="1012" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="77" value="ids 为空则 releaseBatch + block(EMPTY)" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="75" target="76" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="78" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="1074" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="79" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2468" y="1074" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="80" value="读取号码 + 选号 + markDialingSelectionsFromReady()" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="78" target="79" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="81" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2468" y="1136" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="82" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="1136" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="83" value="真正进入 DIALING 的号码 缺失/拒绝号码回退 ready 并回滚并发" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="81" target="82" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="84" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="1198" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="85" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2702" y="1198" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="86" value="submit(unit) 逐条异步下发" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="84" target="85" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="87" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2702" y="1260" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="88" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3170" y="1260" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="89" value="校验通过后 publish 到外部拨号链路" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="87" target="88" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="90" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2702" y="1322" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="91" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2936" y="1322" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="92" value="发送线程拒绝 / 校验失败 / 闸门拒绝 / 发布异常" style="endArrow=open;endFill=0;strokeColor=#64748b;strokeWidth=1.5;dashed=1;dashPattern=2 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="90" target="91" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="93" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2936" y="1384" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="94" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2468" y="1384" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="95" value="revert DIALING -&gt; READY" style="endArrow=open;endFill=0;strokeColor=#64748b;strokeWidth=1.5;dashed=1;dashPattern=2 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="93" target="94" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="96" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2936" y="1446" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="97" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2234" y="1446" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="98" value="offerReady 回退到 ready" style="endArrow=open;endFill=0;strokeColor=#64748b;strokeWidth=1.5;dashed=1;dashPattern=2 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="96" target="97" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="99" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2936" y="1508" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="100" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2000" y="1508" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="101" value="release 释放被占并发" style="endArrow=open;endFill=0;strokeColor=#64748b;strokeWidth=1.5;dashed=1;dashPattern=2 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="99" target="100" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="102" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3170" y="1570" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="103" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3404" y="1570" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="104" value="拨号结果回调 携带 dispatchToken" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="102" target="103" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="105" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3404" y="1632" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="106" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2468" y="1632" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="107" value="markSuccess / markFailedForRetry" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="105" target="106" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="108" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3404" y="1694" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="109" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="2000" y="1694" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="110" value="release 成功或失败都释放并发" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="108" target="109" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="111" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3404" y="1756" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="112" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3638" y="1756" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="113" value="activate(task) 重新激活任务" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="111" target="112" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="114" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="3638" y="1818" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="115" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1298" y="1818" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="116" value="upsertMeta + activate 重新进入 active queue" style="endArrow=block;endFill=1;strokeColor=#1d4ed8;strokeWidth=2;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="114" target="115" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="117" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1064" y="1880" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="118" value="" style="ellipse;opacity=0;fillOpacity=0;strokeOpacity=0;" parent="1" vertex="1">
+          <mxGeometry x="1298" y="1880" width="8" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="119" value="本轮结束前根据结果 reactivate(nextFairScore) 或 block" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=1.5;dashed=1;dashPattern=6 4;rounded=0;html=1;edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;jettySize=auto;" parent="1" source="117" target="118" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="120" value="阅读方式：CallTaskDispatcher 只负责分区级调度与防重入；真正的号码领取、并发占位、选号、状态迁移、异步下发、失败补偿和回写释放并发，都在 worker 及后续链路中完成。" style="shape=note;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#60a5fa;fontColor=#0f172a;size=15;" parent="1" vertex="1">
+          <mxGeometry x="40" y="2040" width="1800" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

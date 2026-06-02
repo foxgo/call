@@ -1,0 +1,158 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: vertical
+  canvas: 2400x3000
+  routing: orthogonal
+  title: CapacityControlJob 逻辑流程图
+  description: 展示 CapacityControlJob 如何定时采集池级容量、遍历已知任务、计算 desiredTarget、做池内分配，并把 poolTarget 与 taskTarget 写回 Redis 供 tryAcquireBatch 使用。
+nodes:
+  - id: start
+    label: 定时触发 recalculateTargets()
+    type: terminal
+    position: { x: 840, y: 40 }
+  - id: snapshot
+    label: capacityProvider.snapshot()\n读取池容量快照
+    type: process
+    position: { x: 790, y: 160 }
+  - id: init
+    label: 初始化 candidates / metaByTaskId /\ncurrentStateByTaskId
+    type: process
+    position: { x: 780, y: 290 }
+  - id: listKnown
+    label: 遍历 ActiveTaskQueue.listKnownMetas()
+    type: process
+    position: { x: 800, y: 420 }
+  - id: loadTask
+    label: 加载任务实体 CallTaskEntity
+    type: process
+    position: { x: 810, y: 550 }
+  - id: runningDecision
+    label: 任务状态是否 RUNNING
+    type: decision
+    position: { x: 850, y: 690 }
+  - id: skipTask
+    label: 跳过非 RUNNING 任务
+    type: process
+    position: { x: 1210, y: 690 }
+  - id: loadCurrentState
+    label: 读取当前 TaskTargetState
+    type: process
+    position: { x: 790, y: 830 }
+  - id: collectMetrics
+    label: collectForTask()\n采集 DispatchMetricsSnapshot
+    type: process
+    position: { x: 770, y: 960 }
+  - id: buildInput
+    label: 组装 ControlInput\n含 metrics / capacity / policy /\ncurrentConcurrency / currentTarget
+    type: process
+    position: { x: 760, y: 1100 }
+  - id: decide
+    label: capacityControlEngine.decide()
+    type: process
+    position: { x: 820, y: 1250 }
+  - id: engineDetail
+    label: 子逻辑：\n冷却期直接保持当前值；\n否则按 connect / occupancy /\ntrunkHealth / llmLoad 调整，\n再做 step limit、bounds、deadband
+    type: document
+    position: { x: 1210, y: 1170 }
+  - id: addCandidate
+    label: 记录 desiredTarget + weight + maxConcurrency\n加入 TaskTargetAllocationCandidate
+    type: process
+    position: { x: 740, y: 1410 }
+  - id: savePool
+    label: savePoolTarget(poolKey, capacitySnapshot.total)
+    type: process
+    position: { x: 760, y: 1570 }
+  - id: allocate
+    label: taskTargetAllocator.allocate()\n按池总量做任务间分配
+    type: process
+    position: { x: 790, y: 1710 }
+  - id: allocatorDetail
+    label: 分配规则：\n1. 先给每个任务 baseline\n2. 再按 weight 分余量\n3. 仍有余量则二次补齐
+    type: document
+    position: { x: 1210, y: 1670 }
+  - id: saveTaskTarget
+    label: saveTaskTarget(taskId, TaskTargetState)\n写入 targetConcurrency / reason / cooldownUntil
+    type: process
+    position: { x: 730, y: 1870 }
+  - id: reactivateDecision
+    label: 之前是否因 CONCURRENCY_FULL 阻塞\n且本轮 target 变大
+    type: decision
+    position: { x: 850, y: 2030 }
+  - id: reactivate
+    label: taskActivationService.activate()
+    type: process
+    position: { x: 1210, y: 2030 }
+  - id: end
+    label: 后续 tryAcquireBatch 读取\npoolTarget / taskTarget 参与 granted 计算
+    type: terminal
+    position: { x: 760, y: 2190 }
+edges:
+  - from: start
+    to: snapshot
+    type: primary
+  - from: snapshot
+    to: init
+    type: primary
+  - from: init
+    to: listKnown
+    type: primary
+  - from: listKnown
+    to: loadTask
+    type: primary
+  - from: loadTask
+    to: runningDecision
+    type: primary
+  - from: runningDecision
+    to: skipTask
+    type: optional
+    label: 否
+  - from: runningDecision
+    to: loadCurrentState
+    type: primary
+    label: 是
+  - from: loadCurrentState
+    to: collectMetrics
+    type: primary
+  - from: collectMetrics
+    to: buildInput
+    type: primary
+  - from: buildInput
+    to: decide
+    type: primary
+  - from: decide
+    to: engineDetail
+    type: data
+    label: 决策细节
+  - from: decide
+    to: addCandidate
+    type: primary
+  - from: addCandidate
+    to: savePool
+    type: primary
+  - from: savePool
+    to: allocate
+    type: primary
+  - from: allocate
+    to: allocatorDetail
+    type: data
+    label: 分配细节
+  - from: allocate
+    to: saveTaskTarget
+    type: primary
+  - from: saveTaskTarget
+    to: reactivateDecision
+    type: primary
+  - from: reactivateDecision
+    to: reactivate
+    type: optional
+    label: 是
+  - from: reactivateDecision
+    to: end
+    type: primary
+    label: 否
+  - from: reactivate
+    to: end
+    type: primary
+modules: []

@@ -32,7 +32,7 @@ class DialDispatchCompensationServiceTest {
 
         service.compensateFailedDispatch(shardKey, unit);
 
-        verify(queue).offerReady(eq(1001L), eq(1), eq(List.of(unit)));
+        verify(queue).offerReady(eq(9L), eq(1001L), eq(List.of(unit)));
         verify(limiter).release(9L, 1001L);
         verify(metrics).incrementDispatchCompensated();
         verify(metrics, never()).incrementDispatchCompensationSkipped();
@@ -51,7 +51,7 @@ class DialDispatchCompensationServiceTest {
 
         service.compensateFailedDispatch(shardKey, unit);
 
-        verify(queue, never()).offerReady(anyLong(), anyInt(), any());
+        verify(queue, never()).offerReady(anyLong(), anyLong(), any());
         verify(limiter, never()).release(anyLong(), anyLong());
         verify(metrics).incrementDispatchCompensationSkipped();
         verify(metrics, never()).incrementDispatchCompensated();

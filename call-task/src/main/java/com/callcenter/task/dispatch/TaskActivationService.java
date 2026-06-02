@@ -40,7 +40,7 @@ public class TaskActivationService {
                 request.partition(),
                 0L
         );
-        activeTaskQueue.activate(request.partition(), request.taskId(), 0L);
+        activeTaskQueue.activate(request.partition(), request.tenantId(), request.taskId(), 0L);
     }
 
     public void activate(Long tenantId, Long taskId) {

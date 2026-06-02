@@ -43,12 +43,12 @@ public class DispatchMetricsCollector {
     public DispatchMetricsSnapshot collectForTask(Long tenantId, Long taskId) {
         CapacitySnapshot capacity = capacityProvider.snapshot();
         ShardKey shardKey = shardingRouter.routeDialUnit(tenantId, taskId);
-        long activeCalls = concurrencyLimiter.currentTaskInFlight(taskId);
+        long activeCalls = concurrencyLimiter.currentTaskInFlight(tenantId, taskId);
         long successCount = metrics.writebackSuccessCount(taskId);
         long failureCount = metrics.writebackFailureCount(taskId);
         long completedCalls = successCount + failureCount;
         long remainingCalls = callDialUnitRepository.countRemainingDialUnits(shardKey, taskId);
-        int currentTarget = taskTargetConcurrencyRegistry.loadTaskTarget(taskId)
+        int currentTarget = taskTargetConcurrencyRegistry.loadTaskTarget(tenantId, taskId)
                 .map(TaskTargetState::targetConcurrency)
                 .orElse(0);
         double occupancy = currentTarget <= 0 ? 0.0d : Math.min(((double) activeCalls) / currentTarget, 1.0d);

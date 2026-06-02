@@ -4,6 +4,7 @@ import com.callcenter.task.config.CallTaskConcurrencyProperties;
 import com.callcenter.task.config.CallTaskCapacityControlProperties;
 import com.callcenter.task.dispatch.capacity.TaskTargetConcurrencyRegistry;
 import com.callcenter.task.metrics.CallTaskMetrics;
+import com.callcenter.common.route.ShardingRouter;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,6 +21,7 @@ public class DispatchConcurrencyLimiter {
     private final CallTaskCapacityControlProperties capacityControlProperties;
     private final TaskTargetConcurrencyRegistry taskTargetConcurrencyRegistry;
     private final CallTaskMetrics callTaskMetrics;
+    private final ShardingRouter shardingRouter;
     private final DefaultRedisScript<Long> acquireBatchScript;
     private final DefaultRedisScript<Long> releaseBatchScript;
 
@@ -28,13 +30,15 @@ public class DispatchConcurrencyLimiter {
             CallTaskConcurrencyProperties properties,
             CallTaskCapacityControlProperties capacityControlProperties,
             TaskTargetConcurrencyRegistry taskTargetConcurrencyRegistry,
-            CallTaskMetrics callTaskMetrics
+            CallTaskMetrics callTaskMetrics,
+            ShardingRouter shardingRouter
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.properties = properties;
         this.capacityControlProperties = capacityControlProperties;
         this.taskTargetConcurrencyRegistry = taskTargetConcurrencyRegistry;
         this.callTaskMetrics = callTaskMetrics;
+        this.shardingRouter = shardingRouter;
         this.acquireBatchScript = new DefaultRedisScript<>();
         acquireBatchScript.setScriptText("""
                 local requested = tonumber(ARGV[1])
@@ -98,12 +102,12 @@ public class DispatchConcurrencyLimiter {
         }
         int poolTarget = taskTargetConcurrencyRegistry.loadPoolTarget(capacityControlProperties.getPoolKey())
                 .orElse(capacityControlProperties.getPoolHardMax());
-        int taskTarget = taskTargetConcurrencyRegistry.loadTaskTarget(taskId)
+        int taskTarget = taskTargetConcurrencyRegistry.loadTaskTarget(tenantId, taskId)
                 .map(state -> state.targetConcurrency())
                 .orElse(taskMaxConcurrency);
         Long granted = stringRedisTemplate.execute(
                 acquireBatchScript,
-                List.of(globalKey(), poolBusyKey(), tenantKey(tenantId), taskKey(taskId)),
+                List.of(globalKey(), poolBusyKey(), tenantKey(tenantId), taskKey(tenantId, taskId)),
                 String.valueOf(requested),
                 String.valueOf(properties.getGlobalMax()),
                 String.valueOf(poolTarget),
@@ -129,7 +133,7 @@ public class DispatchConcurrencyLimiter {
         }
         stringRedisTemplate.execute(
                 releaseBatchScript,
-                List.of(globalKey(), poolBusyKey(), tenantKey(tenantId), taskKey(taskId)),
+                List.of(globalKey(), poolBusyKey(), tenantKey(tenantId), taskKey(tenantId, taskId)),
                 String.valueOf(count),
                 String.valueOf(KEY_TTL.toMillis()),
                 String.valueOf(KEY_TTL.toMillis())
@@ -137,13 +141,13 @@ public class DispatchConcurrencyLimiter {
     }
 
     public int available(Long tenantId, Long taskId, int taskMaxConcurrency) {
-        String current = stringRedisTemplate.opsForValue().get(taskKey(taskId));
+        String current = stringRedisTemplate.opsForValue().get(taskKey(tenantId, taskId));
         int inFlight = current == null ? 0 : Integer.parseInt(current);
         return Math.max(taskMaxConcurrency - inFlight, 0);
     }
 
-    public int currentTaskInFlight(Long taskId) {
-        String current = stringRedisTemplate.opsForValue().get(taskKey(taskId));
+    public int currentTaskInFlight(Long tenantId, Long taskId) {
+        String current = stringRedisTemplate.opsForValue().get(taskKey(tenantId, taskId));
         return current == null ? 0 : Integer.parseInt(current);
     }
 
@@ -155,8 +159,10 @@ public class DispatchConcurrencyLimiter {
         return "call:concurrency:tenant:%d".formatted(tenantId);
     }
 
-    private String taskKey(Long taskId) {
-        return "call:concurrency:task:%d".formatted(taskId);
+    private String taskKey(Long tenantId, Long taskId) {
+        return "call:concurrency:task:%s".formatted(
+                RedisQueueKeys.taskRef(shardingRouter.dbIndex(tenantId), taskId)
+        );
     }
 
     private String poolBusyKey() {
@@ -167,7 +173,7 @@ public class DispatchConcurrencyLimiter {
         int currentGlobal = currentValue(globalKey());
         int currentPool = currentValue(poolBusyKey());
         int currentTenant = currentValue(tenantKey(tenantId));
-        int currentTask = currentTaskInFlight(taskId);
+        int currentTask = currentTaskInFlight(tenantId, taskId);
         if (currentGlobal >= properties.getGlobalMax()) {
             callTaskMetrics.incrementCapacityReject("global");
             return;

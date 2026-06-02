@@ -1,5 +1,6 @@
 package com.callcenter.task.dispatch;
 
+import com.callcenter.common.route.ShardingRouter;
 import java.util.Optional;
 import java.util.Map;
 import java.util.List;
@@ -12,17 +13,20 @@ import org.springframework.stereotype.Component;
 public class ActiveTaskQueue {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final ShardingRouter shardingRouter;
 
-    public ActiveTaskQueue(StringRedisTemplate stringRedisTemplate) {
+    public ActiveTaskQueue(StringRedisTemplate stringRedisTemplate, ShardingRouter shardingRouter) {
         this.stringRedisTemplate = stringRedisTemplate;
+        this.shardingRouter = shardingRouter;
     }
 
-    public void activate(int partition, Long taskId, long fairScore) {
-        stringRedisTemplate.opsForZSet().add(activeKey(partition), String.valueOf(taskId), fairScore);
+    public void activate(int partition, Long tenantId, Long taskId, long fairScore) {
+        stringRedisTemplate.opsForZSet().add(activeKey(partition), taskRef(tenantId, taskId), fairScore);
     }
 
     public void upsertMeta(Long taskId, Long tenantId, int priority, int weight, int partition, long fairScore) {
-        stringRedisTemplate.opsForHash().putAll(metaKey(taskId), Map.of(
+        String taskRef = taskRef(tenantId, taskId);
+        stringRedisTemplate.opsForHash().putAll(metaKey(taskRef), Map.of(
                 "taskId", String.valueOf(taskId),
                 "tenantId", String.valueOf(tenantId),
                 "priority", String.valueOf(priority),
@@ -32,11 +36,15 @@ public class ActiveTaskQueue {
                 "state", TaskSchedulingState.ACTIVE.name(),
                 "blockedReason", TaskBlockReason.NONE.name()
         ));
-        stringRedisTemplate.opsForSet().add(knownTasksKey(), String.valueOf(taskId));
+        stringRedisTemplate.opsForSet().add(knownTasksKey(), taskRef);
     }
 
-    public Optional<TaskSchedulingMeta> loadMeta(Long taskId) {
-        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(metaKey(taskId));
+    public Optional<TaskSchedulingMeta> loadMeta(Long tenantId, Long taskId) {
+        return loadMetaByRef(taskRef(tenantId, taskId));
+    }
+
+    private Optional<TaskSchedulingMeta> loadMetaByRef(String taskRef) {
+        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(metaKey(taskRef));
         if (entries == null || entries.isEmpty()) {
             return Optional.empty();
         }
@@ -57,9 +65,9 @@ public class ActiveTaskQueue {
         if (ids == null || ids.isEmpty()) {
             return Optional.empty();
         }
-        String taskId = ids.iterator().next();
-        stringRedisTemplate.opsForZSet().remove(activeKey(partition), taskId);
-        return Optional.of(Long.parseLong(taskId));
+        String taskRef = ids.iterator().next();
+        stringRedisTemplate.opsForZSet().remove(activeKey(partition), taskRef);
+        return Optional.of(RedisQueueKeys.taskId(taskRef));
     }
 
     public Optional<ActiveTaskEntry> pollNextTaskWithMeta(int partition) {
@@ -67,30 +75,29 @@ public class ActiveTaskQueue {
         if (tuple == null || tuple.getValue() == null) {
             return Optional.empty();
         }
-        Long taskId = Long.parseLong(tuple.getValue());
-        return loadMeta(taskId).map(meta -> new ActiveTaskEntry(taskId, meta));
+        return loadMetaByRef(tuple.getValue()).map(meta -> new ActiveTaskEntry(meta.taskId(), meta));
     }
 
-    public void reactivate(Long taskId, long fairScore) {
-        updateMeta(taskId, fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
-        loadMeta(taskId).ifPresent(meta -> activate(meta.partition(), taskId, fairScore));
+    public void reactivate(Long tenantId, Long taskId, long fairScore) {
+        updateMeta(tenantId, taskId, fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
+        loadMeta(tenantId, taskId).ifPresent(meta -> activate(meta.partition(), meta.tenantId(), taskId, fairScore));
     }
 
     public void reactivate(TaskSchedulingMeta meta, long fairScore) {
-        updateMeta(meta.taskId(), fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
-        activate(meta.partition(), meta.taskId(), fairScore);
+        updateMeta(meta.tenantId(), meta.taskId(), fairScore, TaskSchedulingState.ACTIVE, TaskBlockReason.NONE);
+        activate(meta.partition(), meta.tenantId(), meta.taskId(), fairScore);
     }
 
-    public void block(Long taskId, TaskBlockReason reason) {
-        loadMeta(taskId).ifPresent(meta -> updateMeta(taskId, meta.fairScore(), TaskSchedulingState.BLOCKED, reason));
+    public void block(Long tenantId, Long taskId, TaskBlockReason reason) {
+        loadMeta(tenantId, taskId).ifPresent(meta -> updateMeta(tenantId, taskId, meta.fairScore(), TaskSchedulingState.BLOCKED, reason));
     }
 
     public void block(TaskSchedulingMeta meta, TaskBlockReason reason) {
-        updateMeta(meta.taskId(), meta.fairScore(), TaskSchedulingState.BLOCKED, reason);
+        updateMeta(meta.tenantId(), meta.taskId(), meta.fairScore(), TaskSchedulingState.BLOCKED, reason);
     }
 
-    public void deactivate(Long taskId) {
-        loadMeta(taskId).ifPresent(meta -> updateMeta(taskId, meta.fairScore(), TaskSchedulingState.INACTIVE, meta.blockedReason()));
+    public void deactivate(Long tenantId, Long taskId) {
+        loadMeta(tenantId, taskId).ifPresent(meta -> updateMeta(tenantId, taskId, meta.fairScore(), TaskSchedulingState.INACTIVE, meta.blockedReason()));
     }
 
     public List<TaskSchedulingMeta> listKnownMetas() {
@@ -99,8 +106,7 @@ public class ActiveTaskQueue {
             return List.of();
         }
         return taskIds.stream()
-                .map(Long::parseLong)
-                .map(this::loadMeta)
+                .map(this::loadMetaByRef)
                 .flatMap(Optional::stream)
                 .toList();
     }
@@ -109,18 +115,23 @@ public class ActiveTaskQueue {
         return "call:scheduler:partition:%d:active".formatted(partition);
     }
 
-    private String metaKey(Long taskId) {
-        return "call:scheduler:task:%d:meta".formatted(taskId);
+    private String metaKey(String taskRef) {
+        return "call:scheduler:task:%s:meta".formatted(taskRef);
     }
 
     private String knownTasksKey() {
         return "call:scheduler:tasks:known";
     }
 
-    private void updateMeta(Long taskId, long fairScore, TaskSchedulingState state, TaskBlockReason blockedReason) {
-        stringRedisTemplate.opsForHash().put(metaKey(taskId), "fairScore", String.valueOf(fairScore));
-        stringRedisTemplate.opsForHash().put(metaKey(taskId), "state", state.name());
-        stringRedisTemplate.opsForHash().put(metaKey(taskId), "blockedReason", blockedReason.name());
+    private String taskRef(Long tenantId, Long taskId) {
+        return RedisQueueKeys.taskRef(shardingRouter.dbIndex(tenantId), taskId);
+    }
+
+    private void updateMeta(Long tenantId, Long taskId, long fairScore, TaskSchedulingState state, TaskBlockReason blockedReason) {
+        String taskRef = taskRef(tenantId, taskId);
+        stringRedisTemplate.opsForHash().put(metaKey(taskRef), "fairScore", String.valueOf(fairScore));
+        stringRedisTemplate.opsForHash().put(metaKey(taskRef), "state", state.name());
+        stringRedisTemplate.opsForHash().put(metaKey(taskRef), "blockedReason", blockedReason.name());
     }
 
     record ActiveTaskEntry(Long taskId, TaskSchedulingMeta meta) {

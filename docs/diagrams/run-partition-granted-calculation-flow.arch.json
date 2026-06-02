@@ -1,0 +1,304 @@
+{
+  "version": 1,
+  "title": "runPartition 获取 granted 流程图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "vertical",
+  "counts": {
+    "nodes": 22,
+    "edges": 25,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "label": "runPartition 进入\n并发申请阶段",
+      "type": "terminal"
+    },
+    {
+      "id": "capacitySource",
+      "label": "前置来源：CapacityControlJob 已把\npoolTarget / taskTarget 写入 Redis",
+      "type": "document"
+    },
+    {
+      "id": "requested",
+      "label": "requested = min(dispatchBatchSize,\ntask.maxConcurrency)",
+      "type": "process"
+    },
+    {
+      "id": "requestedValid",
+      "label": "requested\n是否大于 0",
+      "type": "decision"
+    },
+    {
+      "id": "returnZeroEarly",
+      "label": "直接返回 0",
+      "type": "process"
+    },
+    {
+      "id": "loadPoolTarget",
+      "label": "loadPoolTarget(poolKey)\n取不到则用 poolHardMax",
+      "type": "process"
+    },
+    {
+      "id": "loadTaskTarget",
+      "label": "loadTaskTarget(taskId)\n取不到则用 taskMaxConcurrency",
+      "type": "process"
+    },
+    {
+      "id": "runLua",
+      "label": "执行 acquireBatch Lua",
+      "type": "process"
+    },
+    {
+      "id": "readCurrent",
+      "label": "读取 currentGlobal / currentPool /\ncurrentTenant / currentTask",
+      "type": "process"
+    },
+    {
+      "id": "computeAvailable",
+      "label": "计算 availableGlobal / availablePool /\navailableTenant / availableTask /\navailableTaskTarget",
+      "type": "process"
+    },
+    {
+      "id": "minGranted",
+      "label": "granted = min(requested,\navailableGlobal, availablePool,\navailableTenant, availableTask,\navailableTaskTarget)",
+      "type": "process"
+    },
+    {
+      "id": "grantedPositive",
+      "label": "granted\n是否大于 0",
+      "type": "decision"
+    },
+    {
+      "id": "recordReject",
+      "label": "recordRejectReason\n按 global -> tenant -> pool ->\ntaskStatic -> taskTarget 记录指标",
+      "type": "process"
+    },
+    {
+      "id": "returnZero",
+      "label": "返回 0\nrunPartition 里 block(CONCURRENCY_FULL)",
+      "type": "process"
+    },
+    {
+      "id": "incrBusy",
+      "label": "对 global / pool / tenant / task\n四个 busy key INCRBY(granted)",
+      "type": "process"
+    },
+    {
+      "id": "refreshTtl",
+      "label": "刷新四个 key 的 TTL",
+      "type": "process"
+    },
+    {
+      "id": "returnGranted",
+      "label": "返回 granted",
+      "type": "process"
+    },
+    {
+      "id": "useGranted",
+      "label": "runPartition 用 granted 去 claimReady",
+      "type": "process"
+    },
+    {
+      "id": "rollbackDecision",
+      "label": "实际消耗\n是否小于 granted",
+      "type": "decision"
+    },
+    {
+      "id": "releaseDiff",
+      "label": "releaseBatch 差额\n如 ids.size < granted 或\nDB 迁移少于 selected",
+      "type": "process"
+    },
+    {
+      "id": "finalState",
+      "label": "后续由 ids / units / requested 对比\n决定 EMPTY、CONCURRENCY_FULL 或 reactivate",
+      "type": "document"
+    },
+    {
+      "id": "end",
+      "label": "granted 影响本轮可派发的最大批量",
+      "type": "terminal"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "start",
+      "to": "requested",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-2",
+      "from": "capacitySource",
+      "to": "loadPoolTarget",
+      "type": "data",
+      "label": "读取 poolTarget 来源"
+    },
+    {
+      "id": "edge-3",
+      "from": "capacitySource",
+      "to": "loadTaskTarget",
+      "type": "data",
+      "label": "读取 taskTarget 来源"
+    },
+    {
+      "id": "edge-4",
+      "from": "requested",
+      "to": "requestedValid",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-5",
+      "from": "requestedValid",
+      "to": "returnZeroEarly",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-6",
+      "from": "requestedValid",
+      "to": "loadPoolTarget",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-7",
+      "from": "loadPoolTarget",
+      "to": "loadTaskTarget",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-8",
+      "from": "loadTaskTarget",
+      "to": "runLua",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-9",
+      "from": "runLua",
+      "to": "readCurrent",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-10",
+      "from": "readCurrent",
+      "to": "computeAvailable",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-11",
+      "from": "computeAvailable",
+      "to": "minGranted",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-12",
+      "from": "minGranted",
+      "to": "grantedPositive",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-13",
+      "from": "grantedPositive",
+      "to": "recordReject",
+      "type": "optional",
+      "label": "否"
+    },
+    {
+      "id": "edge-14",
+      "from": "recordReject",
+      "to": "returnZero",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-15",
+      "from": "grantedPositive",
+      "to": "incrBusy",
+      "type": "primary",
+      "label": "是"
+    },
+    {
+      "id": "edge-16",
+      "from": "incrBusy",
+      "to": "refreshTtl",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-17",
+      "from": "refreshTtl",
+      "to": "returnGranted",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-18",
+      "from": "returnGranted",
+      "to": "useGranted",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-19",
+      "from": "useGranted",
+      "to": "rollbackDecision",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-20",
+      "from": "rollbackDecision",
+      "to": "releaseDiff",
+      "type": "optional",
+      "label": "是"
+    },
+    {
+      "id": "edge-21",
+      "from": "rollbackDecision",
+      "to": "finalState",
+      "type": "primary",
+      "label": "否"
+    },
+    {
+      "id": "edge-22",
+      "from": "releaseDiff",
+      "to": "finalState",
+      "type": "primary",
+      "label": null
+    },
+    {
+      "id": "edge-23",
+      "from": "returnZeroEarly",
+      "to": "end",
+      "type": "data",
+      "label": "granted = 0"
+    },
+    {
+      "id": "edge-24",
+      "from": "returnZero",
+      "to": "end",
+      "type": "data",
+      "label": "granted = 0"
+    },
+    {
+      "id": "edge-25",
+      "from": "finalState",
+      "to": "end",
+      "type": "primary",
+      "label": null
+    }
+  ],
+  "modules": []
+}

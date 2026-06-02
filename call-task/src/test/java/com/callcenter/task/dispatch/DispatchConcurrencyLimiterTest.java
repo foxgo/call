@@ -1,5 +1,7 @@
 package com.callcenter.task.dispatch;
 
+import com.callcenter.common.config.ShardProperties;
+import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskConcurrencyProperties;
 import com.callcenter.task.config.CallTaskCapacityControlProperties;
 import com.callcenter.task.dispatch.capacity.TaskTargetConcurrencyRegistry;
@@ -32,7 +34,7 @@ class DispatchConcurrencyLimiterTest {
                         "call:concurrency:global",
                         "call:capacity:pool:ai-default:busy",
                         "call:concurrency:tenant:9",
-                        "call:concurrency:task:1001"
+                        "call:concurrency:task:1:1001"
                 )),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -43,14 +45,21 @@ class DispatchConcurrencyLimiterTest {
                 org.mockito.ArgumentMatchers.anyString()
         )).thenReturn(3L);
         when(registry.loadPoolTarget("ai-default")).thenReturn(Optional.of(8));
-        when(registry.loadTaskTarget(1001L)).thenReturn(Optional.of(
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(Optional.of(
                 new TaskTargetState(6, Instant.parse("2026-06-01T00:00:00Z"), "steady", Instant.parse("2026-06-01T00:00:30Z"))
         ));
 
         CallTaskConcurrencyProperties properties = new CallTaskConcurrencyProperties();
         CallTaskCapacityControlProperties capacityProperties = new CallTaskCapacityControlProperties();
         CallTaskMetrics metrics = new CallTaskMetrics(new SimpleMeterRegistry());
-        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(redisTemplate, properties, capacityProperties, registry, metrics);
+        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(
+                redisTemplate,
+                properties,
+                capacityProperties,
+                registry,
+                metrics,
+                newShardingRouter()
+        );
 
         assertEquals(3, limiter.tryAcquireBatch(9L, 1001L, 10, 3));
         verify(redisTemplate, never()).opsForValue();
@@ -66,7 +75,7 @@ class DispatchConcurrencyLimiterTest {
                         "call:concurrency:global",
                         "call:capacity:pool:ai-default:busy",
                         "call:concurrency:tenant:9",
-                        "call:concurrency:task:1001"
+                        "call:concurrency:task:1:1001"
                 )),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -77,14 +86,21 @@ class DispatchConcurrencyLimiterTest {
                 org.mockito.ArgumentMatchers.anyString()
         )).thenReturn(2L);
         when(registry.loadPoolTarget("ai-default")).thenReturn(Optional.of(2));
-        when(registry.loadTaskTarget(1001L)).thenReturn(Optional.of(
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(Optional.of(
                 new TaskTargetState(5, Instant.parse("2026-06-01T00:00:00Z"), "steady", Instant.parse("2026-06-01T00:00:30Z"))
         ));
 
         CallTaskConcurrencyProperties properties = new CallTaskConcurrencyProperties();
         CallTaskCapacityControlProperties capacityProperties = new CallTaskCapacityControlProperties();
         CallTaskMetrics metrics = new CallTaskMetrics(new SimpleMeterRegistry());
-        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(redisTemplate, properties, capacityProperties, registry, metrics);
+        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(
+                redisTemplate,
+                properties,
+                capacityProperties,
+                registry,
+                metrics,
+                newShardingRouter()
+        );
 
         assertEquals(2, limiter.tryAcquireBatch(9L, 1001L, 5, 3));
     }
@@ -100,7 +116,14 @@ class DispatchConcurrencyLimiterTest {
         CallTaskConcurrencyProperties properties = new CallTaskConcurrencyProperties();
         CallTaskCapacityControlProperties capacityProperties = new CallTaskCapacityControlProperties();
         CallTaskMetrics metrics = new CallTaskMetrics(new SimpleMeterRegistry());
-        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(redisTemplate, properties, capacityProperties, registry, metrics);
+        DispatchConcurrencyLimiter limiter = new DispatchConcurrencyLimiter(
+                redisTemplate,
+                properties,
+                capacityProperties,
+                registry,
+                metrics,
+                newShardingRouter()
+        );
 
         limiter.releaseBatch(9L, 1001L, 2);
 
@@ -110,7 +133,7 @@ class DispatchConcurrencyLimiterTest {
                         "call:concurrency:global",
                         "call:capacity:pool:ai-default:busy",
                         "call:concurrency:tenant:9",
-                        "call:concurrency:task:1001"
+                        "call:concurrency:task:1:1001"
                 )),
                 org.mockito.ArgumentMatchers.eq("2"),
                 org.mockito.ArgumentMatchers.anyString(),
@@ -213,7 +236,7 @@ class DispatchConcurrencyLimiterTest {
         when(valueOperations.get("call:concurrency:global")).thenReturn(String.valueOf(currentGlobal));
         when(valueOperations.get("call:capacity:pool:ai-default:busy")).thenReturn(String.valueOf(currentPool));
         when(valueOperations.get("call:concurrency:tenant:9")).thenReturn(String.valueOf(currentTenant));
-        when(valueOperations.get("call:concurrency:task:1001")).thenReturn(String.valueOf(currentTask));
+        when(valueOperations.get("call:concurrency:task:1:1001")).thenReturn(String.valueOf(currentTask));
         when(redisTemplate.execute(
                 org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
                 org.mockito.ArgumentMatchers.anyList(),
@@ -226,7 +249,7 @@ class DispatchConcurrencyLimiterTest {
                 org.mockito.ArgumentMatchers.anyString()
         )).thenReturn(0L);
         when(registry.loadPoolTarget("ai-default")).thenReturn(Optional.of(poolTarget));
-        when(registry.loadTaskTarget(1001L)).thenReturn(Optional.of(
+        when(registry.loadTaskTarget(9L, 1001L)).thenReturn(Optional.of(
                 new TaskTargetState(taskTarget, Instant.parse("2026-06-01T00:00:00Z"), "steady", Instant.parse("2026-06-01T00:00:30Z"))
         ));
 
@@ -240,11 +263,16 @@ class DispatchConcurrencyLimiterTest {
                 properties,
                 capacityProperties,
                 registry,
-                new CallTaskMetrics(meterRegistry)
+                new CallTaskMetrics(meterRegistry),
+                newShardingRouter()
         );
 
         assertEquals(0, limiter.tryAcquireBatch(9L, 1001L, taskMaxConcurrency, 1));
         assertNotNull(meterRegistry.find(metricName).counter());
         assertEquals(1.0d, meterRegistry.find(metricName).counter().count());
+    }
+
+    private static ShardingRouter newShardingRouter() {
+        return new ShardingRouter(new ShardProperties());
     }
 }

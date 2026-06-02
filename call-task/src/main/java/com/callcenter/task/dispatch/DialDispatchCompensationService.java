@@ -44,7 +44,7 @@ public class DialDispatchCompensationService {
         unit.setStatus(CallDialUnitStatus.READY.name());
         unit.setDispatchToken(null);
         unit.setInflightExpireAt(null);
-        redisDialUnitQueue.offerReady(unit.getTaskId(), shardKey.tableIndex(), List.of(unit));
+        redisDialUnitQueue.offerReady(unit.getTenantId(), unit.getTaskId(), List.of(unit));
         concurrencyLimiter.release(unit.getTenantId(), unit.getTaskId());
         metrics.incrementDispatchCompensated();
     }

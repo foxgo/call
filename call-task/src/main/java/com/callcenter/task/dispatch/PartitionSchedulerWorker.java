@@ -102,7 +102,6 @@ public class PartitionSchedulerWorker {
         List<Long> ids = redisDialUnitQueue.claimReady(
                 task.getTenantId(),
                 task.getId(),
-                shardKey.tableIndex(),
                 granted,
                 processingExpireAt
         );
@@ -156,11 +155,11 @@ public class PartitionSchedulerWorker {
             selectedUnits.add(unit);
         }
         if (!missingClaimedUnits.isEmpty()) {
-            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), missingClaimedUnits);
+            redisDialUnitQueue.offerReady(task.getTenantId(), task.getId(), missingClaimedUnits);
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), missingClaimedUnits.size());
         }
         if (!rejectedUnits.isEmpty()) {
-            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), rejectedUnits);
+            redisDialUnitQueue.offerReady(task.getTenantId(), task.getId(), rejectedUnits);
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), rejectedUnits.size());
         }
 
@@ -176,7 +175,7 @@ public class PartitionSchedulerWorker {
                 units
         );
         if (!missedUnits.isEmpty()) {
-            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), missedUnits);
+            redisDialUnitQueue.offerReady(task.getTenantId(), task.getId(), missedUnits);
         }
 
         if (units.size() < selectedUnits.size()) {

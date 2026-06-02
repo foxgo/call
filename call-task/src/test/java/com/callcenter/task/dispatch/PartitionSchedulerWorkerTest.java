@@ -52,7 +52,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
         when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
                 .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
         when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
@@ -96,7 +96,7 @@ class PartitionSchedulerWorkerTest {
         assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.CONCURRENCY_FULL);
-        verify(fixture.queue, never()).claimReady(anyLong(), anyLong(), anyInt(), anyInt(), any());
+        verify(fixture.queue, never()).claimReady(anyLong(), anyLong(), anyInt(), any());
         verify(fixture.asyncDialDispatchService, never()).submit(any(), any());
     }
 
@@ -105,7 +105,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of());
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(3), any())).thenReturn(List.of());
 
         assertTrue(fixture.worker().runPartition(7));
 
@@ -125,7 +125,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(4);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 4)).thenReturn(4);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(4), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(4), any())).thenReturn(List.of(11L, 12L, 13L));
         when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
                 .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
         when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
@@ -156,7 +156,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
         when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
                 .thenReturn(List.of(unit(11L), unit(12L), unit(13L)));
         when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))
@@ -176,8 +176,8 @@ class PartitionSchedulerWorkerTest {
         assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.queue).offerReady(
+                eq(9L),
                 eq(1001L),
-                eq(1),
                 argThat(units -> units.stream().map(CallDialUnitEntity::getId).toList().equals(List.of(12L, 13L)))
         );
     }
@@ -187,7 +187,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(2);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 2)).thenReturn(2);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(2), any())).thenReturn(List.of(11L, 12L));
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(2), any())).thenReturn(List.of(11L, 12L));
         when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L))))
                 .thenReturn(List.of(unit(11L), unit(12L)));
         when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any())).thenReturn(List.of());
@@ -196,8 +196,8 @@ class PartitionSchedulerWorkerTest {
         assertTrue(fixture.worker().runPartition(7));
 
         verify(fixture.queue).offerReady(
+                eq(9L),
                 eq(1001L),
-                eq(1),
                 argThat(units -> units.stream().map(CallDialUnitEntity::getId).toList().equals(List.of(11L, 12L)))
         );
         verify(fixture.asyncDialDispatchService, never()).submit(any(), any());
@@ -208,7 +208,7 @@ class PartitionSchedulerWorkerTest {
         Fixture fixture = new Fixture();
         fixture.properties.setDispatchBatchSize(3);
         when(fixture.concurrencyLimiter.tryAcquireBatch(9L, 1001L, 20, 3)).thenReturn(3);
-        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(1), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
+        when(fixture.queue.claimReady(eq(9L), eq(1001L), eq(3), any())).thenReturn(List.of(11L, 12L, 13L));
         when(fixture.dialUnitRepository.listByTaskIdAndIds(any(), eq(1001L), eq(List.of(11L, 12L, 13L))))
                 .thenReturn(List.of(unitWithRetry(11L, 0), unitWithRetry(12L, 1), unitWithRetry(13L, 1)));
         when(fixture.candidateService.listCandidates(eq(9L), eq(1001L), any(), any()))

@@ -31,7 +31,7 @@ public class DialUnitPreloadService {
 
     public void preloadRunningTask(CallTaskEntity task) {
         ShardKey shardKey = shardingRouter.routeDialUnit(task.getTenantId(), task.getId());
-        long windowSize = redisDialUnitQueue.windowSize(task.getId(), shardKey.tableIndex());
+        long windowSize = redisDialUnitQueue.windowSize(task.getTenantId(), task.getId());
         if (windowSize >= properties.getPreloadThreshold()) {
             return;
         }
@@ -42,7 +42,7 @@ public class DialUnitPreloadService {
                 LocalDateTime.now()
         );
         if (!units.isEmpty()) {
-            redisDialUnitQueue.offerReady(task.getId(), shardKey.tableIndex(), units);
+            redisDialUnitQueue.offerReady(task.getTenantId(), task.getId(), units);
         }
     }
 }

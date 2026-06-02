@@ -17,6 +17,8 @@ class CallTaskMetricsTest {
         assertNotNull(meterRegistry.find("call.task.writeback.success").counter());
         assertNotNull(meterRegistry.find("call.task.dispatch.send.failed").counter());
         assertNotNull(meterRegistry.find("call.task.dispatch.send.rejected").counter());
+        assertNotNull(meterRegistry.find("call.task.dispatch.validation.failed").counter());
+        assertNotNull(meterRegistry.find("call.task.dispatch.gate.rejected").counter());
         assertNotNull(meterRegistry.find("call.task.dispatch.compensated").counter());
         assertNotNull(meterRegistry.find("call.task.dispatch.compensation.skipped").counter());
     }
@@ -73,11 +75,15 @@ class CallTaskMetricsTest {
 
         metrics.incrementDispatchSendFailed();
         metrics.incrementDispatchSendRejected();
+        metrics.incrementDispatchValidationFailed();
+        metrics.incrementDispatchGateRejected();
         metrics.incrementDispatchCompensated();
         metrics.incrementDispatchCompensationSkipped();
 
         assertEquals(1.0d, meterRegistry.find("call.task.dispatch.send.failed").counter().count());
         assertEquals(1.0d, meterRegistry.find("call.task.dispatch.send.rejected").counter().count());
+        assertEquals(1.0d, meterRegistry.find("call.task.dispatch.validation.failed").counter().count());
+        assertEquals(1.0d, meterRegistry.find("call.task.dispatch.gate.rejected").counter().count());
         assertEquals(1.0d, meterRegistry.find("call.task.dispatch.compensated").counter().count());
         assertEquals(1.0d, meterRegistry.find("call.task.dispatch.compensation.skipped").counter().count());
     }

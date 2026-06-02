@@ -21,3 +21,15 @@ spec:
   ports:
     - port: 8082
       targetPort: 8082
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: call-task
+  namespace: call-center
+spec:
+  selector:
+    app: call-task
+  ports:
+    - port: 8084
+      targetPort: 8084

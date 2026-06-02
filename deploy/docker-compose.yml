@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mysql:
     image: mysql:8.4
@@ -100,6 +98,7 @@ services:
       - "9090:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/rules:/etc/prometheus/rules:ro
 
   grafana:
     image: grafana/grafana:10.4.2
@@ -109,6 +108,10 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - ./docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./docker/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
 
@@ -161,6 +164,35 @@ services:
       ES_PASSWORD: elastic123
     ports:
       - "8082:8082"
+
+  call-task:
+    build:
+      context: ..
+      dockerfile: ../call-task/Dockerfile
+    container_name: call-task
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rocketmq-nameserver:
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ROCKETMQ_NAME_SERVER: rocketmq-nameserver:9876
+      REDIS_HOST: redis
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: call
+      MYSQL_PASSWORD: call123
+      ES_URI: http://elasticsearch:9200
+      ES_USERNAME: elastic
+      ES_PASSWORD: elastic123
+    ports:
+      - "8084:8084"
 
 volumes:
   mysql-data:

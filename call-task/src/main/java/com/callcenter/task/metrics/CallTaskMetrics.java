@@ -22,6 +22,8 @@ public class CallTaskMetrics {
     private final Counter dispatchPublished;
     private final Counter dispatchSendFailed;
     private final Counter dispatchSendRejected;
+    private final Counter dispatchValidationFailed;
+    private final Counter dispatchGateRejected;
     private final Counter dispatchCompensated;
     private final Counter dispatchCompensationSkipped;
     private final Counter writebackSuccess;
@@ -48,6 +50,8 @@ public class CallTaskMetrics {
         this.dispatchPublished = Counter.builder("call.task.dispatch.published").register(meterRegistry);
         this.dispatchSendFailed = Counter.builder("call.task.dispatch.send.failed").register(meterRegistry);
         this.dispatchSendRejected = Counter.builder("call.task.dispatch.send.rejected").register(meterRegistry);
+        this.dispatchValidationFailed = Counter.builder("call.task.dispatch.validation.failed").register(meterRegistry);
+        this.dispatchGateRejected = Counter.builder("call.task.dispatch.gate.rejected").register(meterRegistry);
         this.dispatchCompensated = Counter.builder("call.task.dispatch.compensated").register(meterRegistry);
         this.dispatchCompensationSkipped = Counter.builder("call.task.dispatch.compensation.skipped").register(meterRegistry);
         this.writebackSuccess = Counter.builder("call.task.writeback.success").register(meterRegistry);
@@ -81,6 +85,14 @@ public class CallTaskMetrics {
 
     public void incrementDispatchSendRejected() {
         dispatchSendRejected.increment();
+    }
+
+    public void incrementDispatchValidationFailed() {
+        dispatchValidationFailed.increment();
+    }
+
+    public void incrementDispatchGateRejected() {
+        dispatchGateRejected.increment();
     }
 
     public void incrementDispatchCompensated() {

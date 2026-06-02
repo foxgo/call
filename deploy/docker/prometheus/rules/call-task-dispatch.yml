@@ -1,0 +1,29 @@
+groups:
+  - name: call-task-dispatch
+    rules:
+      - alert: CallTaskDispatchSendExecutorQueueBacklog
+        expr: max_over_time(call_task_dispatch_send_executor_queue_size[5m]) >= 1
+        for: 5m
+        labels:
+          severity: warning
+          service: call-task
+        annotations:
+          summary: call-task dispatch send queue is backed up
+          description: The async dispatch send executor queue has remained non-empty for 5 minutes, which indicates MQ publish throughput is lower than dispatch throughput.
+      - alert: CallTaskDispatchSendRejected
+        expr: increase(call_task_dispatch_send_rejected_total[5m]) > 0
+        labels:
+          severity: critical
+          service: call-task
+        annotations:
+          summary: call-task dispatch send submissions are being rejected
+          description: The async dispatch send executor rejected at least one task submission in the last 5 minutes.
+      - alert: CallTaskDispatchCompensationBurst
+        expr: increase(call_task_dispatch_compensated_total[5m]) >= 10
+        for: 5m
+        labels:
+          severity: warning
+          service: call-task
+        annotations:
+          summary: call-task dispatch compensation is rising
+          description: At least 10 dispatch units were compensated back to READY in the last 5 minutes, which usually means repeated publish failure or send-executor saturation.

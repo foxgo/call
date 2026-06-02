@@ -20,6 +20,10 @@ public class CallTaskMetrics {
     private final ConcurrentHashMap<Long, AtomicLong> taskWritebackSuccess = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, AtomicLong> taskWritebackFailure = new ConcurrentHashMap<>();
     private final Counter dispatchPublished;
+    private final Counter dispatchSendFailed;
+    private final Counter dispatchSendRejected;
+    private final Counter dispatchCompensated;
+    private final Counter dispatchCompensationSkipped;
     private final Counter writebackSuccess;
     private final Counter writebackFailure;
     private final Counter retryRequeued;
@@ -42,6 +46,10 @@ public class CallTaskMetrics {
         Gauge.builder("call.task.capacity.pool.busy", capacityPoolBusy, AtomicLong::get).register(meterRegistry);
         Gauge.builder("call.task.capacity.pool.utilization", capacityPoolUtilization, AtomicReference::get).register(meterRegistry);
         this.dispatchPublished = Counter.builder("call.task.dispatch.published").register(meterRegistry);
+        this.dispatchSendFailed = Counter.builder("call.task.dispatch.send.failed").register(meterRegistry);
+        this.dispatchSendRejected = Counter.builder("call.task.dispatch.send.rejected").register(meterRegistry);
+        this.dispatchCompensated = Counter.builder("call.task.dispatch.compensated").register(meterRegistry);
+        this.dispatchCompensationSkipped = Counter.builder("call.task.dispatch.compensation.skipped").register(meterRegistry);
         this.writebackSuccess = Counter.builder("call.task.writeback.success").register(meterRegistry);
         this.writebackFailure = Counter.builder("call.task.writeback.failure").register(meterRegistry);
         this.retryRequeued = Counter.builder("call.task.retry.requeued").register(meterRegistry);
@@ -65,6 +73,22 @@ public class CallTaskMetrics {
 
     public void incrementDispatchPublished() {
         dispatchPublished.increment();
+    }
+
+    public void incrementDispatchSendFailed() {
+        dispatchSendFailed.increment();
+    }
+
+    public void incrementDispatchSendRejected() {
+        dispatchSendRejected.increment();
+    }
+
+    public void incrementDispatchCompensated() {
+        dispatchCompensated.increment();
+    }
+
+    public void incrementDispatchCompensationSkipped() {
+        dispatchCompensationSkipped.increment();
     }
 
     public void incrementWritebackSuccess() {

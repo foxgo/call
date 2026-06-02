@@ -42,6 +42,9 @@ public class CallTaskDispatchProperties {
     @Min(1)
     private int dispatcherParallelism = 4;
 
+    @Min(1)
+    private int dispatchSendParallelism = 8;
+
     public Duration getPollInterval() {
         return pollInterval;
     }
@@ -152,5 +155,13 @@ public class CallTaskDispatchProperties {
 
     public void setDispatcherParallelism(int dispatcherParallelism) {
         this.dispatcherParallelism = dispatcherParallelism;
+    }
+
+    public int getDispatchSendParallelism() {
+        return dispatchSendParallelism;
+    }
+
+    public void setDispatchSendParallelism(int dispatchSendParallelism) {
+        this.dispatchSendParallelism = dispatchSendParallelism;
     }
 }

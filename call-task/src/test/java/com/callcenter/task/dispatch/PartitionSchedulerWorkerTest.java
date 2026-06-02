@@ -12,8 +12,6 @@ import com.callcenter.task.caller.CallerIdSelector;
 import com.callcenter.task.caller.TaskCallerIdPolicy;
 import com.callcenter.task.caller.TaskCallerIdPolicyService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
-import com.callcenter.task.metrics.CallTaskMetrics;
-import com.callcenter.task.mq.DialDispatchPublisher;
 import com.callcenter.task.repository.CallDialUnitRepository;
 import com.callcenter.task.repository.CallTaskRepository;
 import java.util.List;
@@ -70,7 +68,7 @@ class PartitionSchedulerWorkerTest {
 
         verify(fixture.preloadService).preloadRunningTask(fixture.task);
         verify(fixture.activeTaskQueue).reactivate(fixture.entry.meta(), 375L);
-        verify(fixture.publisher, times(3)).publish(any(CallDialUnitEntity.class));
+        verify(fixture.asyncDialDispatchService, times(3)).submit(eq(new ShardKey(9L, 0, 1, "dial")), any(CallDialUnitEntity.class));
     }
 
     @Test
@@ -83,7 +81,7 @@ class PartitionSchedulerWorkerTest {
 
         verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.CONCURRENCY_FULL);
         verify(fixture.queue, never()).claimReady(anyLong(), anyLong(), anyInt(), anyInt(), any());
-        verify(fixture.publisher, never()).publish(any());
+        verify(fixture.asyncDialDispatchService, never()).submit(any(), any());
     }
 
     @Test
@@ -132,7 +130,7 @@ class PartitionSchedulerWorkerTest {
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 1);
         verify(fixture.concurrencyLimiter).releaseBatch(9L, 1001L, 2);
         verify(fixture.activeTaskQueue).block(fixture.entry.meta(), TaskBlockReason.EMPTY);
-        verify(fixture.publisher).publish(any(CallDialUnitEntity.class));
+        verify(fixture.asyncDialDispatchService).submit(eq(new ShardKey(9L, 0, 1, "dial")), any(CallDialUnitEntity.class));
     }
 
     @Test
@@ -182,7 +180,7 @@ class PartitionSchedulerWorkerTest {
                 eq(1),
                 argThat(units -> units.stream().map(CallDialUnitEntity::getId).toList().equals(List.of(11L, 12L)))
         );
-        verify(fixture.publisher, never()).publish(any());
+        verify(fixture.asyncDialDispatchService, never()).submit(any(), any());
     }
 
     private static CallDialUnitEntity unit(long id) {
@@ -209,12 +207,11 @@ class PartitionSchedulerWorkerTest {
         private final RedisDialUnitQueue queue = mock(RedisDialUnitQueue.class);
         private final CallDialUnitRepository dialUnitRepository = mock(CallDialUnitRepository.class);
         private final DispatchConcurrencyLimiter concurrencyLimiter = mock(DispatchConcurrencyLimiter.class);
-        private final DialDispatchPublisher publisher = mock(DialDispatchPublisher.class);
+        private final AsyncDialDispatchService asyncDialDispatchService = mock(AsyncDialDispatchService.class);
         private final TaskCallerIdPolicyService policyService = mock(TaskCallerIdPolicyService.class);
         private final CallerIdCandidateService candidateService = mock(CallerIdCandidateService.class);
         private final CallerIdSelector selector = mock(CallerIdSelector.class);
         private final ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        private final CallTaskMetrics metrics = mock(CallTaskMetrics.class);
         private final CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
         private final CallTaskEntity task = runningTask();
         private final ActiveTaskQueue.ActiveTaskEntry entry = new ActiveTaskQueue.ActiveTaskEntry(
@@ -237,13 +234,12 @@ class PartitionSchedulerWorkerTest {
                     queue,
                     dialUnitRepository,
                     concurrencyLimiter,
-                    publisher,
+                    asyncDialDispatchService,
                     policyService,
                     candidateService,
                     selector,
                     properties,
-                    shardingRouter,
-                    metrics
+                    shardingRouter
             );
         }
 

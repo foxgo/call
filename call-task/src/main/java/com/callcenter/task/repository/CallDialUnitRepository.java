@@ -417,6 +417,30 @@ public class CallDialUnitRepository {
         }
     }
 
+    public boolean revertDialingToReady(
+            ShardKey shardKey,
+            long taskId,
+            long dialUnitId,
+            String dispatchToken,
+            LocalDateTime updatedAt
+    ) {
+        ShardContextHolder.set(shardKey.toContext());
+        try {
+            UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
+            update.eq("task_id", taskId)
+                    .eq("id", dialUnitId)
+                    .eq("status", CallDialUnitStatus.DIALING.name())
+                    .eq("dispatch_token", dispatchToken)
+                    .set("status", CallDialUnitStatus.READY.name())
+                    .set("dispatch_token", null)
+                    .set("inflight_expire_at", null)
+                    .set("updated_at", updatedAt);
+            return callDialUnitMapper.update(null, update) > 0;
+        } finally {
+            ShardContextHolder.clear();
+        }
+    }
+
     public int markRecoveredForRetry(
             ShardKey shardKey,
             long taskId,

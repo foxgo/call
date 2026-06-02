@@ -12,8 +12,6 @@ import com.callcenter.task.caller.CallerIdSelector;
 import com.callcenter.task.caller.TaskCallerIdPolicy;
 import com.callcenter.task.caller.TaskCallerIdPolicyService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
-import com.callcenter.task.metrics.CallTaskMetrics;
-import com.callcenter.task.mq.DialDispatchPublisher;
 import com.callcenter.task.repository.CallDialUnitRepository;
 import com.callcenter.task.repository.CallTaskRepository;
 import java.time.Instant;
@@ -35,13 +33,12 @@ public class PartitionSchedulerWorker {
     private final RedisDialUnitQueue redisDialUnitQueue;
     private final CallDialUnitRepository callDialUnitRepository;
     private final DispatchConcurrencyLimiter concurrencyLimiter;
-    private final DialDispatchPublisher dialDispatchPublisher;
+    private final AsyncDialDispatchService asyncDialDispatchService;
     private final TaskCallerIdPolicyService taskCallerIdPolicyService;
     private final CallerIdCandidateService callerIdCandidateService;
     private final CallerIdSelector callerIdSelector;
     private final CallTaskDispatchProperties properties;
     private final ShardingRouter shardingRouter;
-    private final CallTaskMetrics metrics;
 
     public PartitionSchedulerWorker(
             ActiveTaskQueue activeTaskQueue,
@@ -50,13 +47,12 @@ public class PartitionSchedulerWorker {
             RedisDialUnitQueue redisDialUnitQueue,
             CallDialUnitRepository callDialUnitRepository,
             DispatchConcurrencyLimiter concurrencyLimiter,
-            DialDispatchPublisher dialDispatchPublisher,
+            AsyncDialDispatchService asyncDialDispatchService,
             TaskCallerIdPolicyService taskCallerIdPolicyService,
             CallerIdCandidateService callerIdCandidateService,
             CallerIdSelector callerIdSelector,
             CallTaskDispatchProperties properties,
-            ShardingRouter shardingRouter,
-            CallTaskMetrics metrics
+            ShardingRouter shardingRouter
     ) {
         this.activeTaskQueue = activeTaskQueue;
         this.callTaskRepository = callTaskRepository;
@@ -64,13 +60,12 @@ public class PartitionSchedulerWorker {
         this.redisDialUnitQueue = redisDialUnitQueue;
         this.callDialUnitRepository = callDialUnitRepository;
         this.concurrencyLimiter = concurrencyLimiter;
-        this.dialDispatchPublisher = dialDispatchPublisher;
+        this.asyncDialDispatchService = asyncDialDispatchService;
         this.taskCallerIdPolicyService = taskCallerIdPolicyService;
         this.callerIdCandidateService = callerIdCandidateService;
         this.callerIdSelector = callerIdSelector;
         this.properties = properties;
         this.shardingRouter = shardingRouter;
-        this.metrics = metrics;
     }
 
     public boolean runPartition(int partition) {
@@ -177,8 +172,7 @@ public class PartitionSchedulerWorker {
         }
 
         for (CallDialUnitEntity unit : units) {
-            dialDispatchPublisher.publish(unit);
-            metrics.incrementDispatchPublished();
+            asyncDialDispatchService.submit(shardKey, unit);
         }
 
         if (units.isEmpty()) {

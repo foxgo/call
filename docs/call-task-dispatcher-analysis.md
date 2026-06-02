@@ -145,3 +145,46 @@
 
 - 时序图更适合看“谁在调用谁”
 - 流程图更适合看 `runPartition` 的判断分支与回滚点
+
+
+
+```mermaid
+sequenceDiagram
+    participant CP as CapacityProvider
+    participant CCJ as CapacityControlJob
+    participant CE as CapacityControlEngine
+    participant TA as TaskTargetAllocator
+    participant REG as TaskTargetConcurrencyRegistry
+    participant DCL as DispatchConcurrencyLimiter
+    participant LUA as Redis Lua
+    participant DISP as runPartition/Dispatcher
+
+    CP->>CCJ: snapshot()<br/>返回池总量/已用量/利用率
+    CCJ->>CCJ: 遍历 active tasks
+    CCJ->>REG: loadTaskTarget(tenantId, taskId)
+    REG-->>CCJ: 当前 TaskTargetState
+    CCJ->>CE: decide(metrics, currentState, now)
+    CE-->>CCJ: desiredTarget
+
+    CCJ->>TA: allocate(poolTarget=capacitySnapshot.total, candidates)
+    TA-->>CCJ: 每个任务最终 targetConcurrency
+
+    CCJ->>REG: savePoolTarget(poolKey, capacitySnapshot.total)
+    CCJ->>REG: saveTaskTarget(tenantId, taskId, TaskTargetState)
+
+    DISP->>DCL: tryAcquireBatch(tenantId, taskId, taskMax, requested)
+    DCL->>REG: loadPoolTarget(poolKey)
+    REG-->>DCL: PoolTarget
+    DCL->>REG: loadTaskTarget(tenantId, taskId)
+    REG-->>DCL: TaskTargetState.targetConcurrency
+
+    DCL->>LUA: 执行原子限流
+    Note over LUA: granted = min(requested,\navailableGlobal,\navailablePool,\navailableTenant,\navailableTask,\navailableTaskTarget)
+
+    LUA-->>DCL: granted
+    alt granted > 0
+        DCL-->>DISP: 允许派发 granted 个
+    else granted <= 0
+        DCL-->>DISP: 0，任务被并发限制挡住
+    end
+```

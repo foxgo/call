@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "title": "动态并发目标写入与消费时序图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 9,
+    "edges": 18,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "p1",
+      "label": "CapacityProvider",
+      "type": "user"
+    },
+    {
+      "id": "p2",
+      "label": "CapacityControlJob",
+      "type": "user"
+    },
+    {
+      "id": "p3",
+      "label": "CapacityControlEngine",
+      "type": "user"
+    },
+    {
+      "id": "p4",
+      "label": "TaskTargetAllocator",
+      "type": "user"
+    },
+    {
+      "id": "p5",
+      "label": "TaskTargetConcurrencyRegistry",
+      "type": "user"
+    },
+    {
+      "id": "p6",
+      "label": "DispatchConcurrencyLimiter",
+      "type": "user"
+    },
+    {
+      "id": "p7",
+      "label": "Redis Lua",
+      "type": "user"
+    },
+    {
+      "id": "p8",
+      "label": "runPartition / Dispatcher",
+      "type": "user"
+    },
+    {
+      "id": "rule",
+      "label": "granted 最小值规则",
+      "type": "document"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "p1",
+      "to": "p2",
+      "type": "primary",
+      "label": "snapshot()\n返回池总量/已用量/利用率"
+    },
+    {
+      "id": "edge-2",
+      "from": "p2",
+      "to": "p5",
+      "type": "primary",
+      "label": "loadTaskTarget(tenantId, taskId)"
+    },
+    {
+      "id": "edge-3",
+      "from": "p5",
+      "to": "p2",
+      "type": "data",
+      "label": "当前 TaskTargetState"
+    },
+    {
+      "id": "edge-4",
+      "from": "p2",
+      "to": "p3",
+      "type": "primary",
+      "label": "decide(metrics, currentState, now)"
+    },
+    {
+      "id": "edge-5",
+      "from": "p3",
+      "to": "p2",
+      "type": "data",
+      "label": "desiredTarget"
+    },
+    {
+      "id": "edge-6",
+      "from": "p2",
+      "to": "p4",
+      "type": "primary",
+      "label": "allocate(poolTarget, candidates)"
+    },
+    {
+      "id": "edge-7",
+      "from": "p4",
+      "to": "p2",
+      "type": "data",
+      "label": "每个任务最终 targetConcurrency"
+    },
+    {
+      "id": "edge-8",
+      "from": "p2",
+      "to": "p5",
+      "type": "primary",
+      "label": "savePoolTarget(poolKey, poolTarget)"
+    },
+    {
+      "id": "edge-9",
+      "from": "p2",
+      "to": "p5",
+      "type": "primary",
+      "label": "saveTaskTarget(tenantId, taskId, TaskTargetState)"
+    },
+    {
+      "id": "edge-10",
+      "from": "p8",
+      "to": "p6",
+      "type": "primary",
+      "label": "tryAcquireBatch(tenantId, taskId, taskMax, requested)"
+    },
+    {
+      "id": "edge-11",
+      "from": "p6",
+      "to": "p5",
+      "type": "primary",
+      "label": "loadPoolTarget(poolKey)"
+    },
+    {
+      "id": "edge-12",
+      "from": "p5",
+      "to": "p6",
+      "type": "data",
+      "label": "PoolTarget"
+    },
+    {
+      "id": "edge-13",
+      "from": "p6",
+      "to": "p5",
+      "type": "primary",
+      "label": "loadTaskTarget(tenantId, taskId)"
+    },
+    {
+      "id": "edge-14",
+      "from": "p5",
+      "to": "p6",
+      "type": "data",
+      "label": "TaskTargetState.targetConcurrency"
+    },
+    {
+      "id": "edge-15",
+      "from": "p6",
+      "to": "p7",
+      "type": "primary",
+      "label": "执行原子限流脚本"
+    },
+    {
+      "id": "edge-16",
+      "from": "p7",
+      "to": "p6",
+      "type": "data",
+      "label": "granted"
+    },
+    {
+      "id": "edge-17",
+      "from": "p6",
+      "to": "p8",
+      "type": "optional",
+      "label": "granted > 0：允许派发"
+    },
+    {
+      "id": "edge-18",
+      "from": "p6",
+      "to": "p8",
+      "type": "optional",
+      "label": "granted <= 0：并发受限"
+    }
+  ]
+}

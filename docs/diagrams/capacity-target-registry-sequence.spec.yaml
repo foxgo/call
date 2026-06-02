@@ -1,0 +1,123 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: horizontal
+  canvas: 2600x1700
+  routing: orthogonal
+  title: 动态并发目标写入与消费时序图
+  description: 展示 CapacityControlJob 如何计算并写入 PoolTarget 与 TaskTarget，以及 DispatchConcurrencyLimiter 如何在派发前读取它们并参与 granted 计算。
+nodes:
+  - id: provider
+    label: CapacityProvider
+    type: user
+  - id: job
+    label: CapacityControlJob
+    type: user
+  - id: engine
+    label: CapacityControlEngine
+    type: user
+  - id: allocator
+    label: TaskTargetAllocator
+    type: user
+  - id: registry
+    label: TaskTargetConcurrencyRegistry
+    type: user
+  - id: limiter
+    label: DispatchConcurrencyLimiter
+    type: user
+  - id: lua
+    label: Redis Lua
+    type: user
+  - id: dispatcher
+    label: runPartition / Dispatcher
+    type: user
+  - id: rule
+    label: |
+      granted = min(
+      requested,
+      availableGlobal,
+      availablePool,
+      availableTenant,
+      availableTask,
+      availableTaskTarget
+      )
+    type: document
+edges:
+  - from: provider
+    to: job
+    type: primary
+    label: snapshot()\n返回池总量/已用量/利用率
+  - from: job
+    to: registry
+    type: primary
+    label: loadTaskTarget(tenantId, taskId)
+  - from: registry
+    to: job
+    type: data
+    label: 当前 TaskTargetState
+  - from: job
+    to: engine
+    type: primary
+    label: decide(metrics, currentState, now)
+  - from: engine
+    to: job
+    type: data
+    label: desiredTarget
+  - from: job
+    to: allocator
+    type: primary
+    label: allocate(poolTarget, candidates)
+  - from: allocator
+    to: job
+    type: data
+    label: 每个任务最终 targetConcurrency
+  - from: job
+    to: registry
+    type: primary
+    label: savePoolTarget(poolKey, poolTarget)
+  - from: job
+    to: registry
+    type: primary
+    label: saveTaskTarget(tenantId, taskId, TaskTargetState)
+  - from: dispatcher
+    to: limiter
+    type: primary
+    label: tryAcquireBatch(tenantId, taskId, taskMax, requested)
+  - from: limiter
+    to: registry
+    type: primary
+    label: loadPoolTarget(poolKey)
+  - from: registry
+    to: limiter
+    type: data
+    label: PoolTarget
+  - from: limiter
+    to: registry
+    type: primary
+    label: loadTaskTarget(tenantId, taskId)
+  - from: registry
+    to: limiter
+    type: data
+    label: TaskTargetState.targetConcurrency
+  - from: limiter
+    to: lua
+    type: primary
+    label: 执行原子限流脚本
+  - from: lua
+    to: rule
+    type: data
+    label: 计算规则
+  - from: lua
+    to: limiter
+    type: data
+    label: granted
+  - from: limiter
+    to: dispatcher
+    type: optional
+    label: granted > 0：允许派发
+  - from: limiter
+    to: dispatcher
+    type: optional
+    label: granted <= 0：并发受限
+modules: []

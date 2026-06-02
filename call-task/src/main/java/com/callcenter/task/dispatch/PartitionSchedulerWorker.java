@@ -1,10 +1,12 @@
 package com.callcenter.task.dispatch;
 
+import com.callcenter.common.entity.CallCallerIdStatsEntity;
 import com.callcenter.common.entity.CallDialUnitEntity;
 import com.callcenter.common.entity.CallTaskEntity;
 import com.callcenter.common.enums.CallTaskStatus;
 import com.callcenter.common.route.ShardKey;
 import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.caller.AttemptStage;
 import com.callcenter.task.caller.CallerIdCandidate;
 import com.callcenter.task.caller.CallerIdCandidateService;
 import com.callcenter.task.caller.CallerIdSelection;
@@ -12,6 +14,7 @@ import com.callcenter.task.caller.CallerIdSelector;
 import com.callcenter.task.caller.TaskCallerIdPolicy;
 import com.callcenter.task.caller.TaskCallerIdPolicyService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
+import com.callcenter.task.repository.CallCallerIdStatsRepository;
 import com.callcenter.task.repository.CallDialUnitRepository;
 import com.callcenter.task.repository.CallTaskRepository;
 import java.time.Instant;
@@ -19,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +40,7 @@ public class PartitionSchedulerWorker {
     private final AsyncDialDispatchService asyncDialDispatchService;
     private final TaskCallerIdPolicyService taskCallerIdPolicyService;
     private final CallerIdCandidateService callerIdCandidateService;
+    private final CallCallerIdStatsRepository callCallerIdStatsRepository;
     private final CallerIdSelector callerIdSelector;
     private final CallTaskDispatchProperties properties;
     private final ShardingRouter shardingRouter;
@@ -50,6 +55,7 @@ public class PartitionSchedulerWorker {
             AsyncDialDispatchService asyncDialDispatchService,
             TaskCallerIdPolicyService taskCallerIdPolicyService,
             CallerIdCandidateService callerIdCandidateService,
+            CallCallerIdStatsRepository callCallerIdStatsRepository,
             CallerIdSelector callerIdSelector,
             CallTaskDispatchProperties properties,
             ShardingRouter shardingRouter
@@ -63,6 +69,7 @@ public class PartitionSchedulerWorker {
         this.asyncDialDispatchService = asyncDialDispatchService;
         this.taskCallerIdPolicyService = taskCallerIdPolicyService;
         this.callerIdCandidateService = callerIdCandidateService;
+        this.callCallerIdStatsRepository = callCallerIdStatsRepository;
         this.callerIdSelector = callerIdSelector;
         this.properties = properties;
         this.shardingRouter = shardingRouter;
@@ -118,15 +125,20 @@ public class PartitionSchedulerWorker {
                 policy,
                 now
         );
+        Map<AttemptStage, Map<Long, CallCallerIdStatsEntity>> statsByStage = preloadStatsByStage(
+                task.getTenantId(),
+                claimedUnits,
+                candidates
+        );
         List<CallDialUnitEntity> missingClaimedUnits = toMissedReadyUnits(ids, claimedUnits);
         List<CallDialUnitEntity> selectedUnits = new ArrayList<>();
         List<CallDialUnitEntity> rejectedUnits = new ArrayList<>();
         for (CallDialUnitEntity unit : claimedUnits) {
-            Optional<CallerIdSelection> selection = callerIdSelector.select(
-                    task.getTenantId(),
+            Optional<CallerIdSelection> selection = callerIdSelector.selectWithStats(
                     unit,
                     policy,
-                    candidates
+                    candidates,
+                    statsByStage.getOrDefault(AttemptStage.fromRetryCount(unit.getRetryCount()), Map.of())
             );
             if (selection.isEmpty()) {
                 CallDialUnitEntity rejected = new CallDialUnitEntity();
@@ -189,6 +201,27 @@ public class PartitionSchedulerWorker {
             activeTaskQueue.reactivate(meta, nextFairScore);
         }
         return true;
+    }
+
+    private Map<AttemptStage, Map<Long, CallCallerIdStatsEntity>> preloadStatsByStage(
+            Long tenantId,
+            List<CallDialUnitEntity> units,
+            List<CallerIdCandidate> candidates
+    ) {
+        if (units == null || units.isEmpty() || candidates == null || candidates.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> callerIds = candidates.stream()
+                .map(CallerIdCandidate::callerIdId)
+                .distinct()
+                .toList();
+        return units.stream()
+                .map(unit -> AttemptStage.fromRetryCount(unit.getRetryCount()))
+                .distinct()
+                .collect(java.util.stream.Collectors.toMap(
+                        stage -> stage,
+                        stage -> callCallerIdStatsRepository.findLatestByCallerIds(tenantId, callerIds, stage.name())
+                ));
     }
 
     private List<CallDialUnitEntity> toMissedReadyUnits(List<Long> claimedIds, List<CallDialUnitEntity> transitionedUnits) {

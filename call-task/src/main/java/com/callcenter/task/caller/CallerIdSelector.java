@@ -33,8 +33,22 @@ public class CallerIdSelector {
                 candidates.stream().map(CallerIdCandidate::callerIdId).toList(),
                 attemptStage.name()
         );
+        return selectWithStats(dialUnit, policy, candidates, statsByCaller);
+    }
+
+    public Optional<CallerIdSelection> selectWithStats(
+            CallDialUnitEntity dialUnit,
+            TaskCallerIdPolicy policy,
+            List<CallerIdCandidate> candidates,
+            Map<Long, CallCallerIdStatsEntity> statsByCaller
+    ) {
+        if (candidates == null || candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<Long, CallCallerIdStatsEntity> stats = statsByCaller == null ? Map.of() : statsByCaller;
+        AttemptStage attemptStage = AttemptStage.fromRetryCount(dialUnit.getRetryCount());
         return candidates.stream()
-                .map(candidate -> toSelection(candidate, statsByCaller.get(candidate.callerIdId()), policy, attemptStage))
+                .map(candidate -> toSelection(candidate, stats.get(candidate.callerIdId()), policy, attemptStage))
                 .max(Comparator.comparingDouble(CallerIdSelection::score));
     }
 

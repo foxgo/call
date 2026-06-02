@@ -11,9 +11,58 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class CallerIdSelectorTest {
+
+    @Test
+    void shouldSelectBestCallerUsingPreloadedFirstAttemptStats() {
+        CallCallerIdStatsRepository repository = mock(CallCallerIdStatsRepository.class);
+        CallerIdSelector selector = new CallerIdSelector(repository);
+
+        var result = selector.selectWithStats(
+                dialUnit(0),
+                new TaskCallerIdPolicy("HYBRID", "ANSWER", 1D, 0D, 0D, 0D, false, 3600, 200),
+                List.of(
+                        new CallerIdCandidate(3001L, "02166668888", "SHARED", 0D, 1D, 0),
+                        new CallerIdCandidate(3002L, "02166668889", "SHARED", 0D, 1D, 0)
+                ),
+                Map.of(
+                        3001L, stats(3001L, "FIRST_ATTEMPT", 10L, 7L, 5L, 300L),
+                        3002L, stats(3002L, "FIRST_ATTEMPT", 10L, 3L, 2L, 30L)
+                )
+        );
+
+        assertTrue(result.isPresent());
+        assertEquals("02166668888", result.orElseThrow().callerId());
+        assertEquals(AttemptStage.FIRST_ATTEMPT, result.orElseThrow().attemptStage());
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void shouldUseRetryAttemptStageWhenSelectingWithPreloadedStats() {
+        CallCallerIdStatsRepository repository = mock(CallCallerIdStatsRepository.class);
+        CallerIdSelector selector = new CallerIdSelector(repository);
+
+        var result = selector.selectWithStats(
+                dialUnit(1),
+                new TaskCallerIdPolicy("HYBRID", "ANSWER", 1D, 0.5D, 0D, 0D, false, 3600, 200),
+                List.of(
+                        new CallerIdCandidate(3001L, "02166668888", "SHARED", 0D, 1D, 0),
+                        new CallerIdCandidate(3002L, "02166668889", "SHARED", 0D, 1D, 0)
+                ),
+                Map.of(
+                        3001L, stats(3001L, "RETRY_ATTEMPT", 10L, 2L, 1L, 10L),
+                        3002L, stats(3002L, "RETRY_ATTEMPT", 10L, 6L, 4L, 180L)
+                )
+        );
+
+        assertTrue(result.isPresent());
+        assertEquals("02166668889", result.orElseThrow().callerId());
+        assertEquals(AttemptStage.RETRY_ATTEMPT, result.orElseThrow().attemptStage());
+        verifyNoInteractions(repository);
+    }
 
     @Test
     void shouldUseFirstAttemptStatsForInitialDial() {

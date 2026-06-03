@@ -7,6 +7,10 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * 主叫号码健康度反馈服务。
+ * 在拨打结果回写后，把成功/失败/通话时长沉淀到按小时分桶的统计表中，供下一轮选号打分使用。
+ */
 public class CallerIdHealthService {
 
     private final CallCallerIdStatsRepository callCallerIdStatsRepository;
@@ -29,6 +33,7 @@ public class CallerIdHealthService {
                 bucket
         ).orElseGet(() -> newBucket(event, bucket));
 
+        // attemptCount 表示该主叫在当前小时桶、当前阶段下被实际用于拨打的次数。
         stats.setAttemptCount(defaultLong(stats.getAttemptCount()) + 1L);
         if (event.ringDurationSeconds() != null && event.ringDurationSeconds() > 0) {
             stats.setRingCount(defaultLong(stats.getRingCount()) + 1L);
@@ -81,6 +86,8 @@ public class CallerIdHealthService {
         double failurePenalty = stats.getFailureCodeSummary() == null || stats.getFailureCodeSummary().isBlank()
                 ? 0D
                 : Math.min(15D, stats.getFailureCodeSummary().split(",").length * 1.5D);
+        // 当前 healthScore 会被落库，但选择器暂时主要使用原始统计字段自行打分，
+        // 这里更像是一个可观测指标和后续扩展入口。
         return answerRate * 100D + talkContribution - failurePenalty;
     }
 

@@ -128,12 +128,14 @@ public class PartitionSchedulerWorker {
         LocalDateTime now = LocalDateTime.now();
         List<CallDialUnitEntity> claimedUnits = callDialUnitRepository.listByTaskIdAndIds(shardKey, task.getId(), ids);
         TaskCallerIdPolicy policy = taskCallerIdPolicyService.toPolicy(task);
+        // 候选主叫集合先按模式/绑定/冷却规则过滤，得到“可以参与打分”的号码集合。
         List<CallerIdCandidate> candidates = callerIdCandidateService.listCandidates(
                 task.getTenantId(),
                 task.getId(),
                 policy,
                 now
         );
+        // 为避免每个号码逐个查统计，这里按尝试阶段把候选主叫的最新统计一次性预加载出来。
         Map<AttemptStage, Map<Long, CallCallerIdStatsEntity>> statsByStage = preloadStatsByStage(
                 task.getTenantId(),
                 claimedUnits,
@@ -157,6 +159,7 @@ public class PartitionSchedulerWorker {
                 continue;
             }
             CallerIdSelection chosen = selection.get();
+            // 选号结果会直接写回拨打单元，后续 MQ 下发、回写统计和问题排查都依赖这些字段。
             unit.setDispatchToken(UUID.randomUUID().toString());
             unit.setSelectedCallerId(chosen.callerIdId());
             unit.setSelectedCallerNumber(chosen.callerId());

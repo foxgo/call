@@ -105,6 +105,8 @@ public class DialResultWritebackService {
         if (dialingUnit.getSelectedCallerId() == null) {
             return;
         }
+        // 选号时写入的 attemptStage 会跟随回写一起进入统计桶，
+        // 这样首呼和重试可以形成两套独立的主叫健康画像。
         AttemptStage attemptStage = dialingUnit.getAttemptStage() == null
                 ? AttemptStage.fromRetryCount(dialingUnit.getRetryCount())
                 : AttemptStage.valueOf(dialingUnit.getAttemptStage());

@@ -12,6 +12,10 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * 调度并发限流器。
+ * 作用不是决定“应该给任务多少目标并发”，而是把目标并发和多级上限一起折算成本轮可领取的额度。
+ */
 public class DispatchConcurrencyLimiter {
 
     private static final Duration KEY_TTL = Duration.ofMinutes(30);
@@ -41,6 +45,14 @@ public class DispatchConcurrencyLimiter {
         this.shardingRouter = shardingRouter;
         this.acquireBatchScript = new DefaultRedisScript<>();
         acquireBatchScript.setScriptText("""
+                -- granted = min(
+                --   本轮请求数 requested,
+                --   全局剩余额度,
+                --   容量池剩余额度,
+                --   租户剩余额度,
+                --   任务静态剩余额度,
+                --   任务动态 target 剩余额度
+                -- )
                 local requested = tonumber(ARGV[1])
                 local globalMax = tonumber(ARGV[2])
                 local poolTarget = tonumber(ARGV[3])
@@ -105,6 +117,8 @@ public class DispatchConcurrencyLimiter {
         int taskTarget = taskTargetConcurrencyRegistry.loadTaskTarget(tenantId, taskId)
                 .map(state -> state.targetConcurrency())
                 .orElse(taskMaxConcurrency);
+        // 这里拿到的 granted 是“本轮最多允许占用的并发额度”，
+        // 还不是最终实际下发数；后面还要受 ready 队列、外显号选择、CAS 更新结果影响。
         Long granted = stringRedisTemplate.execute(
                 acquireBatchScript,
                 List.of(globalKey(), poolBusyKey(), tenantKey(tenantId), taskKey(tenantId, taskId)),
@@ -143,6 +157,7 @@ public class DispatchConcurrencyLimiter {
     public int available(Long tenantId, Long taskId, int taskMaxConcurrency) {
         String current = stringRedisTemplate.opsForValue().get(taskKey(tenantId, taskId));
         int inFlight = current == null ? 0 : Integer.parseInt(current);
+        // 这里只看任务静态上限，不包含 taskTarget/pool/global 等动态约束。
         return Math.max(taskMaxConcurrency - inFlight, 0);
     }
 
@@ -174,6 +189,7 @@ public class DispatchConcurrencyLimiter {
         int currentPool = currentValue(poolBusyKey());
         int currentTenant = currentValue(tenantKey(tenantId));
         int currentTask = currentTaskInFlight(tenantId, taskId);
+        // 拒绝原因按最外层约束到最内层约束顺序判断，便于指标上快速定位瓶颈层级。
         if (currentGlobal >= properties.getGlobalMax()) {
             callTaskMetrics.incrementCapacityReject("global");
             return;

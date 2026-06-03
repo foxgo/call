@@ -28,6 +28,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
+/**
+ * 单个 partition 的核心调度执行器。
+ * 职责包括：领取活跃任务、申请并发额度、从 Redis ready 队列 claim 号码、选择外显号并异步下发。
+ */
 @Component
 public class PartitionSchedulerWorker {
 
@@ -88,9 +92,13 @@ public class PartitionSchedulerWorker {
             activeTaskQueue.block(meta, TaskBlockReason.PAUSED);
             return true;
         }
+        // 先把运行中任务的待拨数据预热到 Redis，避免后续 ready 队列被快速消费完后出现长时间饥饿。
         dialUnitPreloadService.preloadRunningTask(task);
 
+        // requested 是本轮希望领取的下发额度上限，
+        // 只受 dispatch batch size 和任务静态最大并发约束。
         int requested = Math.min(properties.getDispatchBatchSize(), task.getMaxConcurrency());
+        // granted 是限流器批准的额度，已经综合了 global/pool/tenant/task/taskTarget 五层约束。
         int granted = concurrencyLimiter.tryAcquireBatch(task.getTenantId(), task.getId(), task.getMaxConcurrency(), requested);
         if (granted <= 0) {
             activeTaskQueue.block(meta, TaskBlockReason.CONCURRENCY_FULL);
@@ -111,6 +119,8 @@ public class PartitionSchedulerWorker {
             return true;
         }
 
+        // ids.size() 是 ready 队列里本轮实际 claim 到的号码数，可能小于 granted。
+        // 这一步之后，实际能继续往下走的上限就从 granted 缩减成了 ids.size()。
         if (ids.size() < granted) {
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), granted - ids.size());
         }
@@ -140,6 +150,7 @@ public class PartitionSchedulerWorker {
                     statsByStage.getOrDefault(AttemptStage.fromRetryCount(unit.getRetryCount()), Map.of())
             );
             if (selection.isEmpty()) {
+                // 当前号码在现有策略下没有可用外显号，重新放回 ready 队列等待下一轮调度。
                 CallDialUnitEntity rejected = new CallDialUnitEntity();
                 rejected.setId(unit.getId());
                 rejectedUnits.add(rejected);
@@ -155,6 +166,7 @@ public class PartitionSchedulerWorker {
             selectedUnits.add(unit);
         }
         if (!missingClaimedUnits.isEmpty()) {
+            // Redis 已 claim，但数据库查不到记录，通常说明并发状态竞争或数据被其他流程修改，需要回补 ready 队列。
             redisDialUnitQueue.offerReady(task.getTenantId(), task.getId(), missingClaimedUnits);
             concurrencyLimiter.releaseBatch(task.getTenantId(), task.getId(), missingClaimedUnits.size());
         }
@@ -170,6 +182,10 @@ public class PartitionSchedulerWorker {
                 now,
                 now.plus(properties.getProcessingTimeout())
         );
+        // units.size() 才是最终真实下发数：
+        // requested -> granted -> ids.size() -> selectedUnits.size() -> units.size()
+        // 最后只有这些成功从 READY CAS 到 DIALING 的号码会被 submit。
+        // 从 READY -> DIALING 的 CAS 更新可能只成功一部分，失败部分必须回补，否则会丢单。
         List<CallDialUnitEntity> missedUnits = toMissedReadyUnits(
                 selectedUnits.stream().map(CallDialUnitEntity::getId).toList(),
                 units
@@ -191,6 +207,7 @@ public class PartitionSchedulerWorker {
             return true;
         }
 
+        // 已分发量越大，fairScore 增长越快；权重越高，增长越慢，从而获得更多调度机会。
         long nextFairScore = meta.fairScore() + ((long) units.size() * 1000 / meta.weight());
         if (units.size() < ids.size()) {
             activeTaskQueue.block(meta, TaskBlockReason.EMPTY);
@@ -214,6 +231,7 @@ public class PartitionSchedulerWorker {
                 .map(CallerIdCandidate::callerIdId)
                 .distinct()
                 .toList();
+        // 按尝试阶段分组预加载统计数据，避免每个号码单独查库造成 N+1。
         return units.stream()
                 .map(unit -> AttemptStage.fromRetryCount(unit.getRetryCount()))
                 .distinct()
@@ -224,6 +242,7 @@ public class PartitionSchedulerWorker {
     }
 
     private List<CallDialUnitEntity> toMissedReadyUnits(List<Long> claimedIds, List<CallDialUnitEntity> transitionedUnits) {
+        // 这里只构造最小实体回补 Redis，避免为了回队列再补齐整行数据库字段。
         Set<Long> transitionedIds = transitionedUnits.stream()
                 .map(CallDialUnitEntity::getId)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));

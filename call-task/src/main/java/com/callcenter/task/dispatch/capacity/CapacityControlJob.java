@@ -18,6 +18,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * 容量控制定时任务。
+ * 负责周期性重算每个运行中任务的目标并发，并把池级总量切分给具体任务。
+ */
 public class CapacityControlJob {
 
     private final ActiveTaskQueue activeTaskQueue;
@@ -76,20 +80,26 @@ public class CapacityControlJob {
             ControlInput input = new ControlInput(
                     metrics,
                     capacitySnapshot,
+                    // 当前实现直接用任务静态 maxConcurrency 作为 baseConcurrency，
+                    // 再由控制引擎结合接通率、占用率、池健康度等因子做乘法缩放。
                     new TaskPolicy(task.getMaxConcurrency(), properties.getTaskMinTarget(), task.getMaxConcurrency()),
                     (int) metrics.activeCalls(),
                     currentTarget
             );
             ControlDecision decision = capacityControlEngine.decide(input, currentState, now);
             callTaskMetrics.incrementCapacityDecision(decision.reason());
+            // 这里的 decision.targetConcurrency 是“任务期望目标值”，
+            // 后面还要经过池级分配器，最终才会变成真正写回 Redis 的 task target。
             candidates.add(new TaskTargetAllocationCandidate(meta.taskId(), meta.weight(), decision.targetConcurrency(), task.getMaxConcurrency()));
             metaByTaskId.put(meta.taskId(), meta);
         }
 
+        // 当前单池模型下 poolTarget 直接等于容量池总量，后续限流器会把它当成池级硬约束。
         taskTargetConcurrencyRegistry.savePoolTarget(properties.getPoolKey(), capacitySnapshot.total());
         callTaskMetrics.updateCapacityPool(capacitySnapshot.total(), capacitySnapshot.busy(), capacitySnapshot.utilization());
         Map<Long, Integer> allocations = taskTargetAllocator.allocate(capacitySnapshot.total(), candidates);
         for (TaskTargetAllocationCandidate candidate : candidates) {
+            // 如果 allocator 没给出结果，则退回到任务最小目标并发，避免任务永久拿不到额度。
             int targetConcurrency = allocations.getOrDefault(candidate.taskId(), properties.getTaskMinTarget());
             taskTargetConcurrencyRegistry.saveTaskTarget(
                     metaByTaskId.get(candidate.taskId()).tenantId(),
@@ -107,6 +117,7 @@ public class CapacityControlJob {
             if (meta != null
                     && meta.blockedReason() == TaskBlockReason.CONCURRENCY_FULL
                     && (previous == null || targetConcurrency > previous.targetConcurrency())) {
+                // 任务之前因为并发额度不够被挂起，而本轮 target 变大了，需要主动唤醒重新参与调度。
                 taskActivationService.activate(meta.tenantId(), meta.taskId());
             }
         }

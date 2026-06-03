@@ -11,6 +11,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * 调度入口定时器。
+ * 周期性扫描当前节点负责的 partition，并把实际调度工作分发到线程池。
+ */
 @Component
 public class CallTaskDispatcher {
 
@@ -20,6 +24,7 @@ public class CallTaskDispatcher {
     private final PartitionSchedulerWorker partitionSchedulerWorker;
     private final CallTaskDispatchProperties properties;
     private final Executor dispatchExecutor;
+    // 每个 partition 同一时刻只允许一个 worker 运行，避免重复 claim Redis 队列中的任务单元。
     private final ConcurrentHashMap<Integer, AtomicBoolean> runningPartitions = new ConcurrentHashMap<>();
 
     public CallTaskDispatcher(
@@ -61,6 +66,7 @@ public class CallTaskDispatcher {
     }
 
     private void drainPartition(int partition) {
+        // 单次 tick 允许连续拉取多个任务，减少定时调度的空转开销。
         for (int i = 0; i < properties.getMaxTasksPerPartitionTick(); i++) {
             if (!partitionSchedulerWorker.runPartition(partition)) {
                 break;

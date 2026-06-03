@@ -12,6 +12,10 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 任务生命周期入口服务。
+ * 负责创建任务、校验状态迁移，并在任务进入运行态时接入调度链路。
+ */
 @Service
 public class CallTaskService {
 
@@ -42,6 +46,7 @@ public class CallTaskService {
         entity.setDialingCount(0);
         entity.setSuccessCount(0);
         entity.setFailedCount(0);
+        // 任务创建时先补齐策略参数默认值，避免后续调度链路出现空值分支。
         entity.setPriority(request.getPriority());
         entity.setMaxConcurrency(request.getMaxConcurrency());
         entity.setCallerIdMode(defaultString(request.getCallerIdMode(), "HYBRID"));
@@ -96,6 +101,7 @@ public class CallTaskService {
                     "Task status transition not allowed: %s -> %s".formatted(entity.getStatus(), targetStatus.name())
             );
         }
+        // 先持久化状态，再激活调度，避免调度线程读取到旧状态后又把任务重新挂起。
         entity.setStatus(targetStatus.name());
         entity.setUpdatedAt(LocalDateTime.now());
         callTaskRepository.updateById(entity);

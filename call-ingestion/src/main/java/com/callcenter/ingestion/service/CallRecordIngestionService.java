@@ -7,6 +7,10 @@ import com.callcenter.ingestion.model.InboundMessage;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
+/**
+ * 通话主记录入库服务。
+ * 主流程是：根据租户/号码/时间路由分片，写入 call_record，再校验回合数是否完整。
+ */
 @Service
 public class CallRecordIngestionService {
 
@@ -35,16 +39,19 @@ public class CallRecordIngestionService {
             callRecordMysqlService.persistBatch(
                     shardKey,
                     List.of(message),
+                    // 主记录落库成功后立即校验 round 数，尽早发现 record/round 分流写入的不一致。
                     ignored -> validatePersistedRoundCount(message)
             );
             return true;
         } catch (Exception exception) {
+            // 这里返回 false 交给上层消费者触发 RocketMQ 重试，避免吞掉暂时性失败。
             return false;
         }
     }
 
     private void validatePersistedRoundCount(CallRecordMessage message) {
         if (message.roundTotal() == null) {
+            // 老数据或上游未提供回合总数时不做强校验。
             return;
         }
         ShardKey roundShardKey = shardingRouter.routeRound(

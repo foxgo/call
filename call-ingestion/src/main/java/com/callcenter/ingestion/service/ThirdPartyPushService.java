@@ -11,6 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
+/**
+ * 第三方推送服务。
+ * 在分析完成事件到达后，拼装主记录、回合和分析结果，生成对外推送载荷。
+ */
 @Service
 public class ThirdPartyPushService {
 
@@ -40,6 +44,7 @@ public class ThirdPartyPushService {
         List<CallRoundEntity> rounds = callRoundMysqlService.listByCallId(shardKey, record.getCallId());
         CallAnalysisResultEntity analysisResult =
                 callAnalysisResultService.findByTenantIdAndCallId(record.getTenantId(), record.getCallId());
+        // 推送时统一基于落库后的真实数据组装，避免直接依赖事件载荷导致字段不全或格式漂移。
         pushClient.push(new ThirdPartyPushRequest(record, rounds, analysisResult));
     }
 

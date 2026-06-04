@@ -43,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 null,
                                 authorities
                         );
+                authenticationToken.setDetails(claims);
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } catch (IllegalArgumentException ignored) {
                 SecurityContextHolder.clearContext();

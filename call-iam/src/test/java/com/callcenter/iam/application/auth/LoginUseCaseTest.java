@@ -137,8 +137,25 @@ class LoginUseCaseTest {
         }
 
         @Override
+        public List<User> findAll() {
+            return storage.values().stream().toList();
+        }
+
+        @Override
         public Optional<User> findById(Long id) {
             return Optional.ofNullable(storage.get(id));
+        }
+
+        @Override
+        public List<User> findByTenantId(Long tenantId) {
+            return storage.values().stream()
+                    .filter(user -> tenantId.equals(user.getTenantId()))
+                    .toList();
+        }
+
+        @Override
+        public List<User> findByTenantIdAndDepartmentId(Long tenantId, Long departmentId) {
+            return List.of();
         }
 
         @Override
@@ -160,6 +177,11 @@ class LoginUseCaseTest {
             return storage.values().stream()
                     .filter(user -> tenantId.equals(user.getTenantId()) && email.equals(user.getEmail()))
                     .findFirst();
+        }
+
+        @Override
+        public void deleteById(Long id) {
+            storage.remove(id);
         }
     }
 

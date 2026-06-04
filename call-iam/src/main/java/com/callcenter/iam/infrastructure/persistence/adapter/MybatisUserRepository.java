@@ -5,8 +5,11 @@ import com.callcenter.iam.domain.user.User;
 import com.callcenter.iam.domain.user.UserRepository;
 import com.callcenter.iam.domain.user.UserStatus;
 import com.callcenter.iam.domain.user.UserType;
+import com.callcenter.iam.infrastructure.persistence.dataobject.UserDepartmentDO;
 import com.callcenter.iam.infrastructure.persistence.dataobject.UserDO;
+import com.callcenter.iam.infrastructure.persistence.mapper.UserDepartmentMapper;
 import com.callcenter.iam.infrastructure.persistence.mapper.UserMapper;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
@@ -14,9 +17,11 @@ import org.springframework.stereotype.Repository;
 public class MybatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;
+    private final UserDepartmentMapper userDepartmentMapper;
 
-    public MybatisUserRepository(UserMapper userMapper) {
+    public MybatisUserRepository(UserMapper userMapper, UserDepartmentMapper userDepartmentMapper) {
         this.userMapper = userMapper;
+        this.userDepartmentMapper = userDepartmentMapper;
     }
 
     @Override
@@ -31,8 +36,44 @@ public class MybatisUserRepository implements UserRepository {
     }
 
     @Override
+    public List<User> findAll() {
+        return userMapper.selectList(null).stream()
+                .map(this::toDomain)
+                .sorted(java.util.Comparator.comparing(User::getId))
+                .toList();
+    }
+
+    @Override
     public Optional<User> findById(Long id) {
         return Optional.ofNullable(userMapper.selectById(id)).map(this::toDomain);
+    }
+
+    @Override
+    public List<User> findByTenantId(Long tenantId) {
+        return userMapper.selectList(new LambdaQueryWrapper<UserDO>()
+                        .eq(UserDO::getTenantId, tenantId)
+                        .orderByAsc(UserDO::getId))
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<User> findByTenantIdAndDepartmentId(Long tenantId, Long departmentId) {
+        List<Long> userIds = userDepartmentMapper.selectList(new LambdaQueryWrapper<UserDepartmentDO>()
+                        .eq(UserDepartmentDO::getTenantId, tenantId)
+                        .eq(UserDepartmentDO::getDepartmentId, departmentId))
+                .stream()
+                .map(UserDepartmentDO::getUserId)
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+        return userMapper.selectBatchIds(userIds).stream()
+                .map(this::toDomain)
+                .sorted(java.util.Comparator.comparing(User::getId))
+                .toList();
     }
 
     @Override
@@ -48,6 +89,11 @@ public class MybatisUserRepository implements UserRepository {
     @Override
     public Optional<User> findByTenantIdAndEmail(Long tenantId, String email) {
         return selectOne(tenantId, UserDO::getEmail, email);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        userMapper.deleteById(id);
     }
 
     private <T> Optional<User> selectOne(Long tenantId, com.baomidou.mybatisplus.core.toolkit.support.SFunction<UserDO, T> column, T value) {

@@ -14,10 +14,10 @@ public class User {
     private final Long tenantId;
     private final UserType userType;
     private final String username;
-    private final String mobile;
-    private final String email;
+    private String mobile;
+    private String email;
     private String passwordHash;
-    private final String nickname;
+    private String nickname;
     private UserStatus status;
     private LocalDateTime lastLoginTime;
 
@@ -37,8 +37,8 @@ public class User {
         validateTenantOwnership(userType, tenantId);
         this.tenantId = tenantId;
         this.username = requireText(username, "username must not be blank");
-        this.mobile = mobile;
-        this.email = email;
+        this.mobile = nullableText(mobile);
+        this.email = nullableText(email);
         this.passwordHash = passwordPolicy(passwordHash);
         this.nickname = requireText(nickname, "nickname must not be blank");
         this.status = Objects.requireNonNull(status, "status must not be null");
@@ -91,8 +91,18 @@ public class User {
         this.status = UserStatus.ENABLE;
     }
 
+    public void updateProfile(String newMobile, String newEmail, String newNickname) {
+        this.mobile = nullableText(newMobile);
+        this.email = nullableText(newEmail);
+        this.nickname = requireText(newNickname, "nickname must not be blank");
+    }
+
     public void updatePassword(String newPasswordHash) {
         this.passwordHash = passwordPolicy(newPasswordHash);
+    }
+
+    public void updatePasswordHash(String newPasswordHash) {
+        this.passwordHash = requireText(newPasswordHash, "passwordHash must not be blank");
     }
 
     public void markLoggedIn(LocalDateTime loginTime) {
@@ -153,5 +163,9 @@ public class User {
             throw new DomainRuleViolationException(message);
         }
         return value;
+    }
+
+    private static String nullableText(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

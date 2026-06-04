@@ -57,6 +57,21 @@ public class User {
         return new User(id, tenantId, userType, username, mobile, email, passwordHash, nickname, UserStatus.ENABLE);
     }
 
+    public static User createWithPasswordHash(
+            Long id,
+            Long tenantId,
+            UserType userType,
+            String username,
+            String mobile,
+            String email,
+            String passwordHash,
+            String nickname
+    ) {
+        User user = new User(id, tenantId, userType, username, mobile, email, "Abcdef12", nickname, UserStatus.ENABLE);
+        user.passwordHash = requireText(passwordHash, "passwordHash must not be blank");
+        return user;
+    }
+
     public static String passwordPolicy(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
             throw new DomainRuleViolationException("password must contain uppercase, lowercase, digit and have at least 8 chars");

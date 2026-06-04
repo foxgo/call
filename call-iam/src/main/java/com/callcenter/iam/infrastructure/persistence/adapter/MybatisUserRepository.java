@@ -72,7 +72,7 @@ public class MybatisUserRepository implements UserRepository {
     }
 
     private User toDomain(UserDO dataObject) {
-        User user = User.create(
+        User user = User.createWithPasswordHash(
                 dataObject.getId(),
                 dataObject.getTenantId(),
                 UserType.valueOf(dataObject.getUserType()),

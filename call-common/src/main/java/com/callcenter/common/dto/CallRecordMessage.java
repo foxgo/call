@@ -11,6 +11,14 @@ public record CallRecordMessage(
         Long endTime,
         Integer duration,
         Integer roundTotal,
+        String recordingUrl,
+        Integer errorCode,
+        String errorDescription,
+        Byte hangupBy,
+        Byte connected,
+        Long ringDuration,
+        Long ringStartTime,
+        Long hangupTime,
         String extJson
 ) {
 }

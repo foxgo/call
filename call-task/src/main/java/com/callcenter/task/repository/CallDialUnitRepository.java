@@ -41,7 +41,7 @@ public class CallDialUnitRepository {
         ShardContextHolder.set(shardKey.toContext());
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
-            query.eq("task_id", taskId).orderByAsc("id");
+            query.eq("task_id", taskId).orderByAsc("call_id");
             return callDialUnitMapper.selectList(query);
         } finally {
             ShardContextHolder.clear();
@@ -56,8 +56,8 @@ public class CallDialUnitRepository {
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
             query.eq("task_id", taskId)
-                    .in("id", ids)
-                    .orderByAsc("id");
+                    .in("call_id", ids)
+                    .orderByAsc("call_id");
             return callDialUnitMapper.selectList(query);
         } finally {
             ShardContextHolder.clear();
@@ -93,7 +93,7 @@ public class CallDialUnitRepository {
                         .eq("status", CallDialUnitStatus.PENDING.name())
                         .le("next_call_time", now)
                         .orderByAsc("next_call_time")
-                        .orderByAsc("id")
+                        .orderByAsc("call_id")
                         .last("LIMIT " + limit);
                 List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
                 for (CallDialUnitEntity unit : units) {
@@ -123,11 +123,11 @@ public class CallDialUnitRepository {
             ShardContextHolder.set(shardKey.toContext());
             try {
                 QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
-                query.select("id", "tenant_id", "task_id")
+                query.select("call_id", "tenant_id", "task_id")
                         .eq("status", CallDialUnitStatus.DIALING.name())
                         .le("inflight_expire_at", now)
                         .orderByAsc("inflight_expire_at")
-                        .orderByAsc("id")
+                        .orderByAsc("call_id")
                         .last("LIMIT " + limit);
                 List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
                 for (CallDialUnitEntity unit : units) {
@@ -159,7 +159,7 @@ public class CallDialUnitRepository {
                     .eq("status", CallDialUnitStatus.PENDING.name())
                     .le("next_call_time", now)
                     .orderByAsc("next_call_time")
-                    .orderByAsc("id")
+                    .orderByAsc("call_id")
                     .last("LIMIT " + limit);
             List<CallDialUnitEntity> pending = callDialUnitMapper.selectList(query);
             List<Long> ids = pending.stream().map(CallDialUnitEntity::getId).toList();
@@ -168,7 +168,7 @@ public class CallDialUnitRepository {
             }
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .in("id", ids)
+                    .in("call_id", ids)
                     .eq("status", CallDialUnitStatus.PENDING.name())
                     .le("next_call_time", now)
                     .set("status", CallDialUnitStatus.READY.name())
@@ -177,9 +177,9 @@ public class CallDialUnitRepository {
 
             QueryWrapper<CallDialUnitEntity> readyQuery = new QueryWrapper<>();
             readyQuery.eq("task_id", taskId)
-                    .in("id", ids)
+                    .in("call_id", ids)
                     .eq("status", CallDialUnitStatus.READY.name())
-                    .orderByAsc("id");
+                    .orderByAsc("call_id");
             return callDialUnitMapper.selectList(readyQuery);
         } finally {
             ShardContextHolder.clear();
@@ -197,7 +197,7 @@ public class CallDialUnitRepository {
         ShardContextHolder.set(shardKey.toContext());
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
-            query.eq("task_id", taskId).in("id", ids).orderByAsc("id");
+            query.eq("task_id", taskId).in("call_id", ids).orderByAsc("call_id");
             List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
             List<Long> readyIds = units.stream().map(CallDialUnitEntity::getId).toList();
             if (readyIds.isEmpty()) {
@@ -205,7 +205,7 @@ public class CallDialUnitRepository {
             }
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .in("id", readyIds)
+                    .in("call_id", readyIds)
                     .eq("status", CallDialUnitStatus.READY.name())
                     .set("status", CallDialUnitStatus.DIALING.name())
                     .set("dispatch_token", dispatchToken)
@@ -216,10 +216,10 @@ public class CallDialUnitRepository {
 
             QueryWrapper<CallDialUnitEntity> dialingQuery = new QueryWrapper<>();
             dialingQuery.eq("task_id", taskId)
-                    .in("id", readyIds)
+                    .in("call_id", readyIds)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
-                    .orderByAsc("id");
+                    .orderByAsc("call_id");
             return callDialUnitMapper.selectList(dialingQuery);
         } finally {
             ShardContextHolder.clear();
@@ -242,7 +242,7 @@ public class CallDialUnitRepository {
             for (CallDialUnitEntity unit : units) {
                 UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
                 update.eq("task_id", taskId)
-                        .eq("id", unit.getId())
+                        .eq("call_id", unit.getId())
                         .eq("status", CallDialUnitStatus.READY.name())
                         .set("status", CallDialUnitStatus.DIALING.name())
                         .set("dispatch_token", unit.getDispatchToken())
@@ -258,7 +258,7 @@ public class CallDialUnitRepository {
                 }
                 QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
                 query.eq("task_id", taskId)
-                        .eq("id", unit.getId())
+                        .eq("call_id", unit.getId())
                         .eq("status", CallDialUnitStatus.DIALING.name())
                         .eq("dispatch_token", unit.getDispatchToken())
                         .last("LIMIT 1");
@@ -279,7 +279,7 @@ public class CallDialUnitRepository {
         try {
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .set("status", CallDialUnitStatus.SUCCESS.name())
@@ -300,7 +300,7 @@ public class CallDialUnitRepository {
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
             query.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .last("LIMIT 1");
@@ -323,7 +323,7 @@ public class CallDialUnitRepository {
         try {
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .set("status", CallDialUnitStatus.SUCCESS.name())
@@ -353,7 +353,7 @@ public class CallDialUnitRepository {
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
             query.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken);
             CallDialUnitEntity unit = callDialUnitMapper.selectOne(query);
@@ -367,7 +367,7 @@ public class CallDialUnitRepository {
 
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .set("retry_count", nextRetryCount)
@@ -403,7 +403,7 @@ public class CallDialUnitRepository {
         try {
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .set("status", CallDialUnitStatus.PENDING.name())
@@ -428,7 +428,7 @@ public class CallDialUnitRepository {
         try {
             UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
             update.eq("task_id", taskId)
-                    .eq("id", dialUnitId)
+                    .eq("call_id", dialUnitId)
                     .eq("status", CallDialUnitStatus.DIALING.name())
                     .eq("dispatch_token", dispatchToken)
                     .set("status", CallDialUnitStatus.READY.name())
@@ -450,7 +450,7 @@ public class CallDialUnitRepository {
         ShardContextHolder.set(shardKey.toContext());
         try {
             QueryWrapper<CallDialUnitEntity> query = new QueryWrapper<>();
-            query.eq("task_id", taskId).in("id", ids);
+            query.eq("task_id", taskId).in("call_id", ids);
             List<CallDialUnitEntity> units = callDialUnitMapper.selectList(query);
             LocalDateTime nextCallTime = LocalDateTime.ofInstant(retryAt, ZoneOffset.UTC);
             LocalDateTime now = LocalDateTime.now();
@@ -458,7 +458,7 @@ public class CallDialUnitRepository {
             for (CallDialUnitEntity unit : units) {
                 UpdateWrapper<CallDialUnitEntity> update = new UpdateWrapper<>();
                 update.eq("task_id", taskId)
-                        .eq("id", unit.getId())
+                        .eq("call_id", unit.getId())
                         .eq("status", CallDialUnitStatus.DIALING.name())
                         .set("retry_count", (unit.getRetryCount() == null ? 0 : unit.getRetryCount()) + 1)
                         .set("updated_at", now);

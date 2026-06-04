@@ -56,6 +56,40 @@ class SchemaSmokeTest {
                 .containsExactly("tenant_id", "call_id");
     }
 
+    @Test
+    void shouldAlterCallRecordTablesWithMetadataColumns() throws Exception {
+        DataSource dataSource = dataSource();
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.execute("""
+                CREATE TABLE call_record_202605_00 (
+                    call_id BIGINT PRIMARY KEY,
+                    tenant_id BIGINT NOT NULL,
+                    task_id BIGINT,
+                    phone VARCHAR(20) NOT NULL,
+                    line_number VARCHAR(20),
+                    call_status TINYINT,
+                    duration INT,
+                    round_total INT,
+                    start_time DATETIME,
+                    end_time DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V5__alter_call_record_add_metadata.sql"));
+        }
+
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "recording_url")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "error_code")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "error_description")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "hangup_by")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "connected")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "ring_duration")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "ring_start_time")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "hangup_time")).isTrue();
+    }
+
     private static boolean indexExists(JdbcTemplate jdbcTemplate, String tableName, String indexName) {
         Integer count = jdbcTemplate.queryForObject(
                 """
@@ -86,6 +120,22 @@ class SchemaSmokeTest {
                 tableName,
                 indexName
         );
+    }
+
+    private static boolean columnExists(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND column_name = ?
+                """,
+                Integer.class,
+                tableName,
+                columnName
+        );
+        return count != null && count > 0;
     }
 
     private static DataSource dataSource() {

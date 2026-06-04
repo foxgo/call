@@ -56,6 +56,14 @@ class OutboxEventFactoryTest {
         assertThat(payload.get("callStatus").asInt()).isEqualTo(2);
         assertThat(payload.get("duration").asInt()).isEqualTo(180);
         assertThat(payload.get("roundTotal").asInt()).isEqualTo(3);
+        assertThat(payload.get("recordingUrl").asText()).isEqualTo("https://cdn.example.com/recordings/1001.mp3");
+        assertThat(payload.get("errorCode").asInt()).isEqualTo(1001);
+        assertThat(payload.get("errorDescription").asText()).isEqualTo("callee busy");
+        assertThat(payload.get("hangupBy").asInt()).isEqualTo(1);
+        assertThat(payload.get("connected").asInt()).isEqualTo(1);
+        assertThat(payload.get("ringDuration").asLong()).isEqualTo(1500L);
+        assertThat(payload.get("ringStartTime").asText()).isEqualTo("2026-05-20T10:00:01.5");
+        assertThat(payload.get("hangupTime").asText()).isEqualTo("2026-05-20T10:03:00.25");
         assertThat(payload.get("startTime").asText()).isEqualTo("2026-05-20T10:00:00");
         assertThat(payload.get("endTime").asText()).isEqualTo("2026-05-20T10:03:00");
     }
@@ -91,7 +99,7 @@ class OutboxEventFactoryTest {
                 outboxEventFactory,
                 writeMetrics
         );
-        CallRecordMessage message = new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 2, 1L, 2L, 180, 3, null);
+        CallRecordMessage message = recordMessage();
         CallEventOutboxEntity outbox = new CallEventOutboxEntity();
 
         when(writeMetrics.mysqlInsertLatency()).thenReturn(mock(Timer.class));
@@ -109,6 +117,14 @@ class OutboxEventFactoryTest {
             assertThat(entity.getTenantId()).isEqualTo(9L);
             assertThat(entity.getPhone()).isEqualTo("13800138000");
             assertThat(entity.getRoundTotal()).isEqualTo(3);
+            assertThat(entity.getRecordingUrl()).isEqualTo("https://cdn.example.com/recordings/1001.mp3");
+            assertThat(entity.getErrorCode()).isEqualTo(1001);
+            assertThat(entity.getErrorDescription()).isEqualTo("callee busy");
+            assertThat(entity.getHangupBy()).isEqualTo((byte) 1);
+            assertThat(entity.getConnected()).isEqualTo((byte) 1);
+            assertThat(entity.getRingDuration()).isEqualTo(1500L);
+            assertThat(entity.getRingStartTime()).isEqualTo(LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000));
+            assertThat(entity.getHangupTime()).isEqualTo(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
         });
         verify(callRecordMapper).batchInsertIgnore(entities);
         verify(outboxEventFactory).recordPersisted(entities.getFirst());
@@ -127,7 +143,7 @@ class OutboxEventFactoryTest {
                 outboxEventFactory,
                 writeMetrics
         );
-        CallRecordMessage message = new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 2, 1L, 2L, 180, 3, null);
+        CallRecordMessage message = recordMessage();
 
         when(writeMetrics.mysqlInsertLatency()).thenReturn(mock(Timer.class));
 
@@ -177,10 +193,42 @@ class OutboxEventFactoryTest {
         entity.setCallStatus(2);
         entity.setDuration(180);
         entity.setRoundTotal(3);
+        entity.setRecordingUrl("https://cdn.example.com/recordings/1001.mp3");
+        entity.setErrorCode(1001);
+        entity.setErrorDescription("callee busy");
+        entity.setHangupBy((byte) 1);
+        entity.setConnected((byte) 1);
+        entity.setRingDuration(1500L);
+        entity.setRingStartTime(LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000));
+        entity.setHangupTime(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
         entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
         entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
         entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));
         return entity;
+    }
+
+    private static CallRecordMessage recordMessage() {
+        return new CallRecordMessage(
+                1001L,
+                9L,
+                1L,
+                "13800138000",
+                "021",
+                2,
+                1L,
+                2L,
+                180,
+                3,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                1_779_271_201_500L,
+                1_779_271_380_250L,
+                null
+        );
     }
 
 }

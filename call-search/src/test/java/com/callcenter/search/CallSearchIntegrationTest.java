@@ -130,6 +130,14 @@ class CallSearchIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.callId").value("10001"))
                 .andExpect(jsonPath("$.lineNumber").value("021-8000"))
+                .andExpect(jsonPath("$.recordingUrl").value("https://cdn.example.com/recordings/10001.mp3"))
+                .andExpect(jsonPath("$.errorCode").value(1001))
+                .andExpect(jsonPath("$.errorDescription").value("callee busy"))
+                .andExpect(jsonPath("$.hangupBy").value(1))
+                .andExpect(jsonPath("$.connected").value(1))
+                .andExpect(jsonPath("$.ringDuration").value(1500))
+                .andExpect(jsonPath("$.ringStartTime").value("2026-05-19T10:00:01.500"))
+                .andExpect(jsonPath("$.hangupTime").value("2026-05-19T10:05:00.250"))
                 .andExpect(jsonPath("$.rounds[0].roundIndex").value(1))
                 .andExpect(jsonPath("$.rounds[1].intent").value("QUESTION"));
     }
@@ -154,6 +162,14 @@ class CallSearchIntegrationTest {
         doc.put("duration", duration);
         doc.put("start_time", startTime);
         doc.put("end_time", startTime);
+        doc.put("recording_url", "https://cdn.example.com/recordings/" + callId + ".mp3");
+        doc.put("error_code", 1001);
+        doc.put("error_description", "callee busy");
+        doc.put("hangup_by", 1);
+        doc.put("connected", 1);
+        doc.put("ring_duration", 1500L);
+        doc.put("ring_start_time", "2026-05-19T10:00:01.500");
+        doc.put("hangup_time", "2026-05-19T10:05:00.250");
         doc.put("full_text", fullText);
         doc.put("created_at", startTime);
 

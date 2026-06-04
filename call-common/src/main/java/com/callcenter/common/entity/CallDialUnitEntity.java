@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @TableName("call_dial_unit")
 public class CallDialUnitEntity {
 
-    @TableId
+    @TableId("call_id")
     private Long id;
     private Long tenantId;
     private Long taskId;

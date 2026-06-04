@@ -177,6 +177,14 @@ class PersistedIndexConsumerTest {
         entity.setCallStatus(2);
         entity.setDuration(180);
         entity.setRoundTotal(1);
+        entity.setRecordingUrl("https://cdn.example.com/recordings/1001.mp3");
+        entity.setErrorCode(1001);
+        entity.setErrorDescription("callee busy");
+        entity.setHangupBy((byte) 1);
+        entity.setConnected((byte) 1);
+        entity.setRingDuration(1500L);
+        entity.setRingStartTime(LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000));
+        entity.setHangupTime(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
         entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
         entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
         entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));

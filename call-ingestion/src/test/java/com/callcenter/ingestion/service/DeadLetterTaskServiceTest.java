@@ -173,6 +173,14 @@ class DeadLetterTaskServiceTest {
                 2L,
                 3,
                 2,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                3L,
+                4L,
                 null
         );
         MessageExt message = messageExt("%DLQ%call-record-consumer-group", record, 19L, 4, "origin-record-1");

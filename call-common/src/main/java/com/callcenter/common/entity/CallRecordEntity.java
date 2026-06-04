@@ -16,6 +16,14 @@ public class CallRecordEntity {
     private Integer callStatus;
     private Integer duration;
     private Integer roundTotal;
+    private String recordingUrl;
+    private Integer errorCode;
+    private String errorDescription;
+    private Byte hangupBy;
+    private Byte connected;
+    private Long ringDuration;
+    private LocalDateTime ringStartTime;
+    private LocalDateTime hangupTime;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime createdAt;
@@ -82,6 +90,70 @@ public class CallRecordEntity {
 
     public void setRoundTotal(Integer roundTotal) {
         this.roundTotal = roundTotal;
+    }
+
+    public String getRecordingUrl() {
+        return recordingUrl;
+    }
+
+    public void setRecordingUrl(String recordingUrl) {
+        this.recordingUrl = recordingUrl;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(Integer errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public String getErrorDescription() {
+        return errorDescription;
+    }
+
+    public void setErrorDescription(String errorDescription) {
+        this.errorDescription = errorDescription;
+    }
+
+    public Byte getHangupBy() {
+        return hangupBy;
+    }
+
+    public void setHangupBy(Byte hangupBy) {
+        this.hangupBy = hangupBy;
+    }
+
+    public Byte getConnected() {
+        return connected;
+    }
+
+    public void setConnected(Byte connected) {
+        this.connected = connected;
+    }
+
+    public Long getRingDuration() {
+        return ringDuration;
+    }
+
+    public void setRingDuration(Long ringDuration) {
+        this.ringDuration = ringDuration;
+    }
+
+    public LocalDateTime getRingStartTime() {
+        return ringStartTime;
+    }
+
+    public void setRingStartTime(LocalDateTime ringStartTime) {
+        this.ringStartTime = ringStartTime;
+    }
+
+    public LocalDateTime getHangupTime() {
+        return hangupTime;
+    }
+
+    public void setHangupTime(LocalDateTime hangupTime) {
+        this.hangupTime = hangupTime;
     }
 
     public LocalDateTime getStartTime() {

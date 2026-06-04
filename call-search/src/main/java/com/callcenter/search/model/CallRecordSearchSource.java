@@ -23,6 +23,29 @@ public class CallRecordSearchSource {
 
     private Integer duration;
 
+    @JsonProperty("recording_url")
+    private String recordingUrl;
+
+    @JsonProperty("error_code")
+    private Integer errorCode;
+
+    @JsonProperty("error_description")
+    private String errorDescription;
+
+    @JsonProperty("hangup_by")
+    private Byte hangupBy;
+
+    private Byte connected;
+
+    @JsonProperty("ring_duration")
+    private Long ringDuration;
+
+    @JsonProperty("ring_start_time")
+    private String ringStartTime;
+
+    @JsonProperty("hangup_time")
+    private String hangupTime;
+
     @JsonProperty("start_time")
     private String startTime;
 
@@ -89,6 +112,70 @@ public class CallRecordSearchSource {
 
     public void setDuration(Integer duration) {
         this.duration = duration;
+    }
+
+    public String getRecordingUrl() {
+        return recordingUrl;
+    }
+
+    public void setRecordingUrl(String recordingUrl) {
+        this.recordingUrl = recordingUrl;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(Integer errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public String getErrorDescription() {
+        return errorDescription;
+    }
+
+    public void setErrorDescription(String errorDescription) {
+        this.errorDescription = errorDescription;
+    }
+
+    public Byte getHangupBy() {
+        return hangupBy;
+    }
+
+    public void setHangupBy(Byte hangupBy) {
+        this.hangupBy = hangupBy;
+    }
+
+    public Byte getConnected() {
+        return connected;
+    }
+
+    public void setConnected(Byte connected) {
+        this.connected = connected;
+    }
+
+    public Long getRingDuration() {
+        return ringDuration;
+    }
+
+    public void setRingDuration(Long ringDuration) {
+        this.ringDuration = ringDuration;
+    }
+
+    public String getRingStartTime() {
+        return ringStartTime;
+    }
+
+    public void setRingStartTime(String ringStartTime) {
+        this.ringStartTime = ringStartTime;
+    }
+
+    public String getHangupTime() {
+        return hangupTime;
+    }
+
+    public void setHangupTime(String hangupTime) {
+        this.hangupTime = hangupTime;
     }
 
     public String getStartTime() {

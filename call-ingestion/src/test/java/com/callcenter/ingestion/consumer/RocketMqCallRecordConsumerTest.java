@@ -26,7 +26,7 @@ class RocketMqCallRecordConsumerTest {
     void shouldDelegateRecordPayloadToRecordIngestionService() throws Exception {
         CallRecordIngestionService ingestionService = mock(CallRecordIngestionService.class);
         RocketMqCallRecordConsumer consumer = new RocketMqCallRecordConsumer(objectMapper, ingestionService);
-        CallRecordMessage record = new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 1, 1L, 2L, 3, 2, null);
+        CallRecordMessage record = recordMessage();
 
         when(ingestionService.process(any())).thenReturn(true);
 
@@ -45,7 +45,7 @@ class RocketMqCallRecordConsumerTest {
     void shouldThrowWhenRetryableFailureNeedsRocketMqReconsume() throws Exception {
         CallRecordIngestionService ingestionService = mock(CallRecordIngestionService.class);
         RocketMqCallRecordConsumer consumer = new RocketMqCallRecordConsumer(objectMapper, ingestionService);
-        CallRecordMessage record = new CallRecordMessage(1001L, 9L, 1L, "13800138000", "021", 1, 1L, 2L, 3, 2, null);
+        CallRecordMessage record = recordMessage();
 
         when(ingestionService.process(any())).thenReturn(false);
 
@@ -56,5 +56,29 @@ class RocketMqCallRecordConsumerTest {
         MessageExt messageExt = new MessageExt();
         messageExt.setBody(payload.getBytes(StandardCharsets.UTF_8));
         return messageExt;
+    }
+
+    private static CallRecordMessage recordMessage() {
+        return new CallRecordMessage(
+                1001L,
+                9L,
+                1L,
+                "13800138000",
+                "021",
+                1,
+                1L,
+                2L,
+                3,
+                2,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                3L,
+                4L,
+                null
+        );
     }
 }

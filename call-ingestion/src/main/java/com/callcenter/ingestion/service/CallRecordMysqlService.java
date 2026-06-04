@@ -79,6 +79,14 @@ public class CallRecordMysqlService {
         entity.setCallStatus(message.callStatus());
         entity.setDuration(message.duration());
         entity.setRoundTotal(message.roundTotal());
+        entity.setRecordingUrl(message.recordingUrl());
+        entity.setErrorCode(message.errorCode());
+        entity.setErrorDescription(message.errorDescription());
+        entity.setHangupBy(message.hangupBy());
+        entity.setConnected(message.connected());
+        entity.setRingDuration(message.ringDuration());
+        entity.setRingStartTime(toDateTime(message.ringStartTime()));
+        entity.setHangupTime(toDateTime(message.hangupTime()));
         entity.setStartTime(toDateTime(message.startTime()));
         entity.setEndTime(toDateTime(message.endTime()));
         entity.setCreatedAt(LocalDateTime.now());

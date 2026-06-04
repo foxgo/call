@@ -86,6 +86,14 @@ public class ElasticsearchBulkService {
         putIfNotNull(document, "full_text", buildFullText(entity));
         putIfNotNull(document, "call_status", entity.getCallStatus());
         putIfNotNull(document, "duration", entity.getDuration());
+        putIfNotNull(document, "recording_url", entity.getRecordingUrl());
+        putIfNotNull(document, "error_code", entity.getErrorCode());
+        putIfNotNull(document, "error_description", entity.getErrorDescription());
+        putIfNotNull(document, "hangup_by", entity.getHangupBy());
+        putIfNotNull(document, "connected", entity.getConnected());
+        putIfNotNull(document, "ring_duration", entity.getRingDuration());
+        putIfNotNull(document, "ring_start_time", entity.getRingStartTime());
+        putIfNotNull(document, "hangup_time", entity.getHangupTime());
         putIfNotNull(document, "start_time", entity.getStartTime());
         putIfNotNull(document, "end_time", entity.getEndTime());
         putIfNotNull(document, "round_count", entity.getRoundTotal());

@@ -45,6 +45,36 @@
         "duration": {
           "type": "integer"
         },
+        "recording_url": {
+          "type": "keyword"
+        },
+        "error_code": {
+          "type": "integer"
+        },
+        "error_description": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "hangup_by": {
+          "type": "byte"
+        },
+        "connected": {
+          "type": "byte"
+        },
+        "ring_duration": {
+          "type": "long"
+        },
+        "ring_start_time": {
+          "type": "date"
+        },
+        "hangup_time": {
+          "type": "date"
+        },
         "start_time": {
           "type": "date"
         },

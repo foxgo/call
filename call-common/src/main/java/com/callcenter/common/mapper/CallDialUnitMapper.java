@@ -13,7 +13,7 @@ public interface CallDialUnitMapper extends BaseMapper<CallDialUnitEntity> {
     @Insert({
             "<script>",
             "INSERT IGNORE INTO call_dial_unit ",
-            "(id, tenant_id, task_id, import_batch_id, phone, status, retry_count, max_retry_count, score,",
+            "(call_id, tenant_id, task_id, import_batch_id, phone, status, retry_count, max_retry_count, score,",
             "last_call_time, next_call_time, dispatch_token, inflight_expire_at, biz_idempotency_key,",
             "failure_code, failure_reason, created_at, updated_at) VALUES ",
             "<foreach collection='units' item='unit' separator=','>",

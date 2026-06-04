@@ -25,6 +25,12 @@ public class Department {
         this.name = requireText(newName, "name must not be blank");
     }
 
+    public void updateBasics(String newName, String newStatus, int newSort) {
+        this.name = requireText(newName, "name must not be blank");
+        this.status = requireText(newStatus, "status must not be blank");
+        this.sort = newSort;
+    }
+
     public void moveTo(Long newParentId) {
         this.parentId = newParentId;
     }

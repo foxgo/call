@@ -45,6 +45,7 @@ public class SecurityConfiguration {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/iam/auth/**", "/actuator/health").permitAll()
+                        .requestMatchers("/api/iam/tenants/**").hasRole("PLATFORM_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -6,8 +6,11 @@ import com.callcenter.iam.domain.tenant.TenantRepository;
 import com.callcenter.iam.domain.tenant.TenantStatus;
 import com.callcenter.iam.infrastructure.persistence.dataobject.TenantDO;
 import com.callcenter.iam.infrastructure.persistence.mapper.TenantMapper;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class MybatisTenantRepository implements TenantRepository {
 
     private final TenantMapper tenantMapper;
@@ -38,6 +41,14 @@ public class MybatisTenantRepository implements TenantRepository {
                 .eq(TenantDO::getTenantCode, tenantCode)
                 .last("LIMIT 1");
         return Optional.ofNullable(tenantMapper.selectOne(query)).map(this::toDomain);
+    }
+
+    @Override
+    public List<Tenant> findAll() {
+        return tenantMapper.selectList(new LambdaQueryWrapper<TenantDO>().orderByAsc(TenantDO::getId))
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private TenantDO toDataObject(Tenant tenant) {

@@ -1,6 +1,7 @@
 package com.callcenter.iam.infrastructure.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,13 +28,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 JwtTokenProvider.TokenClaims claims = tokenProvider.parse(header.substring(7));
+                ArrayList<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                if (claims.tenantId() == null) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"));
+                } else {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_TENANT_USER"));
+                }
+                authorities.addAll(claims.roleIds().stream()
+                        .map(roleId -> new SimpleGrantedAuthority("ROLE_" + roleId))
+                        .collect(Collectors.toList()));
                 UsernamePasswordAuthenticationToken authenticationToken =
                         new UsernamePasswordAuthenticationToken(
                                 claims.userId(),
                                 null,
-                                claims.roleIds().stream()
-                                        .map(roleId -> new SimpleGrantedAuthority("ROLE_" + roleId))
-                                        .collect(Collectors.toList())
+                                authorities
                         );
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } catch (IllegalArgumentException ignored) {

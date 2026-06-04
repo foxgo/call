@@ -8,9 +8,9 @@ public class Tenant {
 
     private final Long id;
     private final String tenantCode;
-    private final String tenantName;
+    private String tenantName;
     private TenantStatus status;
-    private final LocalDateTime expireTime;
+    private LocalDateTime expireTime;
 
     private Tenant(Long id, String tenantCode, String tenantName, TenantStatus status, LocalDateTime expireTime) {
         this.id = Objects.requireNonNull(id, "id must not be null");
@@ -58,6 +58,11 @@ public class Tenant {
             throw new DomainRuleViolationException("expired tenant cannot be reactivated directly");
         }
         status = TenantStatus.ACTIVE;
+    }
+
+    public void updateBasics(String newTenantName, LocalDateTime newExpireTime) {
+        this.tenantName = requireText(newTenantName, "tenantName must not be blank");
+        this.expireTime = newExpireTime;
     }
 
     public Long getId() {

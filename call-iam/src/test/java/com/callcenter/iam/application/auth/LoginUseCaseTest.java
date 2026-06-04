@@ -184,6 +184,11 @@ class LoginUseCaseTest {
                     .filter(tenant -> tenantCode.equals(tenant.getTenantCode()))
                     .findFirst();
         }
+
+        @Override
+        public List<Tenant> findAll() {
+            return storage.values().stream().toList();
+        }
     }
 
     private static final class InMemoryRefreshTokenStore implements RefreshTokenStore {

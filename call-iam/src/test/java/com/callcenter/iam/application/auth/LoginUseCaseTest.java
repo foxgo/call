@@ -1,9 +1,11 @@
 package com.callcenter.iam.application.auth;
 
+import com.callcenter.iam.application.audit.AuditCommand;
 import com.callcenter.iam.domain.tenant.Tenant;
 import com.callcenter.iam.domain.tenant.TenantRepository;
 import com.callcenter.iam.domain.user.User;
 import com.callcenter.iam.domain.user.UserRepository;
+import com.callcenter.iam.infrastructure.audit.AuditEventPublisher;
 import com.callcenter.iam.infrastructure.security.JwtTokenProvider;
 import com.callcenter.iam.infrastructure.security.RefreshTokenStore;
 import java.time.Clock;
@@ -36,6 +38,7 @@ class LoginUseCaseTest {
         InMemoryUserRepository userRepository = new InMemoryUserRepository();
         InMemoryTenantRepository tenantRepository = new InMemoryTenantRepository();
         InMemoryRefreshTokenStore refreshTokenStore = new InMemoryRefreshTokenStore();
+        NoopAuditEventPublisher auditEventPublisher = new NoopAuditEventPublisher();
 
         User locked = User.createWithPasswordHash(
                 1001L,
@@ -51,7 +54,14 @@ class LoginUseCaseTest {
         userRepository.save(locked);
         tenantRepository.save(Tenant.active(9L, "acme", "Acme", LocalDateTime.of(2027, 1, 1, 0, 0)));
 
-        LoginUseCase useCase = new LoginUseCase(userRepository, tenantRepository, passwordEncoder, tokenProvider, refreshTokenStore);
+        LoginUseCase useCase = new LoginUseCase(
+                userRepository,
+                tenantRepository,
+                passwordEncoder,
+                tokenProvider,
+                refreshTokenStore,
+                auditEventPublisher
+        );
 
         assertThrows(AuthenticationFailedException.class, () -> useCase.login(new LoginCommand(
                 9L,
@@ -67,6 +77,7 @@ class LoginUseCaseTest {
         InMemoryUserRepository userRepository = new InMemoryUserRepository();
         InMemoryTenantRepository tenantRepository = new InMemoryTenantRepository();
         InMemoryRefreshTokenStore refreshTokenStore = new InMemoryRefreshTokenStore();
+        NoopAuditEventPublisher auditEventPublisher = new NoopAuditEventPublisher();
 
         userRepository.save(User.createWithPasswordHash(
                 1001L,
@@ -80,7 +91,14 @@ class LoginUseCaseTest {
         ));
         tenantRepository.save(Tenant.suspended(9L, "acme", "Acme", LocalDateTime.of(2027, 1, 1, 0, 0)));
 
-        LoginUseCase useCase = new LoginUseCase(userRepository, tenantRepository, passwordEncoder, tokenProvider, refreshTokenStore);
+        LoginUseCase useCase = new LoginUseCase(
+                userRepository,
+                tenantRepository,
+                passwordEncoder,
+                tokenProvider,
+                refreshTokenStore,
+                auditEventPublisher
+        );
 
         assertThrows(AuthenticationFailedException.class, () -> useCase.login(new LoginCommand(
                 9L,
@@ -96,6 +114,7 @@ class LoginUseCaseTest {
         InMemoryUserRepository userRepository = new InMemoryUserRepository();
         InMemoryTenantRepository tenantRepository = new InMemoryTenantRepository();
         InMemoryRefreshTokenStore refreshTokenStore = new InMemoryRefreshTokenStore();
+        NoopAuditEventPublisher auditEventPublisher = new NoopAuditEventPublisher();
 
         userRepository.save(User.createWithPasswordHash(
                 1001L,
@@ -109,7 +128,14 @@ class LoginUseCaseTest {
         ));
         tenantRepository.save(Tenant.active(9L, "acme", "Acme", LocalDateTime.of(2027, 1, 1, 0, 0)));
 
-        LoginUseCase useCase = new LoginUseCase(userRepository, tenantRepository, passwordEncoder, tokenProvider, refreshTokenStore);
+        LoginUseCase useCase = new LoginUseCase(
+                userRepository,
+                tenantRepository,
+                passwordEncoder,
+                tokenProvider,
+                refreshTokenStore,
+                auditEventPublisher
+        );
 
         LoginResult loginResult = useCase.login(new LoginCommand(
                 9L,
@@ -230,6 +256,13 @@ class LoginUseCaseTest {
         @Override
         public boolean contains(String refreshToken) {
             return storage.containsKey(refreshToken);
+        }
+    }
+
+    private static final class NoopAuditEventPublisher implements AuditEventPublisher {
+
+        @Override
+        public void publish(AuditCommand command) {
         }
     }
 }

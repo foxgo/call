@@ -1,5 +1,6 @@
 package com.callcenter.iam.application.auth;
 
+import com.callcenter.iam.application.audit.AuditCommand;
 import com.callcenter.iam.domain.tenant.Tenant;
 import com.callcenter.iam.domain.tenant.TenantRepository;
 import com.callcenter.iam.domain.tenant.TenantStatus;
@@ -7,6 +8,7 @@ import com.callcenter.iam.domain.user.User;
 import com.callcenter.iam.domain.user.UserRepository;
 import com.callcenter.iam.domain.user.UserStatus;
 import com.callcenter.iam.domain.user.UserType;
+import com.callcenter.iam.infrastructure.audit.AuditEventPublisher;
 import com.callcenter.iam.infrastructure.security.JwtTokenProvider;
 import com.callcenter.iam.infrastructure.security.RefreshTokenStore;
 import java.time.Instant;
@@ -21,36 +23,57 @@ public class LoginUseCase {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final AuditEventPublisher auditEventPublisher;
 
     public LoginUseCase(
             UserRepository userRepository,
             TenantRepository tenantRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider tokenProvider,
-            RefreshTokenStore refreshTokenStore
+            RefreshTokenStore refreshTokenStore,
+            AuditEventPublisher auditEventPublisher
     ) {
         this.userRepository = userRepository;
         this.tenantRepository = tenantRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.refreshTokenStore = refreshTokenStore;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     public LoginResult login(LoginCommand command) {
-        User user = findUser(command.tenantId(), command.identity())
-                .orElseThrow(() -> new AuthenticationFailedException("invalid credentials"));
-        if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
-            throw new AuthenticationFailedException("invalid credentials");
-        }
-        ensureUserCanLogin(user);
+        User user = findUser(command.tenantId(), command.identity()).orElse(null);
+        try {
+            if (user == null || !passwordEncoder.matches(command.password(), user.getPasswordHash())) {
+                throw new AuthenticationFailedException("invalid credentials");
+            }
+            ensureUserCanLogin(user);
 
-        JwtTokenProvider.TokenSubject subject = new JwtTokenProvider.TokenSubject(
-                user.getTenantId(),
-                user.getId(),
-                safeList(command.roleIds()),
-                safeList(command.deptIds())
-        );
-        return issueTokens(subject);
+            JwtTokenProvider.TokenSubject subject = new JwtTokenProvider.TokenSubject(
+                    user.getTenantId(),
+                    user.getId(),
+                    safeList(command.roleIds()),
+                    safeList(command.deptIds())
+            );
+            LoginResult result = issueTokens(subject);
+            auditEventPublisher.publish(new AuditCommand(
+                    command.tenantId(),
+                    user.getId(),
+                    "LOGIN_SUCCESS",
+                    "USER",
+                    String.valueOf(user.getId())
+            ));
+            return result;
+        } catch (AuthenticationFailedException ex) {
+            auditEventPublisher.publish(new AuditCommand(
+                    command.tenantId(),
+                    user == null ? null : user.getId(),
+                    "LOGIN_FAILURE",
+                    "USER",
+                    user == null ? command.identity() : String.valueOf(user.getId())
+            ));
+            throw ex;
+        }
     }
 
     public LoginResult refresh(String refreshToken) {

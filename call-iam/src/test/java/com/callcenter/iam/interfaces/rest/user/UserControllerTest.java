@@ -8,6 +8,7 @@ import com.callcenter.iam.application.user.ResetUserPasswordUseCase;
 import com.callcenter.iam.application.user.UpdateUserStatusUseCase;
 import com.callcenter.iam.application.user.UpdateUserUseCase;
 import com.callcenter.iam.application.user.UserAssignmentRepository;
+import com.callcenter.iam.infrastructure.audit.AuditEventPublisher;
 import com.callcenter.iam.domain.organization.Department;
 import com.callcenter.iam.domain.organization.DepartmentRepository;
 import com.callcenter.iam.domain.user.User;
@@ -256,8 +257,18 @@ class UserControllerTest {
         }
 
         @Bean
-        CreateUserUseCase createUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-            return new CreateUserUseCase(userRepository, passwordEncoder);
+        AuditEventPublisher auditEventPublisher() {
+            return command -> {
+            };
+        }
+
+        @Bean
+        CreateUserUseCase createUserUseCase(
+                UserRepository userRepository,
+                PasswordEncoder passwordEncoder,
+                AuditEventPublisher auditEventPublisher
+        ) {
+            return new CreateUserUseCase(userRepository, passwordEncoder, auditEventPublisher);
         }
 
         @Bean

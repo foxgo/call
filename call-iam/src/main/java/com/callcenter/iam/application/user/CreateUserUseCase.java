@@ -1,9 +1,11 @@
 package com.callcenter.iam.application.user;
 
+import com.callcenter.iam.application.audit.AuditCommand;
 import com.callcenter.iam.domain.shared.DomainRuleViolationException;
 import com.callcenter.iam.domain.user.User;
 import com.callcenter.iam.domain.user.UserRepository;
 import com.callcenter.iam.domain.user.UserType;
+import com.callcenter.iam.infrastructure.audit.AuditEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +14,16 @@ public class CreateUserUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditEventPublisher auditEventPublisher;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CreateUserUseCase(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            AuditEventPublisher auditEventPublisher
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     public User execute(CreateUserCommand command) {
@@ -45,6 +53,14 @@ public class CreateUserUseCase {
                 passwordEncoder.encode(command.password()),
                 command.nickname()
         );
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        auditEventPublisher.publish(new AuditCommand(
+                command.tenantId(),
+                command.operatorId(),
+                "USER_CREATED",
+                "USER",
+                String.valueOf(saved.getId())
+        ));
+        return saved;
     }
 }

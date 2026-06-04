@@ -7,9 +7,9 @@ public class Role {
 
     private final Long id;
     private final Long tenantId;
-    private final String roleCode;
-    private final String roleName;
-    private final String roleType;
+    private String roleCode;
+    private String roleName;
+    private String roleType;
 
     public Role(Long id, Long tenantId, String roleCode, String roleName, String roleType) {
         this.id = Objects.requireNonNull(id, "id must not be null");
@@ -17,6 +17,12 @@ public class Role {
         this.roleCode = requireText(roleCode, "roleCode must not be blank");
         this.roleName = requireText(roleName, "roleName must not be blank");
         this.roleType = requireText(roleType, "roleType must not be blank");
+    }
+
+    public void updateBasics(String newRoleCode, String newRoleName, String newRoleType) {
+        this.roleCode = requireText(newRoleCode, "roleCode must not be blank");
+        this.roleName = requireText(newRoleName, "roleName must not be blank");
+        this.roleType = requireText(newRoleType, "roleType must not be blank");
     }
 
     public Long getId() {

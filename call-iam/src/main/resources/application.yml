@@ -1,0 +1,42 @@
+server:
+  port: 8085
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+spring:
+  application:
+    name: call-iam
+  jackson:
+    default-property-inclusion: non_null
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+call:
+  shard:
+    db-count: ${CALL_DB_COUNT:4}
+    table-count: ${CALL_TABLE_COUNT:16}
+  id:
+    machine-id: ${CALL_MACHINE_ID:13}
+    epoch: ${CALL_ID_EPOCH:1700000000000}
+  datasource:
+    nodes:
+      - index: 0
+        host: ${MYSQL_HOST:localhost}
+        port: ${MYSQL_PORT:3306}
+        database: call_0
+        username: ${MYSQL_USER:call}
+        password: ${MYSQL_PASSWORD:call123}
+  elasticsearch:
+    uris:
+      - ${ES_URI:http://localhost:9200}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:elastic123}
+    auto-init: true
+
+
+
+
+

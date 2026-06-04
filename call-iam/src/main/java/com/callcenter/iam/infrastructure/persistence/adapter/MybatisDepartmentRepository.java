@@ -7,7 +7,9 @@ import com.callcenter.iam.infrastructure.persistence.dataobject.DepartmentDO;
 import com.callcenter.iam.infrastructure.persistence.mapper.DepartmentMapper;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class MybatisDepartmentRepository implements DepartmentRepository {
 
     private final DepartmentMapper departmentMapper;

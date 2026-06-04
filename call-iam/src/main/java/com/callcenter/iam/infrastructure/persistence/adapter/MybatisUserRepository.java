@@ -8,7 +8,9 @@ import com.callcenter.iam.domain.user.UserType;
 import com.callcenter.iam.infrastructure.persistence.dataobject.UserDO;
 import com.callcenter.iam.infrastructure.persistence.mapper.UserMapper;
 import java.util.Optional;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class MybatisUserRepository implements UserRepository {
 
     private final UserMapper userMapper;

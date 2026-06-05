@@ -1,9 +1,0 @@
-package com.callcenter.ingestion.service;
-
-import com.callcenter.ingestion.model.CallAnalysisRequest;
-import com.callcenter.ingestion.model.CallAnalysisResponse;
-
-public interface CallAnalysisClient {
-
-    CallAnalysisResponse analyze(CallAnalysisRequest request);
-}

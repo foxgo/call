@@ -1,0 +1,26 @@
+:root {
+    --iam-bg: linear-gradient(135deg, #f3efe5 0%, #d8e4ec 100%);
+    --iam-surface: rgba(255, 255, 255, 0.86);
+    --iam-text: #1f2937;
+    --iam-muted: #52606d;
+    --iam-accent: #0f766e;
+    --iam-border: rgba(15, 118, 110, 0.16);
+    font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--iam-text);
+    background: var(--iam-bg);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--iam-bg);
+}
+
+#app {
+    min-height: 100vh;
+}

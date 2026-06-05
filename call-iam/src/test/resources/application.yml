@@ -1,0 +1,15 @@
+spring:
+  flyway:
+    enabled: false
+
+call:
+  persistence:
+    enabled: false
+  datasource:
+    nodes:
+      - index: 0
+        host: localhost
+        port: 3306
+        database: call_0
+        username: call
+        password: call123

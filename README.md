@@ -63,3 +63,19 @@ call/
   [deploy/k8s/services.yaml](/Users/johnny/github/call/deploy/k8s/services.yaml),
   [deploy/k8s/configmap.yaml](/Users/johnny/github/call/deploy/k8s/configmap.yaml)
 - 模块说明: [call-iam/README.md](/Users/johnny/github/call/call-iam/README.md)
+
+## 验证矩阵
+
+推荐在仓库根目录执行：
+
+```bash
+mvn -pl call-iam test
+cd call-iam-web && npm test
+```
+
+本地启动检查：
+
+1. `docker compose -f deploy/docker-compose.yml up -d mysql redis rocketmq-nameserver rocketmq-broker elasticsearch`
+2. `mvn -pl call-iam -am spring-boot:run`
+3. 访问 `http://localhost:8085/actuator/health`
+4. 访问 `http://localhost:8085/v3/api-docs`

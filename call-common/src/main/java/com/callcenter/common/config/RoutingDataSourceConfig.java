@@ -65,6 +65,8 @@ public class RoutingDataSourceConfig {
         config.setMinimumIdle(5);
         config.setAutoCommit(false);
         config.setConnectionTimeout(3000);
+        // Let MVC slice tests and lightweight context checks start without a live MySQL socket.
+        config.setInitializationFailTimeout(-1);
         return new HikariDataSource(config);
     }
 

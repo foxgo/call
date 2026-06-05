@@ -4,6 +4,11 @@
     <h1 class="side-nav__title">User Center</h1>
     <nav class="side-nav__links">
       <RouterLink to="/dashboard">仪表盘</RouterLink>
+      <RouterLink to="/tenants">租户管理</RouterLink>
+      <RouterLink to="/users">用户管理</RouterLink>
+      <RouterLink to="/roles">角色权限</RouterLink>
+      <RouterLink to="/departments">部门树</RouterLink>
+      <RouterLink to="/audits">审计日志</RouterLink>
     </nav>
   </aside>
 </template>
@@ -33,8 +38,15 @@ import { RouterLink } from 'vue-router';
 }
 
 .side-nav__links a {
+    display: block;
+    margin-bottom: 14px;
     color: inherit;
     text-decoration: none;
     font-weight: 600;
+    opacity: 0.8;
+}
+
+.side-nav__links a.router-link-active {
+    opacity: 1;
 }
 </style>

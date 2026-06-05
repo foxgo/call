@@ -194,6 +194,35 @@ services:
     ports:
       - "8084:8084"
 
+  call-iam:
+    build:
+      context: ..
+      dockerfile: ../call-iam/Dockerfile
+    container_name: call-iam
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rocketmq-nameserver:
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ROCKETMQ_NAME_SERVER: rocketmq-nameserver:9876
+      REDIS_HOST: redis
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: call
+      MYSQL_PASSWORD: call123
+      ES_URI: http://elasticsearch:9200
+      ES_USERNAME: elastic
+      ES_PASSWORD: elastic123
+    ports:
+      - "8085:8085"
+
 volumes:
   mysql-data:
   es-data:

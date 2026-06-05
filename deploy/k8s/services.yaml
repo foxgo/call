@@ -33,3 +33,15 @@ spec:
   ports:
     - port: 8084
       targetPort: 8084
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: call-iam
+  namespace: call-center
+spec:
+  selector:
+    app: call-iam
+  ports:
+    - port: 8085
+      targetPort: 8085

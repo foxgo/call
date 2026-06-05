@@ -8,6 +8,7 @@ data:
   MYSQL_HOST: mysql
   MYSQL_PORT: "3306"
   MYSQL_USER: call
+  MYSQL_DATABASE: call_0
   ES_URI: http://elasticsearch:9200
   ES_USERNAME: elastic
   REDIS_HOST: redis

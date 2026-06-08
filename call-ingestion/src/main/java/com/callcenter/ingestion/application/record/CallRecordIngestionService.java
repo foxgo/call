@@ -50,7 +50,7 @@ public class CallRecordIngestionService {
                 message.callId(),
                 toDateTime(message.startTime())
         );
-        CallRoundCountPolicy.validate(message.roundTotal(), persistedRoundCount, message.callId());
+        CallRoundCountPolicy.validate(message.roundTotal().longValue(), persistedRoundCount, message.callId());
     }
 
     private LocalDateTime toDateTime(Long epochMillis) {

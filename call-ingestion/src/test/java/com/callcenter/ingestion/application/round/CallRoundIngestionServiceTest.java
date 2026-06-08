@@ -5,6 +5,7 @@ import com.callcenter.ingestion.domain.shared.InboundMessage;
 import com.callcenter.ingestion.domain.shared.MessageType;
 import com.callcenter.ingestion.application.port.RoundRepository;
 import com.callcenter.ingestion.domain.model.CallRoundData;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ class CallRoundIngestionServiceTest {
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
         when(callRoundRepository.saveBatch(any()))
-                .thenReturn(List.of(mock(CallRoundData.class)));
+                .thenReturn(List.of(roundData()));
 
         boolean processed = service.process(inbound);
 
@@ -70,6 +71,20 @@ class CallRoundIngestionServiceTest {
                 MessageType.ROUND,
                 "1001:77",
                 payload
+        );
+    }
+
+    private static CallRoundData roundData() {
+        return new CallRoundData(
+                77L,
+                1001L,
+                9L,
+                1,
+                "AGENT",
+                "hi",
+                "GREETING",
+                LocalDateTime.of(2026, 5, 20, 10, 1),
+                LocalDateTime.of(2026, 5, 20, 10, 1, 30)
         );
     }
 }

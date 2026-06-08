@@ -7,6 +7,7 @@ import com.callcenter.ingestion.application.port.RecordRepository;
 import com.callcenter.ingestion.application.port.RoundRepository;
 import com.callcenter.ingestion.domain.model.CallRecordData;
 import org.junit.jupiter.api.Test;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,7 +28,7 @@ class CallRecordIngestionServiceTest {
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(callRecordRepository.save(any())).thenReturn(mock(CallRecordData.class));
+        when(callRecordRepository.save(any())).thenReturn(recordData());
         when(callRoundRepository.countByCallId(eq(9L), eq(1001L), any())).thenReturn(2L);
 
         boolean processed = service.process(inbound);
@@ -83,7 +84,7 @@ class CallRecordIngestionServiceTest {
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(callRecordRepository.save(any())).thenReturn(mock(CallRecordData.class));
+        when(callRecordRepository.save(any())).thenReturn(recordData());
         when(callRoundRepository.countByCallId(eq(9L), eq(1001L), any())).thenReturn(1L);
 
         boolean processed = service.process(inbound);
@@ -122,6 +123,30 @@ class CallRecordIngestionServiceTest {
                 MessageType.RECORD,
                 "1001",
                 payload
+        );
+    }
+
+    private static CallRecordData recordData() {
+        return new CallRecordData(
+                1001L,
+                9L,
+                1L,
+                "13800138000",
+                "021",
+                1,
+                3,
+                2,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                LocalDateTime.of(2026, 5, 20, 10, 0, 1),
+                LocalDateTime.of(2026, 5, 20, 10, 3),
+                LocalDateTime.of(2026, 5, 20, 10, 0),
+                LocalDateTime.of(2026, 5, 20, 10, 3),
+                LocalDateTime.of(2026, 5, 20, 10, 4)
         );
     }
 }

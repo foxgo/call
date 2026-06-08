@@ -8,25 +8,60 @@
     </header>
 
     <section class="filter-card">
-      <input type="text" placeholder="按操作者搜索" />
-      <select>
-        <option>全部动作</option>
-        <option>LOGIN</option>
-        <option>CREATE_USER</option>
-      </select>
+      <input v-model="filters.operatorId" type="number" placeholder="操作者 ID" />
+      <input v-model="filters.resourceType" type="text" placeholder="资源类型" />
+      <input v-model="filters.resourceId" type="text" placeholder="资源 ID" />
+      <button type="button" class="page-action" @click="loadAudits">查询</button>
     </section>
 
     <section class="table-card">
-      <article class="table-row">
+      <article v-for="audit in audits" :key="audit.id" class="table-row">
         <div>
-          <h2>Tenant Admin</h2>
-          <p>CREATE_USER / 2026-06-05 09:00</p>
+          <h2>{{ audit.action }}</h2>
+          <p>{{ audit.resourceType }} / {{ audit.resourceId || '-' }} / {{ audit.createdAt }}</p>
         </div>
-        <strong>成功</strong>
+        <div class="row-actions">
+          <strong>{{ audit.operatorId ?? '-' }}</strong>
+          <button type="button" @click="openDetail(audit.id)">详情</button>
+        </div>
       </article>
     </section>
+
+    <AuditDetailDialog :open="detailOpen" :audit="selectedAudit" @close="detailOpen = false" />
   </section>
 </template>
+
+<script setup lang="ts">
+import { onMounted, reactive, ref } from 'vue';
+
+import { auditApi } from '../../api/audit';
+import type { AuditLog } from '../../api/types';
+import AuditDetailDialog from '../../components/audit/AuditDetailDialog.vue';
+
+const filters = reactive({
+    operatorId: '',
+    resourceType: '',
+    resourceId: ''
+});
+const audits = ref<AuditLog[]>([]);
+const selectedAudit = ref<AuditLog | null>(null);
+const detailOpen = ref(false);
+
+onMounted(loadAudits);
+
+async function loadAudits() {
+    audits.value = await auditApi.list({
+        operatorId: filters.operatorId ? Number(filters.operatorId) : undefined,
+        resourceType: filters.resourceType || undefined,
+        resourceId: filters.resourceId || undefined
+    });
+}
+
+async function openDetail(auditId: number) {
+    selectedAudit.value = await auditApi.get(auditId);
+    detailOpen.value = true;
+}
+</script>
 
 <style scoped>
 .page-shell {
@@ -56,10 +91,16 @@ p {
 }
 
 .filter-card input,
-.filter-card select {
+.page-action {
     padding: 10px 14px;
     border-radius: 12px;
     border: 1px solid var(--iam-border);
+}
+
+.page-action {
+    background: #12343b;
+    color: #fff;
+    cursor: pointer;
 }
 
 .table-row {
@@ -68,5 +109,19 @@ p {
     border-radius: 20px;
     background: var(--iam-surface);
     border: 1px solid var(--iam-border);
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.row-actions button {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--iam-border);
+    background: transparent;
+    cursor: pointer;
 }
 </style>

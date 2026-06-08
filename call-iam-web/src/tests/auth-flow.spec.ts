@@ -1,7 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import ElementPlus from 'element-plus';
 
 import http from '../api/http';
+import HeaderBar from '../components/HeaderBar.vue';
+import LoginView from '../views/LoginView.vue';
 import { createAppRouter } from '../router';
 import { initializeAuth, useAuthStore } from '../stores/auth';
 
@@ -30,7 +34,10 @@ describe('auth flow', () => {
                 success: true,
                 data: {
                     userId: 1001,
-                    displayName: 'Tenant Admin'
+                    displayName: 'Tenant Admin',
+                    tenantId: 9,
+                    roleIds: [11],
+                    departmentIds: [20]
                 }
             }
         });
@@ -40,6 +47,7 @@ describe('auth flow', () => {
 
         initializeAuth(router);
         await authStore.login({
+            tenantCode: 'acme',
             account: 'tenant-admin',
             password: 'secret'
         });
@@ -48,7 +56,10 @@ describe('auth flow', () => {
         expect(authStore.refreshToken).toBe('refresh-token');
         expect(authStore.profile).toEqual({
             userId: 1001,
-            displayName: 'Tenant Admin'
+            displayName: 'Tenant Admin',
+            tenantId: 9,
+            roleIds: [11],
+            departmentIds: [20]
         });
     });
 
@@ -85,5 +96,77 @@ describe('auth flow', () => {
         await router.isReady();
 
         expect(router.currentRoute.value.fullPath).toBe('/login');
+    });
+
+    it('submits the login form and navigates to dashboard', async () => {
+        vi.spyOn(http, 'post').mockResolvedValue({
+            data: {
+                success: true,
+                data: {
+                    accessToken: 'access-token',
+                    refreshToken: 'refresh-token'
+                }
+            }
+        });
+        vi.spyOn(http, 'get').mockResolvedValue({
+            data: {
+                success: true,
+                data: {
+                    userId: 1001,
+                    displayName: 'Tenant Admin',
+                    tenantId: 9,
+                    roleIds: [11],
+                    departmentIds: [20]
+                }
+            }
+        });
+
+        const pinia = createPinia();
+        setActivePinia(pinia);
+        const router = createAppRouter();
+        initializeAuth(router);
+
+        await router.push('/login');
+        await router.isReady();
+
+        const wrapper = mount(LoginView, {
+            global: {
+                plugins: [pinia, router, ElementPlus]
+            }
+        });
+
+        await wrapper.get('[data-testid="tenant-code-input"]').setValue('acme');
+        await wrapper.get('[data-testid="account-input"]').setValue('tenant-admin');
+        await wrapper.get('[data-testid="password-input"]').setValue('secret');
+        await wrapper.get('[data-testid="login-submit"]').trigger('submit');
+        await flushPromises();
+
+        expect(router.currentRoute.value.fullPath).toBe('/dashboard');
+    });
+
+    it('renders current user in the header', () => {
+        const pinia = createPinia();
+        setActivePinia(pinia);
+        const authStore = useAuthStore();
+
+        authStore.setSession({
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
+            profile: {
+                userId: 1001,
+                displayName: 'Tenant Admin',
+                tenantId: 9,
+                roleIds: [11],
+                departmentIds: [20]
+            }
+        });
+
+        const wrapper = mount(HeaderBar, {
+            global: {
+                plugins: [pinia, createAppRouter()]
+            }
+        });
+
+        expect(wrapper.text()).toContain('Tenant Admin');
     });
 });

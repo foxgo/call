@@ -1,12 +1,12 @@
 package com.callcenter.ingestion.application.deadletter;
 
+import com.callcenter.ingestion.application.port.DeadLetterTaskRepository;
 import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
+import com.callcenter.ingestion.domain.model.DeadLetterTaskData;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
 import com.callcenter.ingestion.domain.shared.MessageKeys;
 import com.callcenter.ingestion.domain.shared.MessageType;
-import com.callcenter.ingestion.infrastructure.deadletter.persistence.CallDeadLetterTaskEntity;
-import com.callcenter.ingestion.infrastructure.deadletter.persistence.CallDeadLetterTaskMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -23,11 +23,11 @@ public class DeadLetterTaskService {
     private static final String RECORD_INGEST_PAYLOAD_TYPE = "RECORD_INGEST";
     private static final String ROUND_INGEST_PAYLOAD_TYPE = "ROUND_INGEST";
 
-    private final CallDeadLetterTaskMapper mapper;
+    private final DeadLetterTaskRepository repository;
     private final ObjectMapper objectMapper;
 
-    public DeadLetterTaskService(CallDeadLetterTaskMapper mapper, ObjectMapper objectMapper) {
-        this.mapper = mapper;
+    public DeadLetterTaskService(DeadLetterTaskRepository repository, ObjectMapper objectMapper) {
+        this.repository = repository;
         this.objectMapper = objectMapper;
     }
 
@@ -35,29 +35,30 @@ public class DeadLetterTaskService {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         String rawPayload = new String(messageExt.getBody(), StandardCharsets.UTF_8);
         PayloadMetadata payloadMetadata = readPayloadMetadata(rawPayload, messageType);
-        CallDeadLetterTaskEntity task = new CallDeadLetterTaskEntity();
-        task.setTaskKey(taskKey(messageExt));
-        task.setMessageType(messageType.name());
-        task.setSourceTopic(sourceTopic(messageExt));
-        task.setSourcePartition(sourcePartition(messageExt));
-        task.setSourceOffset(messageExt.getQueueOffset());
-        task.setDlqTopic(messageExt.getTopic());
-        task.setDlqQueueOffset(messageExt.getQueueOffset());
-        task.setOriginMessageId(messageExt.getProperty(MessageConst.PROPERTY_ORIGIN_MESSAGE_ID));
-        task.setMessageKey(payloadMetadata.messageKey());
-        task.setIdempotencyKey(payloadMetadata.idempotencyKey());
-        task.setPayloadType(payloadMetadata.payloadType());
-        task.setPayload(rawPayload);
-        task.setStatus(NEW_STATUS);
-        task.setDlqAttempt(messageExt.getReconsumeTimes());
-        task.setDlqMaxAttempts(intProperty(messageExt, MessageConst.PROPERTY_MAX_RECONSUME_TIMES));
-        task.setFirstFailureAt(null);
-        task.setLastFailureAt(toUtcTime(messageExt.getStoreTimestamp()));
-        task.setErrorClass(null);
-        task.setErrorMessage(null);
-        task.setCreatedAt(now);
-        task.setUpdatedAt(now);
-        mapper.insertIgnore(task);
+        DeadLetterTaskData task = new DeadLetterTaskData(
+                taskKey(messageExt),
+                messageType.name(),
+                sourceTopic(messageExt),
+                sourcePartition(messageExt),
+                messageExt.getQueueOffset(),
+                messageExt.getTopic(),
+                messageExt.getQueueOffset(),
+                messageExt.getProperty(MessageConst.PROPERTY_ORIGIN_MESSAGE_ID),
+                payloadMetadata.messageKey(),
+                payloadMetadata.idempotencyKey(),
+                payloadMetadata.payloadType(),
+                rawPayload,
+                NEW_STATUS,
+                messageExt.getReconsumeTimes(),
+                intProperty(messageExt, MessageConst.PROPERTY_MAX_RECONSUME_TIMES),
+                null,
+                toUtcTime(messageExt.getStoreTimestamp()),
+                null,
+                null,
+                now,
+                now
+        );
+        repository.insertIgnore(task);
     }
 
     private String taskKey(MessageExt messageExt) {

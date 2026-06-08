@@ -3,10 +3,8 @@ package com.callcenter.ingestion.application.round;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
 import com.callcenter.ingestion.domain.shared.InboundMessage;
 import com.callcenter.ingestion.domain.shared.MessageType;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
-import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundEntity;
-import com.callcenter.ingestion.infrastructure.round.persistence.MybatisCallRoundRepository;
+import com.callcenter.ingestion.application.port.RoundRepository;
+import com.callcenter.ingestion.domain.model.CallRoundData;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -21,38 +19,26 @@ class CallRoundIngestionServiceTest {
 
     @Test
     void shouldPersistRoundMessageWhenRoutingAndMysqlWriteSucceed() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallRoundIngestionService service = new CallRoundIngestionService(
-                shardingRouter,
-                callRoundRepository
-        );
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallRoundIngestionService service = new CallRoundIngestionService(callRoundRepository);
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
-        when(shardingRouter.routeRound(eq(9L), eq(1001L), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(callRoundRepository.persistBatch(any(), any()))
-                .thenReturn(List.of(mock(CallRoundEntity.class)));
+        when(callRoundRepository.saveBatch(any()))
+                .thenReturn(List.of(mock(CallRoundData.class)));
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isTrue();
-        verify(callRoundRepository).persistBatch(any(), eq(List.of(inbound.payload())));
+        verify(callRoundRepository).saveBatch(eq(List.of(inbound.payload())));
     }
 
     @Test
     void shouldReturnFalseWhenMysqlWriteFailsWithRetryableError() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallRoundIngestionService service = new CallRoundIngestionService(
-                shardingRouter,
-                callRoundRepository
-        );
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallRoundIngestionService service = new CallRoundIngestionService(callRoundRepository);
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
-        when(shardingRouter.routeRound(eq(9L), eq(1001L), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(callRoundRepository.persistBatch(any(), any()))
+        when(callRoundRepository.saveBatch(any()))
                 .thenThrow(new IllegalStateException("mysql timeout"));
 
         boolean processed = service.process(inbound);
@@ -62,17 +48,11 @@ class CallRoundIngestionServiceTest {
 
     @Test
     void shouldReturnFalseWhenMysqlWriteFailsWithNonRetryableError() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallRoundIngestionService service = new CallRoundIngestionService(
-                shardingRouter,
-                callRoundRepository
-        );
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallRoundIngestionService service = new CallRoundIngestionService(callRoundRepository);
         InboundMessage<CallRoundMessage> inbound = roundInboundMessage();
 
-        when(shardingRouter.routeRound(eq(9L), eq(1001L), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(callRoundRepository.persistBatch(any(), any()))
+        when(callRoundRepository.saveBatch(any()))
                 .thenThrow(new IllegalArgumentException("invalid payload"));
 
         boolean processed = service.process(inbound);

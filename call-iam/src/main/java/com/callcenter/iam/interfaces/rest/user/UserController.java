@@ -24,6 +24,7 @@ import com.callcenter.iam.interfaces.rest.user.request.CreateUserRequest;
 import com.callcenter.iam.interfaces.rest.user.request.ResetUserPasswordRequest;
 import com.callcenter.iam.interfaces.rest.user.request.UpdateUserRequest;
 import com.callcenter.iam.interfaces.rest.user.request.UpdateUserStatusRequest;
+import com.callcenter.iam.interfaces.rest.user.response.CurrentUserProfileResponse;
 import com.callcenter.iam.interfaces.rest.user.response.UserResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -101,6 +102,23 @@ public class UserController {
         return ResponseEntity.ok(envelope(data));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> me() {
+        JwtTokenProvider.TokenClaims claims = requireClaims();
+        User user = userRepository.findById(claims.userId())
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+        if (claims.tenantId() != null && !claims.tenantId().equals(user.getTenantId())) {
+            throw new IllegalArgumentException("user tenant mismatch");
+        }
+        return ResponseEntity.ok(envelope(new CurrentUserProfileResponse(
+                user.getId(),
+                user.getNickname() == null || user.getNickname().isBlank() ? user.getUsername() : user.getNickname(),
+                user.getTenantId(),
+                userAssignmentRepository.findRoleIds(user.getId()),
+                userAssignmentRepository.findDepartmentIds(user.getId())
+        )));
+    }
+
     @GetMapping("/{userId}")
     public ResponseEntity<Map<String, Object>> get(@PathVariable Long userId) {
         return ResponseEntity.ok(envelope(toResponse(requireTenantUser(requireTenantId(), userId))));
@@ -170,12 +188,20 @@ public class UserController {
     }
 
     private Long requireTenantId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        JwtTokenProvider.TokenClaims claims = (JwtTokenProvider.TokenClaims) authentication.getDetails();
-        if (claims == null || claims.tenantId() == null) {
+        JwtTokenProvider.TokenClaims claims = requireClaims();
+        if (claims.tenantId() == null) {
             throw new IllegalArgumentException("tenant context required");
         }
         return claims.tenantId();
+    }
+
+    private JwtTokenProvider.TokenClaims requireClaims() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        JwtTokenProvider.TokenClaims claims = (JwtTokenProvider.TokenClaims) authentication.getDetails();
+        if (claims == null) {
+            throw new IllegalArgumentException("authentication required");
+        }
+        return claims;
     }
 
     private UserResponse toResponse(User user) {

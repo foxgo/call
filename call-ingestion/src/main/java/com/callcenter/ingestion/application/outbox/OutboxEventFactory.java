@@ -1,8 +1,9 @@
 package com.callcenter.ingestion.application.outbox;
 
+import com.callcenter.ingestion.domain.event.CallAnalysisCompletedEvent;
+import com.callcenter.ingestion.domain.event.CallRecordPersistedEvent;
 import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
-import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,31 +23,31 @@ public class OutboxEventFactory {
         this.objectMapper = objectMapper;
     }
 
-    public CallEventOutboxEntity recordPersisted(CallRecordEntity entity) {
+    public OutboxEventData recordPersisted(CallRecordPersistedEvent event) {
         return createEvent(
-                "call_record_persisted:%d:%d".formatted(entity.getTenantId(), entity.getCallId()),
+                "call_record_persisted:%d:%d".formatted(event.tenantId(), event.callId()),
                 "call_record_persisted",
                 "CALL_RECORD",
-                String.valueOf(entity.getCallId()),
-                entity.getTenantId(),
-                String.valueOf(entity.getCallId()),
-                objectMapper.valueToTree(entity)
+                String.valueOf(event.callId()),
+                event.tenantId(),
+                String.valueOf(event.callId()),
+                objectMapper.valueToTree(event)
         );
     }
 
-    public CallEventOutboxEntity analysisCompleted(CallRecordEntity entity) {
+    public OutboxEventData analysisCompleted(CallAnalysisCompletedEvent event) {
         return createEvent(
-                "call_record_analysis_completed:%d:%d".formatted(entity.getTenantId(), entity.getCallId()),
+                "call_record_analysis_completed:%d:%d".formatted(event.tenantId(), event.callId()),
                 "call_record_analysis_completed",
                 "CALL_RECORD",
-                String.valueOf(entity.getCallId()),
-                entity.getTenantId(),
-                String.valueOf(entity.getCallId()),
-                objectMapper.valueToTree(entity)
+                String.valueOf(event.callId()),
+                event.tenantId(),
+                String.valueOf(event.callId()),
+                objectMapper.valueToTree(event)
         );
     }
 
-    private CallEventOutboxEntity createEvent(
+    private OutboxEventData createEvent(
             String eventId,
             String eventType,
             String aggregateType,
@@ -67,20 +68,23 @@ public class OutboxEventFactory {
                 SCHEMA_VERSION,
                 payload
         );
-        CallEventOutboxEntity entity = new CallEventOutboxEntity();
-        entity.setEventId(eventId);
-        entity.setEventType(eventType);
-        entity.setAggregateType(aggregateType);
-        entity.setAggregateId(aggregateId);
-        entity.setTenantId(tenantId);
-        entity.setPartitionKey(partitionKey);
-        entity.setSchemaVersion(SCHEMA_VERSION);
-        entity.setPayload(writeValue(envelope));
-        entity.setStatus(STATUS_NEW);
-        entity.setAttemptCount(0);
-        entity.setCreatedAt(now);
-        entity.setUpdatedAt(now);
-        return entity;
+        return new OutboxEventData(
+                null,
+                eventId,
+                eventType,
+                aggregateType,
+                aggregateId,
+                tenantId,
+                partitionKey,
+                SCHEMA_VERSION,
+                writeValue(envelope),
+                STATUS_NEW,
+                0,
+                null,
+                null,
+                now,
+                now
+        );
     }
 
     private String writeValue(Object value) {

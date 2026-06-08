@@ -1,18 +1,18 @@
 package com.callcenter.ingestion.application.analysis;
 
-import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
+import com.callcenter.ingestion.application.outbox.OutboxEventFactory;
+import com.callcenter.ingestion.application.port.CallAnalysisGateway;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
+import com.callcenter.ingestion.application.port.RoundRepository;
 import com.callcenter.ingestion.domain.analysis.CallAnalysisRequest;
 import com.callcenter.ingestion.domain.analysis.CallAnalysisResponse;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
-import com.callcenter.ingestion.application.outbox.OutboxEventFactory;
+import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
+import com.callcenter.ingestion.domain.event.CallAnalysisCompletedEvent;
+import com.callcenter.ingestion.domain.event.CallRecordPersistedEvent;
+import com.callcenter.ingestion.domain.model.CallRecordData;
+import com.callcenter.ingestion.domain.model.CallRoundData;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import com.callcenter.ingestion.infrastructure.config.PostprocessProperties;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxMapper;
-import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
-import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundEntity;
-import com.callcenter.ingestion.infrastructure.analysis.client.CallAnalysisClient;
-import com.callcenter.ingestion.infrastructure.round.persistence.MybatisCallRoundRepository;
 import com.callcenter.ingestion.testsupport.JsonSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -35,112 +34,103 @@ class CallAnalysisOrchestratorServiceTest {
     @Test
     void shouldSaveSucceededResultAndCreateCompletionOutboxWhenLlmEnabled() {
         ObjectMapper objectMapper = JsonSupport.objectMapper();
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallAnalysisClient analysisClient = mock(CallAnalysisClient.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallAnalysisGateway analysisGateway = mock(CallAnalysisGateway.class);
         CallAnalysisResultService resultService = mock(CallAnalysisResultService.class);
-        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventRepository outboxRepository = mock(OutboxEventRepository.class);
         OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
-        CallEventOutboxEntity outboxEvent = new CallEventOutboxEntity();
+        OutboxEventData outboxEvent = outboxEvent();
         PostprocessPropertiesBuilder propertiesBuilder = new PostprocessPropertiesBuilder(true);
         CallAnalysisOrchestratorService service = new CallAnalysisOrchestratorService(
                 objectMapper,
-                shardingRouter,
                 callRoundRepository,
-                analysisClient,
+                analysisGateway,
                 resultService,
-                outboxMapper,
+                outboxRepository,
                 outboxEventFactory,
                 propertiesBuilder.build()
         );
-        DomainEventMessage event = persistedEvent(objectMapper, recordEntity());
-        ShardKey shardKey = new ShardKey(9L, 0, 3, "202605");
-        List<CallRoundEntity> rounds = List.of(roundEntity());
+        DomainEventMessage event = persistedEvent(objectMapper, recordData());
+        List<CallRoundData> rounds = List.of(roundData());
 
-        when(shardingRouter.routeRound(9L, 1001L, LocalDateTime.of(2026, 5, 20, 10, 0))).thenReturn(shardKey);
-        when(callRoundRepository.listByCallId(shardKey, 1001L)).thenReturn(rounds);
-        when(analysisClient.analyze(any(CallAnalysisRequest.class)))
+        when(callRoundRepository.findByCallId(9L, 1001L, LocalDateTime.of(2026, 5, 20, 10, 0))).thenReturn(rounds);
+        when(analysisGateway.analyze(any(CallAnalysisRequest.class)))
                 .thenReturn(new CallAnalysisResponse(List.of("RISK"), true, 0.92f, "v1"));
-        when(outboxEventFactory.analysisCompleted(any(CallRecordEntity.class))).thenReturn(outboxEvent);
+        when(outboxEventFactory.analysisCompleted(any(CallAnalysisCompletedEvent.class))).thenReturn(outboxEvent);
 
         service.handlePersistedEvent(event);
 
         ArgumentCaptor<CallAnalysisRequest> requestCaptor = ArgumentCaptor.forClass(CallAnalysisRequest.class);
-        verify(analysisClient).analyze(requestCaptor.capture());
+        verify(analysisGateway).analyze(requestCaptor.capture());
         CallAnalysisRequest request = requestCaptor.getValue();
-        assertThat(request.record().getCallId()).isEqualTo(1001L);
+        assertThat(request.record().callId()).isEqualTo(1001L);
         assertThat(request.rounds()).hasSize(1);
         verify(resultService).saveSucceeded(9L, 1001L, List.of("RISK"), true, 0.92f, "v1");
-        verify(outboxMapper).batchInsert(List.of(outboxEvent));
+        verify(outboxRepository).saveAll(List.of(outboxEvent));
     }
 
     @Test
     void shouldCreateCompletionOutboxWithoutCallingLlmWhenDisabled() {
         ObjectMapper objectMapper = JsonSupport.objectMapper();
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallAnalysisClient analysisClient = mock(CallAnalysisClient.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallAnalysisGateway analysisGateway = mock(CallAnalysisGateway.class);
         CallAnalysisResultService resultService = mock(CallAnalysisResultService.class);
-        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventRepository outboxRepository = mock(OutboxEventRepository.class);
         OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
-        CallEventOutboxEntity outboxEvent = new CallEventOutboxEntity();
+        OutboxEventData outboxEvent = outboxEvent();
         CallAnalysisOrchestratorService service = new CallAnalysisOrchestratorService(
                 objectMapper,
-                shardingRouter,
                 callRoundRepository,
-                analysisClient,
+                analysisGateway,
                 resultService,
-                outboxMapper,
+                outboxRepository,
                 outboxEventFactory,
                 new PostprocessPropertiesBuilder(false).build()
         );
-        DomainEventMessage event = persistedEvent(objectMapper, recordEntity());
+        DomainEventMessage event = persistedEvent(objectMapper, recordData());
 
-        when(outboxEventFactory.analysisCompleted(any(CallRecordEntity.class))).thenReturn(outboxEvent);
+        when(outboxEventFactory.analysisCompleted(any(CallAnalysisCompletedEvent.class))).thenReturn(outboxEvent);
 
         service.handlePersistedEvent(event);
 
-        verifyNoInteractions(analysisClient, shardingRouter, callRoundRepository);
+        verifyNoInteractions(analysisGateway, callRoundRepository);
         verify(resultService).findByTenantIdAndCallId(9L, 1001L);
         verifyNoMoreInteractions(resultService);
-        verify(outboxMapper).batchInsert(List.of(outboxEvent));
+        verify(outboxRepository).saveAll(List.of(outboxEvent));
     }
 
     @Test
     void shouldSaveDegradedResultAndCreateCompletionOutboxAfterRetryExhausted() {
         ObjectMapper objectMapper = JsonSupport.objectMapper();
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
-        CallAnalysisClient analysisClient = mock(CallAnalysisClient.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
+        CallAnalysisGateway analysisGateway = mock(CallAnalysisGateway.class);
         CallAnalysisResultService resultService = mock(CallAnalysisResultService.class);
-        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventRepository outboxRepository = mock(OutboxEventRepository.class);
         OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
-        CallEventOutboxEntity outboxEvent = new CallEventOutboxEntity();
+        OutboxEventData outboxEvent = outboxEvent();
         CallAnalysisOrchestratorService service = new CallAnalysisOrchestratorService(
                 objectMapper,
-                shardingRouter,
                 callRoundRepository,
-                analysisClient,
+                analysisGateway,
                 resultService,
-                outboxMapper,
+                outboxRepository,
                 outboxEventFactory,
                 new PostprocessPropertiesBuilder(true).build()
         );
-        DomainEventMessage event = persistedEvent(objectMapper, recordEntity());
-        ShardKey shardKey = new ShardKey(9L, 0, 3, "202605");
+        DomainEventMessage event = persistedEvent(objectMapper, recordData());
 
-        when(shardingRouter.routeRound(9L, 1001L, LocalDateTime.of(2026, 5, 20, 10, 0))).thenReturn(shardKey);
-        when(callRoundRepository.listByCallId(shardKey, 1001L)).thenReturn(List.of(roundEntity()));
-        when(outboxEventFactory.analysisCompleted(any(CallRecordEntity.class))).thenReturn(outboxEvent);
-        when(analysisClient.analyze(any(CallAnalysisRequest.class))).thenThrow(new IllegalStateException("llm timeout"));
+        when(callRoundRepository.findByCallId(9L, 1001L, LocalDateTime.of(2026, 5, 20, 10, 0)))
+                .thenReturn(List.of(roundData()));
+        when(outboxEventFactory.analysisCompleted(any(CallAnalysisCompletedEvent.class))).thenReturn(outboxEvent);
+        when(analysisGateway.analyze(any(CallAnalysisRequest.class))).thenThrow(new IllegalStateException("llm timeout"));
 
         service.handlePersistedEvent(event, 3, 3);
 
         verify(resultService).saveDegraded(9L, 1001L, "java.lang.IllegalStateException: llm timeout");
-        verify(outboxMapper).batchInsert(List.of(outboxEvent));
+        verify(outboxRepository).saveAll(List.of(outboxEvent));
     }
 
-    private static DomainEventMessage persistedEvent(ObjectMapper objectMapper, CallRecordEntity record) {
+    private static DomainEventMessage persistedEvent(ObjectMapper objectMapper, CallRecordData record) {
         return new DomainEventMessage(
                 "call_record_persisted:9:1001",
                 "call_record_persisted",
@@ -149,46 +139,66 @@ class CallAnalysisOrchestratorServiceTest {
                 9L,
                 Instant.parse("2026-05-20T06:00:00Z"),
                 1,
-                objectMapper.valueToTree(record)
+                objectMapper.valueToTree(CallRecordPersistedEvent.from(record))
         );
     }
 
-    private static CallRecordEntity recordEntity() {
-        CallRecordEntity entity = new CallRecordEntity();
-        entity.setCallId(1001L);
-        entity.setTenantId(9L);
-        entity.setTaskId(1L);
-        entity.setPhone("13800138000");
-        entity.setLineNumber("021");
-        entity.setCallStatus(2);
-        entity.setDuration(180);
-        entity.setRoundTotal(1);
-        entity.setRecordingUrl("https://cdn.example.com/recordings/1001.mp3");
-        entity.setErrorCode(1001);
-        entity.setErrorDescription("callee busy");
-        entity.setHangupBy((byte) 1);
-        entity.setConnected((byte) 1);
-        entity.setRingDuration(1500L);
-        entity.setRingStartTime(LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000));
-        entity.setHangupTime(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
-        entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
-        entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
-        entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));
-        return entity;
+    private static CallRecordData recordData() {
+        return new CallRecordData(
+                1001L,
+                9L,
+                1L,
+                "13800138000",
+                "021",
+                2,
+                180,
+                1,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000),
+                LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000),
+                LocalDateTime.of(2026, 5, 20, 10, 0),
+                LocalDateTime.of(2026, 5, 20, 10, 3),
+                LocalDateTime.of(2026, 5, 20, 10, 4)
+        );
     }
 
-    private static CallRoundEntity roundEntity() {
-        CallRoundEntity entity = new CallRoundEntity();
-        entity.setRoundId(77L);
-        entity.setCallId(1001L);
-        entity.setTenantId(9L);
-        entity.setRoundIndex(1);
-        entity.setSpeaker("AGENT");
-        entity.setContent("hello");
-        entity.setIntent("GREETING");
-        entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 1));
-        entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 1, 30));
-        return entity;
+    private static CallRoundData roundData() {
+        return new CallRoundData(
+                77L,
+                1001L,
+                9L,
+                1,
+                "AGENT",
+                "hello",
+                "GREETING",
+                LocalDateTime.of(2026, 5, 20, 10, 1),
+                LocalDateTime.of(2026, 5, 20, 10, 1, 30)
+        );
+    }
+
+    private static OutboxEventData outboxEvent() {
+        return new OutboxEventData(
+                null,
+                "call_record_analysis_completed:9:1001",
+                "call_record_analysis_completed",
+                "CALL_RECORD",
+                "1001",
+                9L,
+                "1001",
+                1,
+                "{\"eventType\":\"call_record_analysis_completed\"}",
+                "NEW",
+                0,
+                null,
+                null,
+                LocalDateTime.of(2026, 5, 20, 10, 4),
+                LocalDateTime.of(2026, 5, 20, 10, 4)
+        );
     }
 
     private static final class PostprocessPropertiesBuilder {

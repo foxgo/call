@@ -1,5 +1,6 @@
 package com.callcenter.ingestion.infrastructure.config;
 
+import com.callcenter.ingestion.application.port.PostprocessSettings;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -7,7 +8,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties(prefix = "call.postprocess")
-public class PostprocessProperties {
+public class PostprocessProperties implements PostprocessSettings {
 
     private boolean llmEnabled = false;
 
@@ -28,6 +29,21 @@ public class PostprocessProperties {
 
     public void setTopics(Topics topics) {
         this.topics = topics;
+    }
+
+    @Override
+    public boolean llmEnabled() {
+        return llmEnabled;
+    }
+
+    @Override
+    public String recordPersistedTopic() {
+        return topics.getRecordPersisted();
+    }
+
+    @Override
+    public String analysisCompletedTopic() {
+        return topics.getAnalysisCompleted();
     }
 
     public static class Topics {

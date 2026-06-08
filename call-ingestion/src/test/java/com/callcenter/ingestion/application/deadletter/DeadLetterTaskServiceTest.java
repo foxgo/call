@@ -1,11 +1,11 @@
 package com.callcenter.ingestion.application.deadletter;
 
+import com.callcenter.ingestion.application.port.DeadLetterTaskRepository;
 import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
+import com.callcenter.ingestion.domain.model.DeadLetterTaskData;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
 import com.callcenter.ingestion.domain.shared.MessageType;
-import com.callcenter.ingestion.infrastructure.deadletter.persistence.CallDeadLetterTaskEntity;
-import com.callcenter.ingestion.infrastructure.deadletter.persistence.CallDeadLetterTaskMapper;
 import com.callcenter.ingestion.testsupport.JsonSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
@@ -26,97 +26,97 @@ class DeadLetterTaskServiceTest {
 
     @Test
     void shouldPersistRecordDeadLetterTaskAsNew() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = recordDeadLetterMessage();
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(1);
 
         service.persist(messageExt, MessageType.RECORD);
 
-        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
-        verify(mapper).insertIgnore(captor.capture());
-        CallDeadLetterTaskEntity task = captor.getValue();
-        assertThat(task.getTaskKey()).isEqualTo("%DLQ%call-record-consumer-group:origin-record-1");
-        assertThat(task.getMessageType()).isEqualTo("RECORD");
-        assertThat(task.getSourceTopic()).isEqualTo("call_record_ingest");
-        assertThat(task.getSourcePartition()).isEqualTo(2);
-        assertThat(task.getSourceOffset()).isEqualTo(19L);
-        assertThat(task.getDlqTopic()).isEqualTo("%DLQ%call-record-consumer-group");
-        assertThat(task.getDlqQueueOffset()).isEqualTo(19L);
-        assertThat(task.getOriginMessageId()).isEqualTo("origin-record-1");
-        assertThat(task.getStatus()).isEqualTo("NEW");
-        assertThat(task.getDlqAttempt()).isEqualTo(4);
-        assertThat(task.getDlqMaxAttempts()).isEqualTo(6);
-        assertThat(task.getMessageKey()).isEqualTo("1001");
-        assertThat(task.getPayloadType()).isEqualTo("RECORD_INGEST");
-        assertThat(task.getPayload()).contains("\"callId\":1001");
-        assertThat(task.getIdempotencyKey()).isEqualTo("1001");
-        assertThat(task.getFirstFailureAt()).isNull();
-        assertThat(task.getLastFailureAt()).isEqualTo(Instant.parse("2026-05-25T01:03:00Z").atOffset(java.time.ZoneOffset.UTC).toLocalDateTime());
+        ArgumentCaptor<DeadLetterTaskData> captor = ArgumentCaptor.forClass(DeadLetterTaskData.class);
+        verify(repository).insertIgnore(captor.capture());
+        DeadLetterTaskData task = captor.getValue();
+        assertThat(task.taskKey()).isEqualTo("%DLQ%call-record-consumer-group:origin-record-1");
+        assertThat(task.messageType()).isEqualTo("RECORD");
+        assertThat(task.sourceTopic()).isEqualTo("call_record_ingest");
+        assertThat(task.sourcePartition()).isEqualTo(2);
+        assertThat(task.sourceOffset()).isEqualTo(19L);
+        assertThat(task.dlqTopic()).isEqualTo("%DLQ%call-record-consumer-group");
+        assertThat(task.dlqQueueOffset()).isEqualTo(19L);
+        assertThat(task.originMessageId()).isEqualTo("origin-record-1");
+        assertThat(task.status()).isEqualTo("NEW");
+        assertThat(task.dlqAttempt()).isEqualTo(4);
+        assertThat(task.dlqMaxAttempts()).isEqualTo(6);
+        assertThat(task.messageKey()).isEqualTo("1001");
+        assertThat(task.payloadType()).isEqualTo("RECORD_INGEST");
+        assertThat(task.payload()).contains("\"callId\":1001");
+        assertThat(task.idempotencyKey()).isEqualTo("1001");
+        assertThat(task.firstFailureAt()).isNull();
+        assertThat(task.lastFailureAt()).isEqualTo(Instant.parse("2026-05-25T01:03:00Z").atOffset(java.time.ZoneOffset.UTC).toLocalDateTime());
     }
 
     @Test
     void shouldPersistRoundDeadLetterTaskAsNew() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = roundDeadLetterMessage();
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(1);
 
         service.persist(messageExt, MessageType.ROUND);
 
-        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
-        verify(mapper).insertIgnore(captor.capture());
-        CallDeadLetterTaskEntity task = captor.getValue();
-        assertThat(task.getTaskKey()).isEqualTo("%DLQ%call-round-consumer-group:origin-round-1");
-        assertThat(task.getMessageType()).isEqualTo("ROUND");
-        assertThat(task.getDlqTopic()).isEqualTo("%DLQ%call-round-consumer-group");
-        assertThat(task.getMessageKey()).isEqualTo("1001:77");
-        assertThat(task.getPayloadType()).isEqualTo("ROUND_INGEST");
-        assertThat(task.getIdempotencyKey()).isEqualTo("1001:77");
-        assertThat(task.getPayload()).contains("\"roundId\":77");
+        ArgumentCaptor<DeadLetterTaskData> captor = ArgumentCaptor.forClass(DeadLetterTaskData.class);
+        verify(repository).insertIgnore(captor.capture());
+        DeadLetterTaskData task = captor.getValue();
+        assertThat(task.taskKey()).isEqualTo("%DLQ%call-round-consumer-group:origin-round-1");
+        assertThat(task.messageType()).isEqualTo("ROUND");
+        assertThat(task.dlqTopic()).isEqualTo("%DLQ%call-round-consumer-group");
+        assertThat(task.messageKey()).isEqualTo("1001:77");
+        assertThat(task.payloadType()).isEqualTo("ROUND_INGEST");
+        assertThat(task.idempotencyKey()).isEqualTo("1001:77");
+        assertThat(task.payload()).contains("\"roundId\":77");
     }
 
     @Test
     void shouldPersistIndexDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = postprocessDeadLetterMessage("%DLQ%call-index-group", "call_record_persisted", 31L, 2, "origin-index-1");
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(1);
 
         service.persist(messageExt, MessageType.INDEX);
 
-        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
-        verify(mapper).insertIgnore(captor.capture());
-        CallDeadLetterTaskEntity task = captor.getValue();
-        assertThat(task.getMessageType()).isEqualTo("INDEX");
-        assertThat(task.getPayloadType()).isEqualTo("call_record_persisted");
-        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+        ArgumentCaptor<DeadLetterTaskData> captor = ArgumentCaptor.forClass(DeadLetterTaskData.class);
+        verify(repository).insertIgnore(captor.capture());
+        DeadLetterTaskData task = captor.getValue();
+        assertThat(task.messageType()).isEqualTo("INDEX");
+        assertThat(task.payloadType()).isEqualTo("call_record_persisted");
+        assertThat(task.idempotencyKey()).isEqualTo("evt-postprocess-1");
     }
 
     @Test
     void shouldPersistAiDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = postprocessDeadLetterMessage("%DLQ%call-ai-group", "call_record_persisted", 33L, 3, "origin-ai-1");
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(1);
 
         service.persist(messageExt, MessageType.AI);
 
-        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
-        verify(mapper).insertIgnore(captor.capture());
-        CallDeadLetterTaskEntity task = captor.getValue();
-        assertThat(task.getMessageType()).isEqualTo("AI");
-        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+        ArgumentCaptor<DeadLetterTaskData> captor = ArgumentCaptor.forClass(DeadLetterTaskData.class);
+        verify(repository).insertIgnore(captor.capture());
+        DeadLetterTaskData task = captor.getValue();
+        assertThat(task.messageType()).isEqualTo("AI");
+        assertThat(task.idempotencyKey()).isEqualTo("evt-postprocess-1");
     }
 
     @Test
     void shouldPersistThirdPartyDeadLetterTaskUsingEventIdAsIdempotencyKey() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = postprocessDeadLetterMessage(
                 "%DLQ%call-third-party-group",
                 "call_record_analysis_completed",
@@ -125,34 +125,34 @@ class DeadLetterTaskServiceTest {
                 "origin-third-party-1"
         );
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(1);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(1);
 
         service.persist(messageExt, MessageType.THIRD_PARTY);
 
-        ArgumentCaptor<CallDeadLetterTaskEntity> captor = ArgumentCaptor.forClass(CallDeadLetterTaskEntity.class);
-        verify(mapper).insertIgnore(captor.capture());
-        CallDeadLetterTaskEntity task = captor.getValue();
-        assertThat(task.getMessageType()).isEqualTo("THIRD_PARTY");
-        assertThat(task.getPayloadType()).isEqualTo("call_record_analysis_completed");
-        assertThat(task.getIdempotencyKey()).isEqualTo("evt-postprocess-1");
+        ArgumentCaptor<DeadLetterTaskData> captor = ArgumentCaptor.forClass(DeadLetterTaskData.class);
+        verify(repository).insertIgnore(captor.capture());
+        DeadLetterTaskData task = captor.getValue();
+        assertThat(task.messageType()).isEqualTo("THIRD_PARTY");
+        assertThat(task.payloadType()).isEqualTo("call_record_analysis_completed");
+        assertThat(task.idempotencyKey()).isEqualTo("evt-postprocess-1");
     }
 
     @Test
     void shouldTreatDuplicateDeadLetterTaskAsSuccess() throws Exception {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
 
-        when(mapper.insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class))).thenReturn(0);
+        when(repository.insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class))).thenReturn(0);
 
         service.persist(recordDeadLetterMessage(), MessageType.RECORD);
 
-        verify(mapper).insertIgnore(org.mockito.ArgumentMatchers.any(CallDeadLetterTaskEntity.class));
+        verify(repository).insertIgnore(org.mockito.ArgumentMatchers.any(DeadLetterTaskData.class));
     }
 
     @Test
     void shouldRejectMalformedAutoDeadLetterMessage() {
-        CallDeadLetterTaskMapper mapper = mock(CallDeadLetterTaskMapper.class);
-        DeadLetterTaskService service = new DeadLetterTaskService(mapper, JsonSupport.objectMapper());
+        DeadLetterTaskRepository repository = mock(DeadLetterTaskRepository.class);
+        DeadLetterTaskService service = new DeadLetterTaskService(repository, JsonSupport.objectMapper());
         MessageExt messageExt = new MessageExt();
         messageExt.setTopic("%DLQ%call-record-consumer-group");
         messageExt.setBody("{bad json}".getBytes(StandardCharsets.UTF_8));

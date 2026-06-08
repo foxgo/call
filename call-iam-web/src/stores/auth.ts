@@ -3,16 +3,10 @@ import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
 
 import http from '../api/http';
+import { authApi } from '../api/auth';
+import type { CurrentUserProfile, LoginPayload } from '../api/types';
 
-export type UserProfile = {
-    userId: number;
-    displayName: string;
-};
-
-type LoginCommand = {
-    account: string;
-    password: string;
-};
+export type UserProfile = CurrentUserProfile;
 
 let responseInterceptorId: number | null = null;
 let requestInterceptorId: number | null = null;
@@ -40,18 +34,15 @@ export const useAuthStore = defineStore('auth', () => {
         profile.value = null;
     }
 
-    async function login(command: LoginCommand) {
-        const loginResponse = await http.post('/auth/login', {
-            account: command.account,
-            password: command.password
-        });
-        const tokens = loginResponse.data.data;
-
+    async function login(command: LoginPayload) {
+        const tokens = await authApi.login(command);
         accessToken.value = tokens.accessToken;
         refreshToken.value = tokens.refreshToken;
+        profile.value = await authApi.me();
+    }
 
-        const profileResponse = await http.get('/users/me');
-        profile.value = profileResponse.data.data;
+    function logout() {
+        clearSession();
     }
 
     return {
@@ -60,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
         profile,
         isAuthenticated,
         login,
+        logout,
         setSession,
         clearSession
     };

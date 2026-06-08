@@ -2,28 +2,49 @@ package com.callcenter.ingestion.infrastructure.round.persistence;
 
 import com.callcenter.common.context.ShardContextHolder;
 import com.callcenter.common.route.ShardKey;
+import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.ingestion.application.port.RoundRepository;
+import com.callcenter.ingestion.domain.model.CallRoundData;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
 import com.callcenter.ingestion.support.metrics.WriteMetrics;
 import io.micrometer.core.instrument.Timer;
 import java.util.Collections;
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.time.ZoneOffset;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class MybatisCallRoundRepository {
+public class MybatisCallRoundRepository implements RoundRepository {
 
     private final CallRoundMapper callRoundMapper;
+    private final ShardingRouter shardingRouter;
     private final WriteMetrics writeMetrics;
 
     public MybatisCallRoundRepository(
             CallRoundMapper callRoundMapper,
+            ShardingRouter shardingRouter,
             WriteMetrics writeMetrics
     ) {
         this.callRoundMapper = callRoundMapper;
+        this.shardingRouter = shardingRouter;
         this.writeMetrics = writeMetrics;
+    }
+
+    @Override
+    @Transactional
+    public List<CallRoundData> saveBatch(List<CallRoundMessage> messages) {
+        if (messages.isEmpty()) {
+            return List.of();
+        }
+        CallRoundMessage first = messages.getFirst();
+        ShardKey shardKey = shardingRouter.routeRound(
+                first.tenantId(),
+                first.callId(),
+                shardingRouter.toDateTime(first.startTime())
+        );
+        return persistBatch(shardKey, messages).stream().map(this::toData).toList();
     }
 
     @Transactional
@@ -40,6 +61,12 @@ public class MybatisCallRoundRepository {
         }
     }
 
+    @Override
+    public long countByCallId(long tenantId, long callId, LocalDateTime callStartedAt) {
+        ShardKey shardKey = shardingRouter.routeRound(tenantId, callId, callStartedAt);
+        return countByCallId(shardKey, callId);
+    }
+
     public long countByCallId(ShardKey shardKey, long callId) {
         ShardContextHolder.set(shardKey.toContext());
         try {
@@ -47,6 +74,12 @@ public class MybatisCallRoundRepository {
         } finally {
             ShardContextHolder.clear();
         }
+    }
+
+    @Override
+    public List<CallRoundData> findByCallId(long tenantId, long callId, LocalDateTime callStartedAt) {
+        ShardKey shardKey = shardingRouter.routeRound(tenantId, callId, callStartedAt);
+        return listByCallId(shardKey, callId).stream().map(this::toData).toList();
     }
 
     public List<CallRoundEntity> listByCallId(ShardKey shardKey, long callId) {
@@ -74,6 +107,20 @@ public class MybatisCallRoundRepository {
         entity.setStartTime(toDateTime(message.startTime()));
         entity.setCreatedAt(LocalDateTime.now());
         return entity;
+    }
+
+    private CallRoundData toData(CallRoundEntity entity) {
+        return new CallRoundData(
+                entity.getRoundId(),
+                entity.getCallId(),
+                entity.getTenantId(),
+                entity.getRoundIndex(),
+                entity.getSpeaker(),
+                entity.getContent(),
+                entity.getIntent(),
+                entity.getStartTime(),
+                entity.getCreatedAt()
+        );
     }
 
     private LocalDateTime toDateTime(Long epochMillis) {

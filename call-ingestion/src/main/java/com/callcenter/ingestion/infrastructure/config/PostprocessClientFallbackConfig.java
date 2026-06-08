@@ -1,7 +1,7 @@
 package com.callcenter.ingestion.infrastructure.config;
 
-import com.callcenter.ingestion.infrastructure.analysis.client.CallAnalysisClient;
-import com.callcenter.ingestion.infrastructure.postprocess.client.ThirdPartyPushClient;
+import com.callcenter.ingestion.application.port.CallAnalysisGateway;
+import com.callcenter.ingestion.application.port.ThirdPartyPushGateway;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,18 +10,18 @@ import org.springframework.context.annotation.Configuration;
 public class PostprocessClientFallbackConfig {
 
     @Bean
-    @ConditionalOnMissingBean(CallAnalysisClient.class)
-    CallAnalysisClient callAnalysisClient() {
+    @ConditionalOnMissingBean(CallAnalysisGateway.class)
+    CallAnalysisGateway callAnalysisGateway() {
         return request -> {
-            throw missingClient("CallAnalysisClient", request);
+            throw missingClient("CallAnalysisGateway", request);
         };
     }
 
     @Bean
-    @ConditionalOnMissingBean(ThirdPartyPushClient.class)
-    ThirdPartyPushClient thirdPartyPushClient() {
+    @ConditionalOnMissingBean(ThirdPartyPushGateway.class)
+    ThirdPartyPushGateway thirdPartyPushGateway() {
         return request -> {
-            throw missingClient("ThirdPartyPushClient", request);
+            throw missingClient("ThirdPartyPushGateway", request);
         };
     }
 

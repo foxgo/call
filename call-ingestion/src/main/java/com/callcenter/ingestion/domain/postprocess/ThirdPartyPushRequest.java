@@ -1,13 +1,13 @@
 package com.callcenter.ingestion.domain.postprocess;
 
-import com.callcenter.ingestion.infrastructure.analysis.persistence.CallAnalysisResultEntity;
-import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
-import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundEntity;
+import com.callcenter.ingestion.domain.model.AnalysisResultData;
+import com.callcenter.ingestion.domain.model.CallRecordData;
+import com.callcenter.ingestion.domain.model.CallRoundData;
 import java.util.List;
 
 public record ThirdPartyPushRequest(
-        CallRecordEntity record,
-        List<CallRoundEntity> rounds,
-        CallAnalysisResultEntity analysisResult
+        CallRecordData record,
+        List<CallRoundData> rounds,
+        AnalysisResultData analysisResult
 ) {
 }

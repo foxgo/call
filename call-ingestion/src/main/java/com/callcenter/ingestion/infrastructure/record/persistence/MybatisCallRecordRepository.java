@@ -2,10 +2,13 @@ package com.callcenter.ingestion.infrastructure.record.persistence;
 
 import com.callcenter.common.context.ShardContextHolder;
 import com.callcenter.common.route.ShardKey;
+import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
+import com.callcenter.ingestion.application.port.RecordRepository;
 import com.callcenter.ingestion.application.outbox.OutboxEventFactory;
+import com.callcenter.ingestion.domain.event.CallRecordPersistedEvent;
+import com.callcenter.ingestion.domain.model.CallRecordData;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxMapper;
 import com.callcenter.ingestion.support.metrics.WriteMetrics;
 import io.micrometer.core.instrument.Timer;
 import java.util.function.Consumer;
@@ -16,23 +19,38 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class MybatisCallRecordRepository {
+public class MybatisCallRecordRepository implements RecordRepository {
 
     private final CallRecordMapper callRecordMapper;
-    private final CallEventOutboxMapper callEventOutboxMapper;
+    private final ShardingRouter shardingRouter;
+    private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventFactory outboxEventFactory;
     private final WriteMetrics writeMetrics;
 
     public MybatisCallRecordRepository(
             CallRecordMapper callRecordMapper,
-            CallEventOutboxMapper callEventOutboxMapper,
+            ShardingRouter shardingRouter,
+            OutboxEventRepository outboxEventRepository,
             OutboxEventFactory outboxEventFactory,
             WriteMetrics writeMetrics
     ) {
         this.callRecordMapper = callRecordMapper;
-        this.callEventOutboxMapper = callEventOutboxMapper;
+        this.shardingRouter = shardingRouter;
+        this.outboxEventRepository = outboxEventRepository;
         this.outboxEventFactory = outboxEventFactory;
         this.writeMetrics = writeMetrics;
+    }
+
+    @Override
+    @Transactional
+    public CallRecordData save(CallRecordMessage message) {
+        ShardKey shardKey = shardingRouter.routeRecord(
+                message.tenantId(),
+                message.phone(),
+                shardingRouter.toDateTime(message.startTime())
+        );
+        return persistBatch(shardKey, List.of(message)).stream().map(this::toData).findFirst()
+                .orElseThrow(() -> new IllegalStateException("record batch save returned no rows"));
     }
 
     @Transactional
@@ -53,11 +71,12 @@ public class MybatisCallRecordRepository {
             Timer.Sample sample = Timer.start();
             callRecordMapper.batchInsertIgnore(entities);
             beforeOutboxInsert.accept(entities);
-            ShardContextHolder.set(shardKey.toContext());
-            List<CallEventOutboxEntity> outboxEvents = entities.stream()
+            List<com.callcenter.ingestion.domain.model.OutboxEventData> outboxEvents = entities.stream()
+                    .map(this::toData)
+                    .map(CallRecordPersistedEvent::from)
                     .map(outboxEventFactory::recordPersisted)
                     .toList();
-            callEventOutboxMapper.batchInsert(outboxEvents);
+            outboxEventRepository.saveAll(outboxEvents);
             sample.stop(writeMetrics.mysqlInsertLatency());
             return entities;
         } finally {
@@ -90,6 +109,30 @@ public class MybatisCallRecordRepository {
         entity.setEndTime(toDateTime(message.endTime()));
         entity.setCreatedAt(LocalDateTime.now());
         return entity;
+    }
+
+    private CallRecordData toData(CallRecordEntity entity) {
+        return new CallRecordData(
+                entity.getCallId(),
+                entity.getTenantId(),
+                entity.getTaskId(),
+                entity.getPhone(),
+                entity.getLineNumber(),
+                entity.getCallStatus(),
+                entity.getDuration(),
+                entity.getRoundTotal(),
+                entity.getRecordingUrl(),
+                entity.getErrorCode(),
+                entity.getErrorDescription(),
+                entity.getHangupBy(),
+                entity.getConnected(),
+                entity.getRingDuration(),
+                entity.getRingStartTime(),
+                entity.getHangupTime(),
+                entity.getStartTime(),
+                entity.getEndTime(),
+                entity.getCreatedAt()
+        );
     }
 
     private LocalDateTime toDateTime(Long epochMillis) {

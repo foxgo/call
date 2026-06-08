@@ -1,8 +1,8 @@
 package com.callcenter.ingestion.application.analysis;
 
+import com.callcenter.ingestion.application.port.AnalysisResultRepository;
 import com.callcenter.ingestion.domain.analysis.AnalysisResultStatus;
-import com.callcenter.ingestion.infrastructure.analysis.persistence.CallAnalysisResultEntity;
-import com.callcenter.ingestion.infrastructure.analysis.persistence.CallAnalysisResultMapper;
+import com.callcenter.ingestion.domain.model.AnalysisResultData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -12,11 +12,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class CallAnalysisResultService {
 
-    private final CallAnalysisResultMapper mapper;
+    private final AnalysisResultRepository repository;
     private final ObjectMapper objectMapper;
 
-    public CallAnalysisResultService(CallAnalysisResultMapper mapper, ObjectMapper objectMapper) {
-        this.mapper = mapper;
+    public CallAnalysisResultService(AnalysisResultRepository repository, ObjectMapper objectMapper) {
+        this.repository = repository;
         this.objectMapper = objectMapper;
     }
 
@@ -28,39 +28,35 @@ public class CallAnalysisResultService {
             Float qualityScore,
             String aiVersion
     ) {
-        CallAnalysisResultEntity entity = baseEntity(tenantId, callId, AnalysisResultStatus.SUCCEEDED);
-        entity.setTags(writeTags(tags));
-        entity.setRiskFlag(riskFlag);
-        entity.setQualityScore(qualityScore);
-        entity.setAiVersion(aiVersion);
-        entity.setErrorMessage(null);
-        mapper.upsert(entity);
+        repository.upsert(new AnalysisResultData(
+                tenantId,
+                callId,
+                AnalysisResultStatus.SUCCEEDED.name(),
+                writeTags(tags),
+                riskFlag,
+                qualityScore,
+                aiVersion,
+                null,
+                LocalDateTime.now()
+        ));
     }
 
     public void saveDegraded(long tenantId, long callId, String errorMessage) {
-        CallAnalysisResultEntity entity = baseEntity(tenantId, callId, AnalysisResultStatus.DEGRADED);
-        entity.setTags(writeTags(List.of()));
-        entity.setRiskFlag(null);
-        entity.setQualityScore(null);
-        entity.setAiVersion(null);
-        entity.setErrorMessage(errorMessage);
-        mapper.upsert(entity);
+        repository.upsert(new AnalysisResultData(
+                tenantId,
+                callId,
+                AnalysisResultStatus.DEGRADED.name(),
+                writeTags(List.of()),
+                null,
+                null,
+                null,
+                errorMessage,
+                LocalDateTime.now()
+        ));
     }
 
-    public CallAnalysisResultEntity findByTenantIdAndCallId(long tenantId, long callId) {
-        return mapper.selectByTenantIdAndCallId(tenantId, callId);
-    }
-
-    private CallAnalysisResultEntity baseEntity(long tenantId, long callId, AnalysisResultStatus status) {
-        LocalDateTime now = LocalDateTime.now();
-        CallAnalysisResultEntity entity = new CallAnalysisResultEntity();
-        entity.setTenantId(tenantId);
-        entity.setCallId(callId);
-        entity.setStatus(status.name());
-        entity.setCompletedAt(now);
-        entity.setCreatedAt(now);
-        entity.setUpdatedAt(now);
-        return entity;
+    public AnalysisResultData findByTenantIdAndCallId(long tenantId, long callId) {
+        return repository.findByTenantIdAndCallId(tenantId, callId);
     }
 
     private String writeTags(List<String> tags) {
@@ -70,4 +66,5 @@ public class CallAnalysisResultService {
             throw new IllegalStateException("序列化分析标签失败", exception);
         }
     }
+
 }

@@ -1,16 +1,20 @@
 package com.callcenter.ingestion.application.outbox;
 
+import com.callcenter.common.route.ShardKey;
+import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
 import com.callcenter.ingestion.domain.analysis.DomainEventMessage;
+import com.callcenter.ingestion.domain.event.CallAnalysisCompletedEvent;
+import com.callcenter.ingestion.domain.event.CallRecordPersistedEvent;
+import com.callcenter.ingestion.domain.model.CallRecordData;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxMapper;
 import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
 import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordMapper;
+import com.callcenter.ingestion.infrastructure.record.persistence.MybatisCallRecordRepository;
 import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundEntity;
 import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundMapper;
-import com.callcenter.ingestion.infrastructure.record.persistence.MybatisCallRecordRepository;
 import com.callcenter.ingestion.infrastructure.round.persistence.MybatisCallRoundRepository;
 import com.callcenter.ingestion.support.metrics.WriteMetrics;
 import com.callcenter.ingestion.testsupport.JsonSupport;
@@ -31,24 +35,24 @@ class OutboxEventFactoryTest {
     @Test
     void shouldBuildRecordPersistedEventWithStableEnvelopeAndPayload() throws Exception {
         OutboxEventFactory factory = new OutboxEventFactory(JsonSupport.objectMapper());
-        CallRecordEntity entity = recordEntity();
+        CallRecordData entity = recordData();
 
-        CallEventOutboxEntity outbox = factory.recordPersisted(entity);
-        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.getPayload(), DomainEventMessage.class);
+        OutboxEventData outbox = factory.recordPersisted(CallRecordPersistedEvent.from(entity));
+        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.payload(), DomainEventMessage.class);
 
-        assertThat(outbox.getEventId()).isEqualTo("call_record_persisted:9:1001");
-        assertThat(outbox.getEventType()).isEqualTo("call_record_persisted");
-        assertThat(outbox.getAggregateType()).isEqualTo("CALL_RECORD");
-        assertThat(outbox.getAggregateId()).isEqualTo("1001");
-        assertThat(outbox.getTenantId()).isEqualTo(9L);
-        assertThat(outbox.getPartitionKey()).isEqualTo("1001");
-        assertThat(outbox.getSchemaVersion()).isEqualTo(1);
-        assertThat(outbox.getStatus()).isEqualTo("NEW");
-        assertThat(event.eventId()).isEqualTo(outbox.getEventId());
-        assertThat(event.eventType()).isEqualTo(outbox.getEventType());
-        assertThat(event.aggregateType()).isEqualTo(outbox.getAggregateType());
-        assertThat(event.aggregateId()).isEqualTo(outbox.getAggregateId());
-        assertThat(event.tenantId()).isEqualTo(outbox.getTenantId());
+        assertThat(outbox.eventId()).isEqualTo("call_record_persisted:9:1001");
+        assertThat(outbox.eventType()).isEqualTo("call_record_persisted");
+        assertThat(outbox.aggregateType()).isEqualTo("CALL_RECORD");
+        assertThat(outbox.aggregateId()).isEqualTo("1001");
+        assertThat(outbox.tenantId()).isEqualTo(9L);
+        assertThat(outbox.partitionKey()).isEqualTo("1001");
+        assertThat(outbox.schemaVersion()).isEqualTo(1);
+        assertThat(outbox.status()).isEqualTo("NEW");
+        assertThat(event.eventId()).isEqualTo(outbox.eventId());
+        assertThat(event.eventType()).isEqualTo(outbox.eventType());
+        assertThat(event.aggregateType()).isEqualTo(outbox.aggregateType());
+        assertThat(event.aggregateId()).isEqualTo(outbox.aggregateId());
+        assertThat(event.tenantId()).isEqualTo(outbox.tenantId());
         assertThat(event.schemaVersion()).isEqualTo(1);
 
         JsonNode payload = event.payload();
@@ -74,17 +78,17 @@ class OutboxEventFactoryTest {
     @Test
     void shouldBuildAnalysisCompletedEventWithStableEnvelopeAndPayload() throws Exception {
         OutboxEventFactory factory = new OutboxEventFactory(JsonSupport.objectMapper());
-        CallRecordEntity entity = recordEntity();
+        CallRecordData entity = recordData();
 
-        CallEventOutboxEntity outbox = factory.analysisCompleted(entity);
-        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.getPayload(), DomainEventMessage.class);
+        OutboxEventData outbox = factory.analysisCompleted(CallAnalysisCompletedEvent.from(entity));
+        DomainEventMessage event = JsonSupport.objectMapper().readValue(outbox.payload(), DomainEventMessage.class);
 
-        assertThat(outbox.getEventId()).isEqualTo("call_record_analysis_completed:9:1001");
-        assertThat(outbox.getEventType()).isEqualTo("call_record_analysis_completed");
-        assertThat(outbox.getAggregateType()).isEqualTo("CALL_RECORD");
-        assertThat(outbox.getAggregateId()).isEqualTo("1001");
-        assertThat(outbox.getTenantId()).isEqualTo(9L);
-        assertThat(outbox.getPartitionKey()).isEqualTo("1001");
+        assertThat(outbox.eventId()).isEqualTo("call_record_analysis_completed:9:1001");
+        assertThat(outbox.eventType()).isEqualTo("call_record_analysis_completed");
+        assertThat(outbox.aggregateType()).isEqualTo("CALL_RECORD");
+        assertThat(outbox.aggregateId()).isEqualTo("1001");
+        assertThat(outbox.tenantId()).isEqualTo(9L);
+        assertThat(outbox.partitionKey()).isEqualTo("1001");
         assertThat(event.payload().get("callId").asLong()).isEqualTo(1001L);
         assertThat(event.payload().get("tenantId").asLong()).isEqualTo(9L);
         assertThat(event.payload().get("startTime").asText()).isEqualTo("2026-05-20T10:00:00");
@@ -93,20 +97,38 @@ class OutboxEventFactoryTest {
     @Test
     void shouldPersistRecordRowsAndOutboxRowsTogether() {
         CallRecordMapper callRecordMapper = mock(CallRecordMapper.class);
-        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventRepository outboxRepository = mock(OutboxEventRepository.class);
+        ShardingRouter shardingRouter = mock(ShardingRouter.class);
         OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
         WriteMetrics writeMetrics = mock(WriteMetrics.class);
         MybatisCallRecordRepository service = new MybatisCallRecordRepository(
                 callRecordMapper,
-                outboxMapper,
+                shardingRouter,
+                outboxRepository,
                 outboxEventFactory,
                 writeMetrics
         );
         CallRecordMessage message = recordMessage();
-        CallEventOutboxEntity outbox = new CallEventOutboxEntity();
+        OutboxEventData outbox = new OutboxEventData(
+                null,
+                "call_record_persisted:9:1001",
+                "call_record_persisted",
+                "CALL_RECORD",
+                "1001",
+                9L,
+                "1001",
+                1,
+                "{}",
+                "NEW",
+                0,
+                null,
+                null,
+                LocalDateTime.of(2026, 5, 20, 10, 4),
+                LocalDateTime.of(2026, 5, 20, 10, 4)
+        );
 
         when(writeMetrics.mysqlInsertLatency()).thenReturn(mock(Timer.class));
-        when(outboxEventFactory.recordPersisted(any())).thenReturn(outbox);
+        when(outboxEventFactory.recordPersisted(any(CallRecordPersistedEvent.class))).thenReturn(outbox);
 
         List<CallRecordEntity> entities = service.persistBatch(
                 new ShardKey(9L, 0, 1, "202605"),
@@ -130,19 +152,21 @@ class OutboxEventFactoryTest {
             assertThat(entity.getHangupTime()).isEqualTo(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
         });
         verify(callRecordMapper).batchInsertIgnore(entities);
-        verify(outboxEventFactory).recordPersisted(entities.getFirst());
-        verify(outboxMapper).batchInsert(List.of(outbox));
+        verify(outboxEventFactory).recordPersisted(any(CallRecordPersistedEvent.class));
+        verify(outboxRepository).saveAll(List.of(outbox));
     }
 
     @Test
     void shouldNotInsertRecordOutboxWhenValidationFails() {
         CallRecordMapper callRecordMapper = mock(CallRecordMapper.class);
-        CallEventOutboxMapper outboxMapper = mock(CallEventOutboxMapper.class);
+        OutboxEventRepository outboxRepository = mock(OutboxEventRepository.class);
+        ShardingRouter shardingRouter = mock(ShardingRouter.class);
         OutboxEventFactory outboxEventFactory = mock(OutboxEventFactory.class);
         WriteMetrics writeMetrics = mock(WriteMetrics.class);
         MybatisCallRecordRepository service = new MybatisCallRecordRepository(
                 callRecordMapper,
-                outboxMapper,
+                shardingRouter,
+                outboxRepository,
                 outboxEventFactory,
                 writeMetrics
         );
@@ -161,15 +185,17 @@ class OutboxEventFactoryTest {
                 .hasMessageContaining("round mismatch");
 
         verify(callRecordMapper).batchInsertIgnore(any());
-        org.mockito.Mockito.verifyNoInteractions(outboxEventFactory, outboxMapper);
+        org.mockito.Mockito.verifyNoInteractions(outboxEventFactory, outboxRepository);
     }
 
     @Test
     void shouldPersistRoundRowsAndOutboxRowsTogether() {
         CallRoundMapper callRoundMapper = mock(CallRoundMapper.class);
+        ShardingRouter shardingRouter = mock(ShardingRouter.class);
         WriteMetrics writeMetrics = mock(WriteMetrics.class);
         MybatisCallRoundRepository service = new MybatisCallRoundRepository(
                 callRoundMapper,
+                shardingRouter,
                 writeMetrics
         );
         CallRoundMessage message = new CallRoundMessage(77L, 9L, 1001L, 1, "AGENT", "hello", "GREETING", 1L);
@@ -186,28 +212,28 @@ class OutboxEventFactoryTest {
         verify(callRoundMapper).batchInsertIgnore(entities);
     }
 
-    private static CallRecordEntity recordEntity() {
-        CallRecordEntity entity = new CallRecordEntity();
-        entity.setCallId(1001L);
-        entity.setTenantId(9L);
-        entity.setTaskId(1L);
-        entity.setPhone("13800138000");
-        entity.setLineNumber("021");
-        entity.setCallStatus(2);
-        entity.setDuration(180);
-        entity.setRoundTotal(3);
-        entity.setRecordingUrl("https://cdn.example.com/recordings/1001.mp3");
-        entity.setErrorCode(1001);
-        entity.setErrorDescription("callee busy");
-        entity.setHangupBy((byte) 1);
-        entity.setConnected((byte) 1);
-        entity.setRingDuration(1500L);
-        entity.setRingStartTime(LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000));
-        entity.setHangupTime(LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000));
-        entity.setStartTime(LocalDateTime.of(2026, 5, 20, 10, 0));
-        entity.setEndTime(LocalDateTime.of(2026, 5, 20, 10, 3));
-        entity.setCreatedAt(LocalDateTime.of(2026, 5, 20, 10, 4));
-        return entity;
+    private static CallRecordData recordData() {
+        return new CallRecordData(
+                1001L,
+                9L,
+                1L,
+                "13800138000",
+                "021",
+                2,
+                180,
+                3,
+                "https://cdn.example.com/recordings/1001.mp3",
+                1001,
+                "callee busy",
+                (byte) 1,
+                (byte) 1,
+                1500L,
+                LocalDateTime.of(2026, 5, 20, 10, 0, 1, 500_000_000),
+                LocalDateTime.of(2026, 5, 20, 10, 3, 0, 250_000_000),
+                LocalDateTime.of(2026, 5, 20, 10, 0),
+                LocalDateTime.of(2026, 5, 20, 10, 3),
+                LocalDateTime.of(2026, 5, 20, 10, 4)
+        );
     }
 
     private static CallRecordMessage recordMessage() {
@@ -233,5 +259,4 @@ class OutboxEventFactoryTest {
                 null
         );
     }
-
 }

@@ -1,12 +1,12 @@
 package com.callcenter.ingestion.application.record;
 
+import com.callcenter.ingestion.application.port.RecordRepository;
+import com.callcenter.ingestion.application.port.RoundRepository;
+import com.callcenter.ingestion.domain.service.CallRoundCountPolicy;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
 import com.callcenter.ingestion.domain.shared.InboundMessage;
-import com.callcenter.ingestion.infrastructure.record.persistence.MybatisCallRecordRepository;
-import com.callcenter.ingestion.infrastructure.round.persistence.MybatisCallRoundRepository;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,16 +16,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class CallRecordIngestionService {
 
-    private final ShardingRouter shardingRouter;
-    private final MybatisCallRecordRepository callRecordRepository;
-    private final MybatisCallRoundRepository callRoundRepository;
+    private final RecordRepository callRecordRepository;
+    private final RoundRepository callRoundRepository;
 
     public CallRecordIngestionService(
-            ShardingRouter shardingRouter,
-            MybatisCallRecordRepository callRecordRepository,
-            MybatisCallRoundRepository callRoundRepository
+            RecordRepository callRecordRepository,
+            RoundRepository callRoundRepository
     ) {
-        this.shardingRouter = shardingRouter;
         this.callRecordRepository = callRecordRepository;
         this.callRoundRepository = callRoundRepository;
     }
@@ -33,17 +30,9 @@ public class CallRecordIngestionService {
     public boolean process(InboundMessage<CallRecordMessage> inbound) {
         try {
             CallRecordMessage message = inbound.payload();
-            ShardKey shardKey = shardingRouter.routeRecord(
-                    message.tenantId(),
-                    message.phone(),
-                    shardingRouter.toDateTime(message.startTime())
-            );
-            callRecordRepository.persistBatch(
-                    shardKey,
-                    List.of(message),
-                    // 主记录落库成功后立即校验 round 数，尽早发现 record/round 分流写入的不一致。
-                    ignored -> validatePersistedRoundCount(message)
-            );
+            callRecordRepository.save(message);
+            // 主记录落库成功后立即校验 round 数，尽早发现 record/round 分流写入的不一致。
+            validatePersistedRoundCount(message);
             return true;
         } catch (Exception exception) {
             // 这里返回 false 交给上层消费者触发 RocketMQ 重试，避免吞掉暂时性失败。
@@ -56,20 +45,22 @@ public class CallRecordIngestionService {
             // 老数据或上游未提供回合总数时不做强校验。
             return;
         }
-        ShardKey roundShardKey = shardingRouter.routeRound(
+        long persistedRoundCount = callRoundRepository.countByCallId(
                 message.tenantId(),
                 message.callId(),
-                shardingRouter.toDateTime(message.startTime())
+                toDateTime(message.startTime())
         );
-        long persistedRoundCount = callRoundRepository.countByCallId(roundShardKey, message.callId());
-        if (persistedRoundCount != message.roundTotal()) {
-            throw new IllegalStateException(
-                    "call_round persisted count mismatch, callId=%d, expected=%d, actual=%d".formatted(
-                            message.callId(),
-                            message.roundTotal(),
-                            persistedRoundCount
-                    )
-            );
+        CallRoundCountPolicy.validate(message.roundTotal(), persistedRoundCount, message.callId());
+    }
+
+    private LocalDateTime toDateTime(Long epochMillis) {
+        if (epochMillis == null) {
+            return LocalDateTime.now(ZoneOffset.UTC);
         }
+        return LocalDateTime.ofEpochSecond(
+                epochMillis / 1000,
+                (int) ((epochMillis % 1000) * 1_000_000),
+                ZoneOffset.UTC
+        );
     }
 }

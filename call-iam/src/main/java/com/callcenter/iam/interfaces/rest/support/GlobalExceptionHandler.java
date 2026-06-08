@@ -1,5 +1,6 @@
 package com.callcenter.iam.interfaces.rest.support;
 
+import com.callcenter.iam.application.auth.AuthenticationFailedException;
 import com.callcenter.iam.domain.shared.DomainRuleViolationException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -36,5 +37,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure("BAD_REQUEST", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(AuthenticationFailedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure("UNAUTHORIZED", ex.getMessage()));
     }
 }

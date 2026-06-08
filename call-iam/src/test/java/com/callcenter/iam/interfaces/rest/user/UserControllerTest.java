@@ -136,6 +136,25 @@ class UserControllerTest {
     }
 
     @Test
+    void shouldReturnCurrentUserProfile() throws Exception {
+        when(userRepository.findById(1001L)).thenReturn(java.util.Optional.of(
+                User.createWithPasswordHash(1001L, 9L, UserType.TENANT, "alice", "13800138000", "alice@example.com", "encoded", "Alice")
+        ));
+        when(userAssignmentRepository.findRoleIds(1001L)).thenReturn(List.of(11L, 12L));
+        when(userAssignmentRepository.findDepartmentIds(1001L)).thenReturn(List.of(20L, 21L));
+
+        mockMvc.perform(get("/api/iam/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(tenantUserToken())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.userId").value(1001L))
+                .andExpect(jsonPath("$.data.displayName").value("Alice"))
+                .andExpect(jsonPath("$.data.tenantId").value(9L))
+                .andExpect(jsonPath("$.data.roleIds[1]").value(12L))
+                .andExpect(jsonPath("$.data.departmentIds[0]").value(20L));
+    }
+
+    @Test
     void shouldUpdateUserStatus() throws Exception {
         User user = User.createWithPasswordHash(1001L, 9L, UserType.TENANT, "alice", "13800138000", "alice@example.com", "encoded", "Alice");
         when(userRepository.findById(1001L)).thenReturn(java.util.Optional.of(user));

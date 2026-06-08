@@ -2,6 +2,7 @@ package com.callcenter.ingestion.infrastructure.outbox.persistence;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class OutboxRepositoryTest {
 
         when(mapper.selectPublishableIdsForClaim(now, 20, 10)).thenReturn(List.of());
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
+        List<OutboxEventData> claimed = repository.claimPublishableBatch(now, 20, 10);
 
         assertThat(claimed).isEmpty();
         verify(mapper).selectPublishableIdsForClaim(now, 20, 10);
@@ -41,7 +42,7 @@ class OutboxRepositoryTest {
         when(mapper.selectPublishableIdsForClaim(now, 20, 10)).thenReturn(List.of(1L, 2L));
         when(mapper.update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class))).thenReturn(0);
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
+        List<OutboxEventData> claimed = repository.claimPublishableBatch(now, 20, 10);
 
         assertThat(claimed).isEmpty();
         verify(mapper).selectPublishableIdsForClaim(now, 20, 10);
@@ -128,13 +129,13 @@ class OutboxRepositoryTest {
         when(mapper.update(eq(null), org.mockito.ArgumentMatchers.any(UpdateWrapper.class))).thenReturn(2);
         when(mapper.selectClaimedBatchByIds(List.of(1L, 2L))).thenReturn(List.of(claimedFirst, claimedSecond));
 
-        List<CallEventOutboxEntity> claimed = repository.claimPublishableBatch(now, 20, 10);
+        List<OutboxEventData> claimed = repository.claimPublishableBatch(now, 20, 10);
 
-        assertThat(claimed).containsExactly(claimedFirst, claimedSecond);
+        assertThat(claimed).extracting(OutboxEventData::id).containsExactly(1L, 2L);
         assertThat(claimed)
                 .allSatisfy(event -> {
-                    assertThat(event.getStatus()).isEqualTo(OutboxStatus.PROCESSING.name());
-                    assertThat(event.getUpdatedAt()).isEqualTo(now);
+                    assertThat(event.status()).isEqualTo(OutboxStatus.PROCESSING.name());
+                    assertThat(event.updatedAt()).isEqualTo(now);
                 });
 
         ArgumentCaptor<UpdateWrapper<CallEventOutboxEntity>> updateCaptor =

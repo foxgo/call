@@ -1,10 +1,10 @@
 package com.callcenter.ingestion.application.outbox;
 
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
-import com.callcenter.ingestion.infrastructure.config.PostprocessProperties;
-import com.callcenter.ingestion.infrastructure.mq.MessagePublisher;
-import com.callcenter.ingestion.infrastructure.outbox.OutboxPublisherProperties;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.OutboxRepository;
+import com.callcenter.ingestion.application.port.MessagePublisher;
+import com.callcenter.ingestion.application.port.OutboxPublisherSettings;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
+import com.callcenter.ingestion.application.port.PostprocessSettings;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -15,56 +15,56 @@ import org.springframework.stereotype.Component;
 @Component
 public class OutboxPublisher {
 
-    private final OutboxRepository repository;
+    private final OutboxEventRepository repository;
     private final MessagePublisher messagePublisher;
-    private final OutboxPublisherProperties properties;
-    private final PostprocessProperties postprocessProperties;
+    private final OutboxPublisherSettings properties;
+    private final PostprocessSettings postprocessSettings;
     private final Clock clock;
 
     public OutboxPublisher(
-            OutboxRepository repository,
+            OutboxEventRepository repository,
             MessagePublisher messagePublisher,
-            OutboxPublisherProperties properties,
-            PostprocessProperties postprocessProperties
+            OutboxPublisherSettings properties,
+            PostprocessSettings postprocessSettings
     ) {
-        this(repository, messagePublisher, properties, postprocessProperties, Clock.systemUTC());
+        this(repository, messagePublisher, properties, postprocessSettings, Clock.systemUTC());
     }
 
     OutboxPublisher(
-            OutboxRepository repository,
+            OutboxEventRepository repository,
             MessagePublisher messagePublisher,
-            OutboxPublisherProperties properties,
-            PostprocessProperties postprocessProperties,
+            OutboxPublisherSettings properties,
+            PostprocessSettings postprocessSettings,
             Clock clock
     ) {
         this.repository = repository;
         this.messagePublisher = messagePublisher;
         this.properties = properties;
-        this.postprocessProperties = postprocessProperties;
+        this.postprocessSettings = postprocessSettings;
         this.clock = clock;
     }
 
     @Scheduled(fixedDelayString = "${call.outbox.poll-interval:PT5S}")
     public void publishPendingBatch() {
         LocalDateTime batchNow = currentTime();
-        repository.recoverStaleProcessingRows(batchNow.minus(properties.getProcessingTimeout()), batchNow);
-        List<CallEventOutboxEntity> events =
-                repository.claimPublishableBatch(batchNow, properties.getBatchSize(), properties.getMaxRetries());
-        for (CallEventOutboxEntity event : events) {
+        repository.recoverStaleProcessingRows(batchNow.minus(properties.processingTimeout()), batchNow);
+        List<OutboxEventData> events =
+                repository.claimPublishableBatch(batchNow, properties.batchSize(), properties.maxRetries());
+        for (OutboxEventData event : events) {
             publish(event);
         }
     }
 
-    private void publish(CallEventOutboxEntity event) {
+    private void publish(OutboxEventData event) {
         LocalDateTime now = currentTime();
         try {
-            messagePublisher.publish(resolveTopic(event.getEventType()), event.getPartitionKey(), event.getPayload());
-            repository.deleteProcessingById(event.getId());
+            messagePublisher.publish(resolveTopic(event.eventType()), event.partitionKey(), event.payload());
+            repository.deleteProcessingById(event.id());
         } catch (RuntimeException exception) {
-            int attempt = event.getAttemptCount() == null ? 1 : event.getAttemptCount() + 1;
-            LocalDateTime nextAttemptAt = now.plus(properties.getRetryBackoff());
+            int attempt = event.attemptCount() == null ? 1 : event.attemptCount() + 1;
+            LocalDateTime nextAttemptAt = now.plus(properties.retryBackoff());
             repository.markFailed(
-                    event.getId(),
+                    event.id(),
                     attempt,
                     rootMessage(exception),
                     now,
@@ -79,8 +79,8 @@ public class OutboxPublisher {
 
     private String resolveTopic(String eventType) {
         return switch (eventType) {
-            case "call_record_persisted" -> postprocessProperties.getTopics().getRecordPersisted();
-            case "call_record_analysis_completed" -> postprocessProperties.getTopics().getAnalysisCompleted();
+            case "call_record_persisted" -> postprocessSettings.recordPersistedTopic();
+            case "call_record_analysis_completed" -> postprocessSettings.analysisCompletedTopic();
             default -> throw new IllegalArgumentException("不支持的 outbox 事件类型: " + eventType);
         };
     }

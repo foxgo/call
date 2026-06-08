@@ -1,9 +1,9 @@
 package com.callcenter.ingestion.domain.shared;
 
+import com.callcenter.ingestion.domain.model.CallRecordData;
+import com.callcenter.ingestion.domain.model.CallRoundData;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
 import com.callcenter.ingestion.domain.round.CallRoundMessage;
-import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
-import com.callcenter.ingestion.infrastructure.round.persistence.CallRoundEntity;
 
 public final class MessageKeys {
 
@@ -27,16 +27,24 @@ public final class MessageKeys {
         return roundDocumentId(message);
     }
 
-    public static String recordDocumentId(CallRecordEntity entity) {
-        return String.valueOf(entity.getCallId());
+    public static String recordDocumentId(long callId) {
+        return String.valueOf(callId);
     }
 
-    public static String roundDocumentId(CallRoundEntity entity) {
-        return entity.getCallId() + ":" + entity.getRoundId();
+    public static String roundDocumentId(long callId, long roundId) {
+        return callId + ":" + roundId;
+    }
+
+    public static String recordDocumentId(CallRecordData entity) {
+        return recordDocumentId(entity.callId());
+    }
+
+    public static String roundDocumentId(CallRoundData entity) {
+        return roundDocumentId(entity.callId(), entity.roundId());
     }
 
     public static String roundDocumentId(CallRoundMessage message) {
-        return message.callId() + ":" + message.roundId();
+        return roundDocumentId(message.callId(), message.roundId());
     }
 
     public static String domainEventIdempotencyKey(String eventId) {

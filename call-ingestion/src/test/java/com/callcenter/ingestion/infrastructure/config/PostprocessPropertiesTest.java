@@ -1,9 +1,9 @@
 package com.callcenter.ingestion.infrastructure.config;
 
-import com.callcenter.ingestion.infrastructure.mq.MessagePublisher;
+import com.callcenter.ingestion.application.port.MessagePublisher;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
 import com.callcenter.ingestion.application.outbox.OutboxPublisher;
 import com.callcenter.ingestion.infrastructure.outbox.OutboxPublisherProperties;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.OutboxRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -76,8 +76,8 @@ class PostprocessPropertiesTest {
     static class TestConfig {
 
         @Bean
-        OutboxRepository outboxRepository() {
-            return mock(OutboxRepository.class);
+        OutboxEventRepository outboxRepository() {
+            return mock(OutboxEventRepository.class);
         }
 
         @Bean
@@ -87,7 +87,7 @@ class PostprocessPropertiesTest {
 
         @Bean
         OutboxPublisher outboxPublisher(
-                OutboxRepository repository,
+                OutboxEventRepository repository,
                 MessagePublisher messagePublisher,
                 OutboxPublisherProperties outboxPublisherProperties,
                 PostprocessProperties postprocessProperties

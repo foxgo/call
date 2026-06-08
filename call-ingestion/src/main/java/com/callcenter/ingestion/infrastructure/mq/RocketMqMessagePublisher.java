@@ -1,5 +1,6 @@
 package com.callcenter.ingestion.infrastructure.mq;
 
+import com.callcenter.ingestion.application.port.MessagePublisher;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;

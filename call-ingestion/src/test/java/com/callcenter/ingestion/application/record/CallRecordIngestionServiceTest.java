@@ -3,72 +3,51 @@ package com.callcenter.ingestion.application.record;
 import com.callcenter.ingestion.domain.record.CallRecordMessage;
 import com.callcenter.ingestion.domain.shared.InboundMessage;
 import com.callcenter.ingestion.domain.shared.MessageType;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
-import com.callcenter.ingestion.infrastructure.record.persistence.CallRecordEntity;
-import com.callcenter.ingestion.infrastructure.record.persistence.MybatisCallRecordRepository;
-import com.callcenter.ingestion.infrastructure.round.persistence.MybatisCallRoundRepository;
-import java.util.List;
+import com.callcenter.ingestion.application.port.RecordRepository;
+import com.callcenter.ingestion.application.port.RoundRepository;
+import com.callcenter.ingestion.domain.model.CallRecordData;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 class CallRecordIngestionServiceTest {
 
     @Test
     void shouldPersistRecordMessageWhenRoutingAndMysqlWriteSucceed() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRecordRepository callRecordRepository = mock(MybatisCallRecordRepository.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
+        RecordRepository callRecordRepository = mock(RecordRepository.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
-                shardingRouter,
                 callRecordRepository,
                 callRoundRepository
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(shardingRouter.routeRecord(eq(9L), eq("13800138000"), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(shardingRouter.routeRound(eq(9L), eq(1001L), any()))
-                .thenReturn(new ShardKey(9L, 0, 3, "202605"));
-        doAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
-            java.util.function.Consumer<List<CallRecordEntity>> beforeOutboxInsert =
-                    invocation.getArgument(2, java.util.function.Consumer.class);
-            List<CallRecordEntity> entities = List.of(mock(CallRecordEntity.class));
-            beforeOutboxInsert.accept(entities);
-            return entities;
-        }).when(callRecordRepository).persistBatch(any(), any(), any());
-        when(callRoundRepository.countByCallId(any(), eq(1001L))).thenReturn(2L);
+        when(callRecordRepository.save(any())).thenReturn(mock(CallRecordData.class));
+        when(callRoundRepository.countByCallId(eq(9L), eq(1001L), any())).thenReturn(2L);
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isTrue();
-        verify(callRecordRepository).persistBatch(any(), eq(List.of(inbound.payload())), any());
-        verify(callRoundRepository).countByCallId(any(), eq(1001L));
+        verify(callRecordRepository).save(eq(inbound.payload()));
+        verify(callRoundRepository).countByCallId(eq(9L), eq(1001L), any());
     }
 
     @Test
     void shouldReturnFalseWhenMysqlWriteFailsWithRetryableError() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRecordRepository callRecordRepository = mock(MybatisCallRecordRepository.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
+        RecordRepository callRecordRepository = mock(RecordRepository.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
-                shardingRouter,
                 callRecordRepository,
                 callRoundRepository
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(shardingRouter.routeRecord(eq(9L), eq("13800138000"), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(callRecordRepository.persistBatch(any(), any(), any()))
+        when(callRecordRepository.save(any()))
                 .thenThrow(new IllegalStateException("mysql timeout"));
 
         boolean processed = service.process(inbound);
@@ -78,19 +57,15 @@ class CallRecordIngestionServiceTest {
 
     @Test
     void shouldReturnFalseWhenMysqlWriteFailsWithNonRetryableError() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRecordRepository callRecordRepository = mock(MybatisCallRecordRepository.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
+        RecordRepository callRecordRepository = mock(RecordRepository.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
-                shardingRouter,
                 callRecordRepository,
                 callRoundRepository
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(shardingRouter.routeRecord(eq(9L), eq("13800138000"), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(callRecordRepository.persistBatch(any(), any(), any()))
+        when(callRecordRepository.save(any()))
                 .thenThrow(new IllegalArgumentException("invalid payload"));
 
         boolean processed = service.process(inbound);
@@ -100,34 +75,21 @@ class CallRecordIngestionServiceTest {
 
     @Test
     void shouldReturnFalseWhenPersistedRoundCountDoesNotMatchRoundTotal() {
-        ShardingRouter shardingRouter = mock(ShardingRouter.class);
-        MybatisCallRecordRepository callRecordRepository = mock(MybatisCallRecordRepository.class);
-        MybatisCallRoundRepository callRoundRepository = mock(MybatisCallRoundRepository.class);
+        RecordRepository callRecordRepository = mock(RecordRepository.class);
+        RoundRepository callRoundRepository = mock(RoundRepository.class);
         CallRecordIngestionService service = new CallRecordIngestionService(
-                shardingRouter,
                 callRecordRepository,
                 callRoundRepository
         );
         InboundMessage<CallRecordMessage> inbound = recordInboundMessage();
 
-        when(shardingRouter.routeRecord(eq(9L), eq("13800138000"), any()))
-                .thenReturn(new ShardKey(9L, 0, 1, "202605"));
-        when(shardingRouter.routeRound(eq(9L), eq(1001L), any()))
-                .thenReturn(new ShardKey(9L, 0, 3, "202605"));
-        doAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
-            java.util.function.Consumer<List<CallRecordEntity>> beforeOutboxInsert =
-                    invocation.getArgument(2, java.util.function.Consumer.class);
-            List<CallRecordEntity> entities = List.of(mock(CallRecordEntity.class));
-            beforeOutboxInsert.accept(entities);
-            return entities;
-        }).when(callRecordRepository).persistBatch(any(), any(), any());
-        when(callRoundRepository.countByCallId(any(), eq(1001L))).thenReturn(1L);
+        when(callRecordRepository.save(any())).thenReturn(mock(CallRecordData.class));
+        when(callRoundRepository.countByCallId(eq(9L), eq(1001L), any())).thenReturn(1L);
 
         boolean processed = service.process(inbound);
 
         assertThat(processed).isFalse();
-        verify(callRoundRepository).countByCallId(any(), eq(1001L));
+        verify(callRoundRepository).countByCallId(eq(9L), eq(1001L), any());
     }
 
     private static InboundMessage<CallRecordMessage> recordInboundMessage() {

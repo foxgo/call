@@ -1,5 +1,6 @@
 package com.callcenter.ingestion.infrastructure.outbox;
 
+import com.callcenter.ingestion.application.port.OutboxPublisherSettings;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -7,7 +8,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties(prefix = "call.outbox")
-public class OutboxPublisherProperties {
+public class OutboxPublisherProperties implements OutboxPublisherSettings {
 
     @Min(1)
     private int batchSize = 100;
@@ -59,5 +60,25 @@ public class OutboxPublisherProperties {
 
     public void setProcessingTimeout(Duration processingTimeout) {
         this.processingTimeout = processingTimeout;
+    }
+
+    @Override
+    public int batchSize() {
+        return batchSize;
+    }
+
+    @Override
+    public int maxRetries() {
+        return maxRetries;
+    }
+
+    @Override
+    public Duration retryBackoff() {
+        return retryBackoff;
+    }
+
+    @Override
+    public Duration processingTimeout() {
+        return processingTimeout;
     }
 }

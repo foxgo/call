@@ -1,11 +1,10 @@
 package com.callcenter.ingestion.application.outbox;
 
-import com.callcenter.ingestion.infrastructure.outbox.persistence.CallEventOutboxEntity;
+import com.callcenter.ingestion.application.port.MessagePublisher;
+import com.callcenter.ingestion.application.port.OutboxEventRepository;
+import com.callcenter.ingestion.domain.model.OutboxEventData;
 import com.callcenter.ingestion.infrastructure.outbox.OutboxPublisherProperties;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.OutboxRepository;
-import com.callcenter.ingestion.infrastructure.outbox.persistence.OutboxStatus;
 import com.callcenter.ingestion.infrastructure.config.PostprocessProperties;
-import com.callcenter.ingestion.infrastructure.mq.MessagePublisher;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,13 +27,13 @@ class OutboxPublisherTest {
 
     @Test
     void shouldClaimPendingRowsBeforePublishingAndDeleteThem() {
-        OutboxRepository repository = mock(OutboxRepository.class);
+        OutboxEventRepository repository = mock(OutboxEventRepository.class);
         MessagePublisher messagePublisher = mock(MessagePublisher.class);
         OutboxPublisherProperties properties = properties();
         PostprocessProperties postprocessProperties = postprocessProperties();
         Clock clock = Clock.fixed(Instant.parse("2026-05-20T06:00:00Z"), ZoneOffset.UTC);
         OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
-        CallEventOutboxEntity recordEvent = claimedEvent(1L, "call_record_persisted", "1001");
+        OutboxEventData recordEvent = claimedEvent(1L, "call_record_persisted", "1001");
 
         when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(recordEvent));
 
@@ -46,13 +45,13 @@ class OutboxPublisherTest {
                 LocalDateTime.of(2026, 5, 20, 6, 0)
         );
         inOrder.verify(repository).claimPublishableBatch(LocalDateTime.of(2026, 5, 20, 6, 0), 20, 10);
-        verify(messagePublisher).publish("call_record_persisted", "1001", recordEvent.getPayload());
+        verify(messagePublisher).publish("call_record_persisted", "1001", recordEvent.payload());
         verify(repository).deleteProcessingById(1L);
     }
 
     @Test
     void shouldIncrementAttemptAndScheduleRetryWhenClaimedPublishFails() {
-        OutboxRepository repository = mock(OutboxRepository.class);
+        OutboxEventRepository repository = mock(OutboxEventRepository.class);
         MessagePublisher messagePublisher = mock(MessagePublisher.class);
         OutboxPublisherProperties properties = properties();
         PostprocessProperties postprocessProperties = postprocessProperties();
@@ -61,12 +60,12 @@ class OutboxPublisherTest {
                 Instant.parse("2026-05-20T06:00:05Z")
         );
         OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
-        CallEventOutboxEntity event = claimedEvent(9L, "call_record_persisted", "1001");
+        OutboxEventData event = claimedEvent(9L, "call_record_persisted", "1001");
 
         when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(event));
         org.mockito.Mockito.doThrow(new IllegalStateException("broker unavailable"))
                 .when(messagePublisher)
-                .publish("call_record_persisted", "1001", event.getPayload());
+                .publish("call_record_persisted", "1001", event.payload());
 
         publisher.publishPendingBatch();
 
@@ -87,19 +86,19 @@ class OutboxPublisherTest {
 
     @Test
     void shouldPublishAnalysisCompletedToConfiguredTopic() {
-        OutboxRepository repository = mock(OutboxRepository.class);
+        OutboxEventRepository repository = mock(OutboxEventRepository.class);
         MessagePublisher messagePublisher = mock(MessagePublisher.class);
         OutboxPublisherProperties properties = properties();
         PostprocessProperties postprocessProperties = postprocessProperties();
         Clock clock = Clock.fixed(Instant.parse("2026-05-20T06:00:00Z"), ZoneOffset.UTC);
         OutboxPublisher publisher = new OutboxPublisher(repository, messagePublisher, properties, postprocessProperties, clock);
-        CallEventOutboxEntity event = claimedEvent(2L, "call_record_analysis_completed", "1001");
+        OutboxEventData event = claimedEvent(2L, "call_record_analysis_completed", "1001");
 
         when(repository.claimPublishableBatch(any(), eq(20), eq(10))).thenReturn(List.of(event));
 
         publisher.publishPendingBatch();
 
-        verify(messagePublisher).publish("call_record_analysis_completed", "1001", event.getPayload());
+        verify(messagePublisher).publish("call_record_analysis_completed", "1001", event.payload());
         verify(repository).deleteProcessingById(2L);
     }
 
@@ -118,15 +117,24 @@ class OutboxPublisherTest {
         return properties;
     }
 
-    private static CallEventOutboxEntity claimedEvent(Long id, String eventType, String partitionKey) {
-        CallEventOutboxEntity entity = new CallEventOutboxEntity();
-        entity.setId(id);
-        entity.setEventType(eventType);
-        entity.setPayload("{\"eventType\":\"%s\"}".formatted(eventType));
-        entity.setPartitionKey(partitionKey);
-        entity.setStatus(OutboxStatus.PROCESSING.name());
-        entity.setAttemptCount(0);
-        return entity;
+    private static OutboxEventData claimedEvent(Long id, String eventType, String partitionKey) {
+        return new OutboxEventData(
+                id,
+                eventType + ":9:1001",
+                eventType,
+                "CALL_RECORD",
+                "1001",
+                9L,
+                partitionKey,
+                1,
+                "{\"eventType\":\"%s\"}".formatted(eventType),
+                "PROCESSING",
+                0,
+                null,
+                null,
+                LocalDateTime.of(2026, 5, 20, 6, 0),
+                LocalDateTime.of(2026, 5, 20, 6, 0)
+        );
     }
 
     private static Clock steppingClock(Instant... instants) {

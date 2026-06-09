@@ -34,3 +34,5 @@ call:
     username: ${ES_USERNAME:elastic}
     password: ${ES_PASSWORD:elastic123}
     auto-init: true
+  logging:
+    env: ${APP_ENV:local}

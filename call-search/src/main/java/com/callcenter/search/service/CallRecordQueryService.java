@@ -21,18 +21,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-@Slf4j
 @Service
 public class CallRecordQueryService {
 
     private static final String CALL_RECORD_READ_ALIAS = "call_record_read";
     private static final String CALL_ROUND_READ_ALIAS = "call_round_read";
+    private static final Logger log = LoggerFactory.getLogger(CallRecordQueryService.class);
 
     private final ElasticsearchClient elasticsearchClient;
 
@@ -52,6 +53,12 @@ public class CallRecordQueryService {
             long total = response.hits().total() == null ? content.size() : response.hits().total().value();
             return new PageResponse<>(content, request.getPage(), request.getSize(), total, "elasticsearch");
         } catch (IOException exception) {
+            log.warn(
+                    "event=call_record_query_failed tenantId={} phone={} reason={}",
+                    tenantId,
+                    maskPhone(request.getPhone()),
+                    exception.getMessage()
+            );
             throw new IllegalStateException("Failed to query call records from Elasticsearch", exception);
         }
     }
@@ -230,5 +237,12 @@ public class CallRecordQueryService {
 
     private SortOrder toEsSortOrder(String sortOrder) {
         return SortOrderType.from(sortOrder) == SortOrderType.ASC ? SortOrder.Asc : SortOrder.Desc;
+    }
+
+    private String maskPhone(String phone) {
+        if (!StringUtils.hasText(phone) || phone.length() < 7) {
+            return phone;
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

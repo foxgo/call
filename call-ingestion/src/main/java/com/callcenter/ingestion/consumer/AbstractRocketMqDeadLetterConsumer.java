@@ -2,6 +2,7 @@ package com.callcenter.ingestion.consumer;
 
 import com.callcenter.ingestion.service.DeadLetterTaskService;
 import com.callcenter.ingestion.model.MessageType;
+import com.callcenter.observability.logging.mq.MqLoggingContext;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 
@@ -20,10 +21,13 @@ public abstract class AbstractRocketMqDeadLetterConsumer implements RocketMQList
 
     @Override
     public void onMessage(MessageExt messageExt) {
-        try {
-            deadLetterTaskService.persist(messageExt, messageType);
-        } catch (Exception exception) {
-            throw new IllegalStateException("处理 RocketMQ 死信消息失败", exception);
+        try (MqLoggingContext loggingContext = new MqLoggingContext(messageExt)) {
+            loggingContext.open();
+            try {
+                deadLetterTaskService.persist(messageExt, messageType);
+            } catch (Exception exception) {
+                throw new IllegalStateException("处理 RocketMQ 死信消息失败", exception);
+            }
         }
     }
 }

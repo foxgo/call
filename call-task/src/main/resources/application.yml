@@ -100,7 +100,5 @@ call:
     username: ${ES_USERNAME:elastic}
     password: ${ES_PASSWORD:elastic123}
     auto-init: false
-
-logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+  logging:
+    env: ${APP_ENV:local}

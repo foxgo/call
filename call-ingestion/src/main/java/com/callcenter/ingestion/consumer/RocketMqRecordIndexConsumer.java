@@ -3,6 +3,7 @@ package com.callcenter.ingestion.consumer;
 import com.callcenter.ingestion.postprocess.CallRecordIndexService;
 import com.callcenter.ingestion.model.DomainEventMessage;
 import com.callcenter.ingestion.mq.BaseRocketMQListener;
+import com.callcenter.observability.logging.mq.MqLoggingContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import org.apache.rocketmq.common.message.MessageExt;
@@ -34,17 +35,20 @@ public class RocketMqRecordIndexConsumer extends BaseRocketMQListener implements
 
     @Override
     public void onMessage(MessageExt message) {
-        try {
-            DomainEventMessage event = objectMapper.readValue(
-                    new String(message.getBody(), StandardCharsets.UTF_8),
-                    DomainEventMessage.class
-            );
-            switch (event.eventType()) {
-                case "call_record_analysis_completed" -> recordIndexService.indexAnalysisCompletedEvent(event);
-                default -> throw new IllegalArgumentException("不支持的落库事件类型: " + event.eventType());
+        try (MqLoggingContext loggingContext = new MqLoggingContext(message)) {
+            loggingContext.open();
+            try {
+                DomainEventMessage event = objectMapper.readValue(
+                        new String(message.getBody(), StandardCharsets.UTF_8),
+                        DomainEventMessage.class
+                );
+                switch (event.eventType()) {
+                    case "call_record_analysis_completed" -> recordIndexService.indexAnalysisCompletedEvent(event);
+                    default -> throw new IllegalArgumentException("不支持的落库事件类型: " + event.eventType());
+                }
+            } catch (Exception exception) {
+                throw new IllegalStateException("处理 RocketMQ 落库事件失败", exception);
             }
-        } catch (Exception exception) {
-            throw new IllegalStateException("处理 RocketMQ 落库事件失败", exception);
         }
     }
 }

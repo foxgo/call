@@ -6,6 +6,7 @@ import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageKeys;
 import com.callcenter.ingestion.model.MessageType;
 import com.callcenter.ingestion.mq.BaseRocketMQListener;
+import com.callcenter.observability.logging.mq.MqLoggingContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import org.apache.rocketmq.common.message.MessageExt;
@@ -37,27 +38,30 @@ public class RocketMqCallRecordConsumer extends BaseRocketMQListener implements 
 
     @Override
     public void onMessage(MessageExt messageExt) {
-        try {
-            CallRecordMessage message = objectMapper.readValue(
-                    new String(messageExt.getBody(), StandardCharsets.UTF_8),
-                    CallRecordMessage.class
-            );
-            boolean processed = recordIngestionService.process(new InboundMessage<>(
-                    messageExt.getTopic(),
-                    messageExt.getQueueId(),
-                    messageExt.getQueueOffset(),
-                    String.valueOf(message.tenantId()),
-                    MessageType.RECORD,
-                    MessageKeys.recordIdempotencyKey(message),
-                    message,
-                    0,
-                    0L
-            ));
-            if (!processed) {
-                throw new IllegalStateException("record 消费未完成，等待 RocketMQ 重试");
+        try (MqLoggingContext loggingContext = new MqLoggingContext(messageExt)) {
+            loggingContext.open();
+            try {
+                CallRecordMessage message = objectMapper.readValue(
+                        new String(messageExt.getBody(), StandardCharsets.UTF_8),
+                        CallRecordMessage.class
+                );
+                boolean processed = recordIngestionService.process(new InboundMessage<>(
+                        messageExt.getTopic(),
+                        messageExt.getQueueId(),
+                        messageExt.getQueueOffset(),
+                        String.valueOf(message.tenantId()),
+                        MessageType.RECORD,
+                        MessageKeys.recordIdempotencyKey(message),
+                        message,
+                        0,
+                        0L
+                ));
+                if (!processed) {
+                    throw new IllegalStateException("record 消费未完成，等待 RocketMQ 重试");
+                }
+            } catch (Exception exception) {
+                throw new IllegalStateException("处理 RocketMQ record 写入消息失败", exception);
             }
-        } catch (Exception exception) {
-            throw new IllegalStateException("处理 RocketMQ record 写入消息失败", exception);
         }
     }
 }

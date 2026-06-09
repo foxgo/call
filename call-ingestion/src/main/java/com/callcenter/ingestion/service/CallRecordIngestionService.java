@@ -7,6 +7,8 @@ import com.callcenter.ingestion.model.CallRecordMessage;
 import com.callcenter.ingestion.model.InboundMessage;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class CallRecordIngestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(CallRecordIngestionService.class);
 
     private final RecordRepository callRecordRepository;
     private final RoundRepository callRoundRepository;
@@ -35,6 +39,13 @@ public class CallRecordIngestionService {
             validatePersistedRoundCount(message);
             return true;
         } catch (Exception exception) {
+            CallRecordMessage message = inbound.payload();
+            log.warn(
+                    "event=call_record_persist_failed tenantId={} callId={} reason={}",
+                    message == null ? null : message.tenantId(),
+                    message == null ? null : message.callId(),
+                    exception.getMessage()
+            );
             // 这里返回 false 交给上层消费者触发 RocketMQ 重试，避免吞掉暂时性失败。
             return false;
         }

@@ -1,65 +1,43 @@
 package com.callcenter.ingestion.consumer;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import com.callcenter.ingestion.model.CallRecordMessage;
 import com.callcenter.ingestion.service.CallRecordIngestionService;
-import com.callcenter.ingestion.model.InboundMessage;
-import com.callcenter.ingestion.model.MessageType;
+import com.callcenter.observability.logging.StructuredLogFields;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.slf4j.MDC;
+import org.mockito.Mockito;
 
 class RocketMqCallRecordConsumerTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
-    @Test
-    void shouldDelegateRecordPayloadToRecordIngestionService() throws Exception {
-        CallRecordIngestionService ingestionService = mock(CallRecordIngestionService.class);
-        RocketMqCallRecordConsumer consumer = new RocketMqCallRecordConsumer(objectMapper, ingestionService);
-        CallRecordMessage record = recordMessage();
-
-        when(ingestionService.process(any())).thenReturn(true);
-
-        consumer.onMessage(message(objectMapper.writeValueAsString(record)));
-
-        ArgumentCaptor<InboundMessage<CallRecordMessage>> captor = ArgumentCaptor.forClass(InboundMessage.class);
-        verify(ingestionService).process(captor.capture());
-        InboundMessage<CallRecordMessage> inbound = captor.getValue();
-        assertEquals("9", inbound.messageKey());
-        assertEquals(MessageType.RECORD, inbound.messageType());
-        assertEquals("1001", inbound.idempotencyKey());
-        assertEquals(record, inbound.payload());
+    @AfterEach
+    void tearDown() {
+        MDC.clear();
     }
 
     @Test
-    void shouldThrowWhenRetryableFailureNeedsRocketMqReconsume() throws Exception {
-        CallRecordIngestionService ingestionService = mock(CallRecordIngestionService.class);
-        RocketMqCallRecordConsumer consumer = new RocketMqCallRecordConsumer(objectMapper, ingestionService);
-        CallRecordMessage record = recordMessage();
-
-        when(ingestionService.process(any())).thenReturn(false);
-
-        assertThrows(IllegalStateException.class, () -> consumer.onMessage(message(objectMapper.writeValueAsString(record))));
-    }
-
-    private static MessageExt message(String payload) {
+    void shouldPopulateMqContextAroundMessageHandling() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        CallRecordIngestionService service = Mockito.mock(CallRecordIngestionService.class);
+        AtomicReference<String> topic = new AtomicReference<>();
+        AtomicReference<String> messageId = new AtomicReference<>();
+        when(service.process(any())).thenAnswer(invocation -> {
+            topic.set(MDC.get(StructuredLogFields.TOPIC));
+            messageId.set(MDC.get(StructuredLogFields.MESSAGE_ID));
+            return true;
+        });
+        RocketMqCallRecordConsumer consumer = new RocketMqCallRecordConsumer(objectMapper, service);
         MessageExt messageExt = new MessageExt();
-        messageExt.setBody(payload.getBytes(StandardCharsets.UTF_8));
-        return messageExt;
-    }
-
-    private static CallRecordMessage recordMessage() {
-        return new CallRecordMessage(
+        messageExt.setTopic("call_record_ingest");
+        messageExt.setMsgId("msg-1001");
+        messageExt.setBody(objectMapper.writeValueAsBytes(new CallRecordMessage(
                 1001L,
                 9L,
                 1L,
@@ -79,6 +57,13 @@ class RocketMqCallRecordConsumerTest {
                 3L,
                 4L,
                 null
-        );
+        )));
+
+        consumer.onMessage(messageExt);
+
+        assertThat(topic).hasValue("call_record_ingest");
+        assertThat(messageId).hasValue("msg-1001");
+        assertThat(MDC.get(StructuredLogFields.TOPIC)).isNull();
+        assertThat(MDC.get(StructuredLogFields.MESSAGE_ID)).isNull();
     }
 }

@@ -44,10 +44,10 @@ public class AsyncDialDispatchService {
             dispatchSendExecutor.execute(() -> doSubmit(shardKey, unit));
         } catch (RejectedExecutionException ex) {
             log.warn(
-                    "Async dial dispatch submission rejected, taskId={}, dialUnitId={}, token={}",
+                    "event=dispatch_submission_rejected taskId={} dialUnitId={} token={}",
                     unit == null ? null : unit.getTaskId(),
                     unit == null ? null : unit.getId(),
-                    unit == null ? null : unit.getDispatchToken(),
+                    maskDispatchToken(unit),
                     ex
             );
             metrics.incrementDispatchSendRejected();
@@ -61,10 +61,10 @@ public class AsyncDialDispatchService {
             DispatchGateDecision decision = dispatchGateService.evaluate(shardKey, unit);
             if (!decision.allowed()) {
                 log.warn(
-                        "Dispatch gate rejected, taskId={}, dialUnitId={}, token={}, reason={}",
+                        "event=dispatch_gate_rejected taskId={} dialUnitId={} token={} reason={}",
                         unit.getTaskId(),
                         unit.getId(),
-                        unit.getDispatchToken(),
+                        maskDispatchToken(unit),
                         decision.reason()
                 );
                 metrics.incrementDispatchGateRejected();
@@ -75,20 +75,20 @@ public class AsyncDialDispatchService {
             metrics.incrementDispatchPublished();
         } catch (DispatchPreparationException ex) {
             log.warn(
-                    "Dispatch validation failed, taskId={}, dialUnitId={}, token={}, reason={}",
+                    "event=dispatch_validation_failed taskId={} dialUnitId={} token={} reason={}",
                     unit == null ? null : unit.getTaskId(),
                     unit == null ? null : unit.getId(),
-                    unit == null ? null : unit.getDispatchToken(),
+                    maskDispatchToken(unit),
                     ex.getMessage()
             );
             metrics.incrementDispatchValidationFailed();
             compensateQuietly(shardKey, unit);
         } catch (Exception ex) {
             log.warn(
-                    "Async dial dispatch publish failed, taskId={}, dialUnitId={}, token={}",
+                    "event=dispatch_publish_failed taskId={} dialUnitId={} token={}",
                     unit == null ? null : unit.getTaskId(),
                     unit == null ? null : unit.getId(),
-                    unit == null ? null : unit.getDispatchToken(),
+                    maskDispatchToken(unit),
                     ex
             );
             metrics.incrementDispatchSendFailed();
@@ -101,5 +101,9 @@ public class AsyncDialDispatchService {
             return;
         }
         dialDispatchCompensationService.compensateFailedDispatch(shardKey, unit);
+    }
+
+    private String maskDispatchToken(CallDialUnitEntity unit) {
+        return unit == null || unit.getDispatchToken() == null ? null : "******";
     }
 }

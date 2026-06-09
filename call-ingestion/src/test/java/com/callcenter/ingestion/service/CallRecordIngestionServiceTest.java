@@ -1,5 +1,9 @@
 package com.callcenter.ingestion.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.callcenter.ingestion.model.CallRecordMessage;
 import com.callcenter.ingestion.model.InboundMessage;
 import com.callcenter.ingestion.model.MessageType;
@@ -8,6 +12,7 @@ import com.callcenter.ingestion.service.RoundRepository;
 import com.callcenter.ingestion.model.CallRecordData;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
+import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,6 +47,10 @@ class CallRecordIngestionServiceTest {
     void shouldReturnFalseWhenMysqlWriteFailsWithRetryableError() {
         RecordRepository callRecordRepository = mock(RecordRepository.class);
         RoundRepository callRoundRepository = mock(RoundRepository.class);
+        Logger logger = (Logger) LoggerFactory.getLogger(CallRecordIngestionService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
         CallRecordIngestionService service = new CallRecordIngestionService(
                 callRecordRepository,
                 callRoundRepository
@@ -54,6 +63,12 @@ class CallRecordIngestionServiceTest {
         boolean processed = service.process(inbound);
 
         assertThat(processed).isFalse();
+        assertThat(appender.list)
+                .hasSize(1)
+                .first()
+                .extracting(ILoggingEvent::getLevel, ILoggingEvent::getFormattedMessage)
+                .containsExactly(Level.WARN, "event=call_record_persist_failed tenantId=9 callId=1001 reason=mysql timeout");
+        logger.detachAppender(appender);
     }
 
     @Test

@@ -1,5 +1,9 @@
 package com.callcenter.task.dispatch;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.callcenter.task.entity.CallDialUnitEntity;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.task.metrics.CallTaskMetrics;
@@ -8,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -149,6 +154,10 @@ class AsyncDialDispatchServiceTest {
         DispatchUnitValidator validator = mock(DispatchUnitValidator.class);
         DispatchGateService gateService = mock(DispatchGateService.class);
         CallTaskMetrics metrics = mock(CallTaskMetrics.class);
+        Logger logger = (Logger) LoggerFactory.getLogger(AsyncDialDispatchService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
         AsyncDialDispatchService service = new AsyncDialDispatchService(
                 executor,
                 publisher,
@@ -167,6 +176,13 @@ class AsyncDialDispatchServiceTest {
         verify(metrics, never()).incrementDispatchPublished();
         verify(metrics, never()).incrementDispatchSendFailed();
         verify(publisher, never()).publish(unit);
+        assertEquals(1, appender.list.size());
+        assertEquals(Level.WARN, appender.list.getFirst().getLevel());
+        assertEquals(
+                "event=dispatch_submission_rejected taskId=1001 dialUnitId=11 token=******",
+                appender.list.getFirst().getFormattedMessage()
+        );
+        logger.detachAppender(appender);
     }
 
     private static CallDialUnitEntity unit() {

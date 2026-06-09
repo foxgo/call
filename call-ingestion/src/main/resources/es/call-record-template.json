@@ -1,0 +1,122 @@
+{
+  "index_patterns": [
+    "call_record_*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_shards": 2,
+      "number_of_replicas": 1,
+      "refresh_interval": "30s",
+      "index.lifecycle.name": "call_record_ilm",
+      "index.lifecycle.rollover_alias": "call_record_write",
+      "analysis": {
+        "analyzer": {
+          "ik_max": {
+            "type": "custom",
+            "tokenizer": "standard"
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "_routing": {
+        "required": true
+      },
+      "properties": {
+        "tenant_id": {
+          "type": "long"
+        },
+        "call_id": {
+          "type": "keyword"
+        },
+        "task_id": {
+          "type": "long"
+        },
+        "phone": {
+          "type": "keyword"
+        },
+        "line_number": {
+          "type": "keyword"
+        },
+        "call_status": {
+          "type": "byte"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "recording_url": {
+          "type": "keyword"
+        },
+        "error_code": {
+          "type": "integer"
+        },
+        "error_description": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "hangup_by": {
+          "type": "byte"
+        },
+        "connected": {
+          "type": "byte"
+        },
+        "ring_duration": {
+          "type": "long"
+        },
+        "ring_start_time": {
+          "type": "date"
+        },
+        "hangup_time": {
+          "type": "date"
+        },
+        "start_time": {
+          "type": "date"
+        },
+        "end_time": {
+          "type": "date"
+        },
+        "full_text": {
+          "type": "text",
+          "analyzer": "ik_max",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "intents": {
+          "type": "keyword"
+        },
+        "tags": {
+          "type": "keyword"
+        },
+        "risk_flag": {
+          "type": "boolean"
+        },
+        "quality_score": {
+          "type": "float"
+        },
+        "round_count": {
+          "type": "integer"
+        },
+        "ai_version": {
+          "type": "keyword"
+        },
+        "ext": {
+          "type": "object",
+          "enabled": false
+        },
+        "created_at": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}

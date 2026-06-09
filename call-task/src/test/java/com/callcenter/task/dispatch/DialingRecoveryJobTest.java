@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.route.ShardKey;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.repository.CallDialUnitRepository;

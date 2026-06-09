@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch.capacity;
 
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.dispatch.RedisQueueKeys;
 import java.time.Instant;
 import java.util.Map;

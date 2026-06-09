@@ -118,7 +118,7 @@ services:
   call-ingestion:
     build:
       context: ..
-      dockerfile: ../call-ingestion/Dockerfile
+      dockerfile: call-ingestion/Dockerfile
     container_name: call-ingestion
     depends_on:
       mysql:
@@ -147,7 +147,7 @@ services:
   call-search:
     build:
       context: ..
-      dockerfile: ../call-search/Dockerfile
+      dockerfile: call-search/Dockerfile
     container_name: call-search
     depends_on:
       mysql:
@@ -168,7 +168,7 @@ services:
   call-task:
     build:
       context: ..
-      dockerfile: ../call-task/Dockerfile
+      dockerfile: call-task/Dockerfile
     container_name: call-task
     depends_on:
       mysql:
@@ -197,7 +197,7 @@ services:
   call-iam:
     build:
       context: ..
-      dockerfile: ../call-iam/Dockerfile
+      dockerfile: call-iam/Dockerfile
     container_name: call-iam
     depends_on:
       mysql:

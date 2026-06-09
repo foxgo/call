@@ -13,13 +13,13 @@
 1. 构建服务镜像
 
 ```bash
-docker compose build
+docker compose -f deploy/docker-compose.yml build
 ```
 
 2. 启动基础设施与服务
 
 ```bash
-docker compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 3. 查看服务

@@ -1,10 +1,10 @@
 package com.callcenter.task.repository;
 
-import com.callcenter.common.config.ShardProperties;
-import com.callcenter.common.entity.CallDialUnitEntity;
-import com.callcenter.common.enums.CallDialUnitStatus;
-import com.callcenter.common.mapper.CallDialUnitMapper;
-import com.callcenter.common.route.ShardKey;
+import com.callcenter.persistence.config.ShardProperties;
+import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.enums.CallDialUnitStatus;
+import com.callcenter.task.mapper.CallDialUnitMapper;
+import com.callcenter.persistence.route.ShardKey;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

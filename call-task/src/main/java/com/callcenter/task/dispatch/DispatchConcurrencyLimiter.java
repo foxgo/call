@@ -4,7 +4,7 @@ import com.callcenter.task.config.CallTaskConcurrencyProperties;
 import com.callcenter.task.config.CallTaskCapacityControlProperties;
 import com.callcenter.task.dispatch.capacity.TaskTargetConcurrencyRegistry;
 import com.callcenter.task.metrics.CallTaskMetrics;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.route.ShardingRouter;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;

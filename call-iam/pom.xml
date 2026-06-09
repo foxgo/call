@@ -15,7 +15,7 @@
     <dependencies>
         <dependency>
             <groupId>com.callcenter</groupId>
-            <artifactId>call-common</artifactId>
+            <artifactId>call-persistence</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.entity.CallDialUnitEntity;
+import com.callcenter.task.entity.CallDialUnitEntity;
 
 public interface DispatchUnitValidator {
 

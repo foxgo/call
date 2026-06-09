@@ -1,6 +1,6 @@
 package com.callcenter.task.model;
 
-import com.callcenter.common.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.entity.CallTaskImportBatchEntity;
 import java.time.LocalDateTime;
 
 public record ImportBatchResponse(

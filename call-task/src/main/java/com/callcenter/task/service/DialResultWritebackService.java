@@ -1,7 +1,7 @@
 package com.callcenter.task.service;
 
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.route.ShardKey;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.caller.AttemptStage;
 import com.callcenter.task.caller.CallerIdHealthEvent;
 import com.callcenter.task.caller.CallerIdHealthService;
@@ -101,7 +101,7 @@ public class DialResultWritebackService {
         taskActivationService.activate(tenantId, request.getTaskId());
     }
 
-    private void recordHealthEvent(Long tenantId, com.callcenter.common.entity.CallDialUnitEntity dialingUnit, DialResultCallbackRequest request) {
+    private void recordHealthEvent(Long tenantId, com.callcenter.task.entity.CallDialUnitEntity dialingUnit, DialResultCallbackRequest request) {
         if (dialingUnit.getSelectedCallerId() == null) {
             return;
         }

@@ -12,7 +12,7 @@
     <description>Call center processing platform</description>
 
     <modules>
-        <module>call-common</module>
+        <module>call-persistence</module>
         <module>call-ingestion</module>
         <module>call-iam</module>
         <module>call-search</module>

@@ -1,9 +1,0 @@
-{
-  "aliases": {
-    "call_record_write": {
-      "is_write_index": true
-    },
-    "call_record_read": {}
-  }
-}
-

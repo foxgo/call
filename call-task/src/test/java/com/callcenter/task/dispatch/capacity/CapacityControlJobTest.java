@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch.capacity;
 
-import com.callcenter.common.entity.CallTaskEntity;
+import com.callcenter.task.entity.CallTaskEntity;
 import com.callcenter.task.config.CallTaskCapacityControlProperties;
 import com.callcenter.task.dispatch.ActiveTaskQueue;
 import com.callcenter.task.dispatch.TaskActivationService;

@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.entity.CallDialUnitEntity;
-import com.callcenter.common.route.ShardKey;
+import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.mq.DialDispatchPublisher;
 import java.util.concurrent.Executor;

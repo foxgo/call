@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.route.ShardingRouter;
 import java.util.Optional;
 import java.util.Map;
 import java.util.List;

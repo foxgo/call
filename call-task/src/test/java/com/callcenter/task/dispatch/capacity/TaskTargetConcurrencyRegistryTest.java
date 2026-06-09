@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch.capacity;
 
-import com.callcenter.common.config.ShardProperties;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.config.ShardProperties;
+import com.callcenter.persistence.route.ShardingRouter;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;

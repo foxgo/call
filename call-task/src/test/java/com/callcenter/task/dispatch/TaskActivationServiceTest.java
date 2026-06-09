@@ -1,8 +1,8 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.entity.CallTaskEntity;
-import com.callcenter.common.config.ShardProperties;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.persistence.config.ShardProperties;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.repository.CallTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;

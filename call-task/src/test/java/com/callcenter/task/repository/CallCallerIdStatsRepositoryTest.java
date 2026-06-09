@@ -1,7 +1,7 @@
 package com.callcenter.task.repository;
 
-import com.callcenter.common.entity.CallCallerIdStatsEntity;
-import com.callcenter.common.mapper.CallCallerIdStatsMapper;
+import com.callcenter.task.entity.CallCallerIdStatsEntity;
+import com.callcenter.task.mapper.CallCallerIdStatsMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;

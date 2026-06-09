@@ -1,7 +1,7 @@
 package com.callcenter.iam.infrastructure.persistence;
 
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
-import com.callcenter.common.config.MybatisPlusConfig;
+import com.callcenter.persistence.config.MybatisPlusConfig;
 import com.callcenter.iam.domain.tenant.Tenant;
 import com.callcenter.iam.domain.tenant.TenantStatus;
 import com.callcenter.iam.infrastructure.persistence.adapter.MybatisTenantRepository;

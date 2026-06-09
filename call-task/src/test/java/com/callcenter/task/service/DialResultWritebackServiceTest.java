@@ -1,9 +1,9 @@
 package com.callcenter.task.service;
 
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
-import com.callcenter.common.entity.CallDialUnitEntity;
-import com.callcenter.common.enums.CallDialUnitStatus;
+import com.callcenter.persistence.route.ShardKey;
+import com.callcenter.persistence.route.ShardingRouter;
+import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.enums.CallDialUnitStatus;
 import com.callcenter.task.caller.CallerIdHealthService;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.dispatch.DispatchConcurrencyLimiter;

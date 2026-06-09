@@ -1,9 +1,9 @@
 package com.callcenter.task.repository;
 
-import com.callcenter.common.entity.CallCallerIdEntity;
-import com.callcenter.common.mapper.CallCallerIdMapper;
-import com.callcenter.common.mapper.CallTaskCallerIdBindingMapper;
-import com.callcenter.common.entity.CallTaskCallerIdBindingEntity;
+import com.callcenter.task.entity.CallCallerIdEntity;
+import com.callcenter.task.mapper.CallCallerIdMapper;
+import com.callcenter.task.mapper.CallTaskCallerIdBindingMapper;
+import com.callcenter.task.entity.CallTaskCallerIdBindingEntity;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

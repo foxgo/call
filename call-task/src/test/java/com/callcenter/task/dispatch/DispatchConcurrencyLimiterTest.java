@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.config.ShardProperties;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.config.ShardProperties;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskConcurrencyProperties;
 import com.callcenter.task.config.CallTaskCapacityControlProperties;
 import com.callcenter.task.dispatch.capacity.TaskTargetConcurrencyRegistry;

@@ -1,14 +1,14 @@
 package com.callcenter.task.service;
 
-import com.callcenter.common.entity.CallDialUnitEntity;
-import com.callcenter.common.entity.CallTaskEntity;
-import com.callcenter.common.entity.CallTaskImportBatchEntity;
-import com.callcenter.common.enums.CallDialUnitStatus;
-import com.callcenter.common.enums.CallTaskStatus;
-import com.callcenter.common.enums.CallTaskImportBatchStatus;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
-import com.callcenter.common.util.ShardedSnowflakeIdGenerator;
+import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.enums.CallDialUnitStatus;
+import com.callcenter.task.enums.CallTaskStatus;
+import com.callcenter.task.enums.CallTaskImportBatchStatus;
+import com.callcenter.persistence.route.ShardKey;
+import com.callcenter.persistence.route.ShardingRouter;
+import com.callcenter.persistence.util.ShardedSnowflakeIdGenerator;
 import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.model.ImportBatchResponse;
 import com.callcenter.task.model.ImportDialUnitItem;

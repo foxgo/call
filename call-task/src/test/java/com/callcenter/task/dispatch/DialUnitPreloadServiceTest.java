@@ -1,9 +1,9 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.entity.CallDialUnitEntity;
-import com.callcenter.common.entity.CallTaskEntity;
-import com.callcenter.common.route.ShardKey;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.persistence.route.ShardKey;
+import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import java.time.LocalDateTime;
 import com.callcenter.task.repository.CallDialUnitRepository;

@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.common.config.ShardProperties;
-import com.callcenter.common.route.ShardingRouter;
+import com.callcenter.persistence.config.ShardProperties;
+import com.callcenter.persistence.route.ShardingRouter;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.LinkedHashSet;

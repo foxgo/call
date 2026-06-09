@@ -27,7 +27,7 @@ class IamSchemaMigrationTest {
     void shouldCreateCoreIamTables() throws Exception {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_iam_schema.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_iam_schema.sql"));
         }
 
         assertThat(tables(new JdbcTemplate(dataSource))).contains(
@@ -43,6 +43,18 @@ class IamSchemaMigrationTest {
                 "role_data_scope",
                 "audit_log"
         );
+    }
+
+    @Test
+    void shouldSeedBuiltInPermissionsAndRoles() throws Exception {
+        DataSource dataSource = dataSource();
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_iam_schema.sql"));
+        }
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM permission", Integer.class)).isEqualTo(5);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM role", Integer.class)).isEqualTo(4);
     }
 
     private static List<String> tables(JdbcTemplate jdbcTemplate) {

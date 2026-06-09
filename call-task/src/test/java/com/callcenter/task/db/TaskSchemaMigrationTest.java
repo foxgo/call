@@ -27,10 +27,7 @@ class TaskSchemaMigrationTest {
     void shouldCreateTaskTablesAndDialUnitShards() throws Exception {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_call_task_tables.sql"));
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V2__deprecate_call_task_next_dispatch_time.sql"));
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V3__add_caller_id_selection_schema.sql"));
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__rename_call_dial_unit_id_to_call_id.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_task_schema.sql"));
         }
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);

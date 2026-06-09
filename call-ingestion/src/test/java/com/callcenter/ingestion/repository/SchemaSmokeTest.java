@@ -27,8 +27,7 @@ class SchemaSmokeTest {
     void shouldCreateOutboxTableWithExpectedIndexes() throws Exception {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_call_event_outbox.sql"));
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V2__update_call_event_outbox_indexes.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_ingestion_schema.sql"));
         }
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
@@ -47,7 +46,7 @@ class SchemaSmokeTest {
     void shouldCreateAnalysisResultTableWithUniqueTenantCallIndex() throws Exception {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_call_analysis_result.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_ingestion_schema.sql"));
         }
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
@@ -77,7 +76,7 @@ class SchemaSmokeTest {
                 """);
 
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V5__alter_call_record_add_metadata.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_ingestion_schema.sql"));
         }
 
         assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "recording_url")).isTrue();

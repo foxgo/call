@@ -33,7 +33,7 @@ class MybatisTenantRepositoryTest {
     void shouldInsertAndReloadTenantAggregate() throws Exception {
         DataSource dataSource = dataSource();
         try (Connection connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_iam_schema.sql"));
+            ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__init_call_iam_schema.sql"));
         }
 
         SqlSessionFactory sqlSessionFactory = sqlSessionFactory(dataSource);

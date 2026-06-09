@@ -3,6 +3,7 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY call-persistence/pom.xml call-persistence/pom.xml
 COPY call-ingestion/pom.xml call-ingestion/pom.xml
+COPY call-iam/pom.xml call-iam/pom.xml
 COPY call-search/pom.xml call-search/pom.xml
 COPY call-task/pom.xml call-task/pom.xml
 COPY call-persistence/src call-persistence/src

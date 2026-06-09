@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ public class OutboxPublisher {
     private final PostprocessSettings postprocessSettings;
     private final Clock clock;
 
+    @Autowired
     public OutboxPublisher(
             OutboxEventRepository repository,
             MessagePublisher messagePublisher,

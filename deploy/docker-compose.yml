@@ -11,8 +11,6 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
-    command:
-      - --default-authentication-plugin=mysql_native_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
       interval: 10s
@@ -60,6 +58,19 @@ services:
       timeout: 10s
       retries: 12
 
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:2.1.0
+    container_name: call-rocketmq-dashboard
+    depends_on:
+      rocketmq-nameserver:
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+    environment:
+      JAVA_OPTS: -Drocketmq.namesrv.addr=rocketmq-nameserver:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false
+    ports:
+      - "8080:8080"
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     container_name: call-es
@@ -77,19 +88,6 @@ services:
       interval: 15s
       timeout: 10s
       retries: 20
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.13.4
-    container_name: call-kibana
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-      ELASTICSEARCH_USERNAME: elastic
-      ELASTICSEARCH_PASSWORD: elastic123
-    ports:
-      - "5601:5601"
 
   prometheus:
     image: prom/prometheus:v2.52.0

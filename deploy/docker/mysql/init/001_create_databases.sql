@@ -10,19 +10,18 @@ GRANT ALL PRIVILEGES ON call_2.* TO 'call'@'%';
 GRANT ALL PRIVILEGES ON call_3.* TO 'call'@'%';
 FLUSH PRIVILEGES;
 
+USE call_0;
+
 DELIMITER $$
 
 CREATE PROCEDURE init_month_tables(IN db_name VARCHAR(64), IN ym VARCHAR(6))
 BEGIN
   DECLARE idx INT DEFAULT 0;
-  DECLARE record_sql TEXT;
-  DECLARE round_sql TEXT;
-
   WHILE idx < 16 DO
     SET @record_table = CONCAT(db_name, '.call_record_', ym, '_', LPAD(idx, 2, '0'));
     SET @round_table = CONCAT(db_name, '.call_round_', ym, '_', LPAD(idx, 2, '0'));
 
-    SET record_sql = CONCAT(
+    SET @record_sql = CONCAT(
       'CREATE TABLE IF NOT EXISTS ', @record_table, ' (',
       'call_id BIGINT PRIMARY KEY,',
       'tenant_id BIGINT NOT NULL,',
@@ -48,7 +47,7 @@ BEGIN
       ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
 
-    SET round_sql = CONCAT(
+    SET @round_sql = CONCAT(
       'CREATE TABLE IF NOT EXISTS ', @round_table, ' (',
       'round_id BIGINT PRIMARY KEY,',
       'call_id BIGINT NOT NULL,',
@@ -63,11 +62,11 @@ BEGIN
       ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
 
-    PREPARE stmt FROM record_sql;
+    PREPARE stmt FROM @record_sql;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 
-    PREPARE stmt FROM round_sql;
+    PREPARE stmt FROM @round_sql;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 

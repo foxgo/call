@@ -2,6 +2,7 @@ package com.callcenter.task.dispatch;
 
 import com.callcenter.task.entity.CallTaskEntity;
 import com.callcenter.task.repository.CallTaskRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,7 @@ public class TaskActivationService {
     private final CallTaskRepository callTaskRepository;
     private final TaskPartitioner taskPartitioner;
 
+    @Autowired
     public TaskActivationService(
             ActiveTaskQueue activeTaskQueue,
             CallTaskRepository callTaskRepository,

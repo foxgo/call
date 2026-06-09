@@ -3,15 +3,36 @@ package com.callcenter.task.dispatch;
 import com.callcenter.task.entity.CallTaskEntity;
 import com.callcenter.persistence.config.ShardProperties;
 import com.callcenter.persistence.route.ShardingRouter;
+import com.callcenter.task.config.CallTaskDispatchProperties;
 import com.callcenter.task.repository.CallTaskRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class TaskActivationServiceTest {
+
+    @Test
+    void shouldBeCreatableBySpringWhenDependenciesExist() {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.registerBean(ActiveTaskQueue.class, () -> mock(ActiveTaskQueue.class));
+        context.registerBean(CallTaskRepository.class, () -> mock(CallTaskRepository.class));
+        context.registerBean(CallTaskDispatchProperties.class, () -> {
+            CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
+            properties.setPartitionCount(128);
+            return properties;
+        });
+        context.register(TaskActivationService.class);
+
+        assertDoesNotThrow(() -> {
+            context.refresh();
+            context.getBean(TaskActivationService.class);
+        });
+    }
 
     @Test
     void shouldActivateRunningTaskIntoOwnedPartitionQueue() {

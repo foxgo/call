@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: call-iam-web
+  namespace: call-center
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: call-iam-web
+  template:
+    metadata:
+      labels:
+        app: call-iam-web
+    spec:
+      containers:
+        - name: call-iam-web
+          image: call-iam-web:latest
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20

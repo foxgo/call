@@ -1,6 +1,6 @@
 package com.callcenter.task.service;
 
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.persistence.util.ShardedSnowflakeIdGenerator;
 import com.callcenter.task.dispatch.TaskActivationService;
 import com.callcenter.task.model.CreateTaskRequest;

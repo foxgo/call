@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.persistence.config.ShardProperties;
 import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;

@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import com.callcenter.persistence.config.ShardProperties;
 import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
@@ -17,7 +17,6 @@ import org.springframework.data.redis.core.script.RedisScript;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;

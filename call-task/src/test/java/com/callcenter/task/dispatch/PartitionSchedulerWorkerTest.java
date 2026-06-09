@@ -1,8 +1,8 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallCallerIdStatsEntity;
-import com.callcenter.task.entity.CallDialUnitEntity;
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallCallerIdStatsEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.caller.AttemptStage;
@@ -28,7 +28,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;

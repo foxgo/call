@@ -1,4 +1,4 @@
-package com.callcenter.task.entity;
+package com.callcenter.task.repository.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableField;

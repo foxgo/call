@@ -14,6 +14,8 @@ import com.callcenter.task.model.DialResultCallbackRequest;
 import com.callcenter.task.model.RetryDecision;
 import com.callcenter.task.repository.CallDialUnitRepository;
 import java.time.Instant;
+
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,7 +103,7 @@ public class DialResultWritebackService {
         taskActivationService.activate(tenantId, request.getTaskId());
     }
 
-    private void recordHealthEvent(Long tenantId, com.callcenter.task.entity.CallDialUnitEntity dialingUnit, DialResultCallbackRequest request) {
+    private void recordHealthEvent(Long tenantId, CallDialUnitEntity dialingUnit, DialResultCallbackRequest request) {
         if (dialingUnit.getSelectedCallerId() == null) {
             return;
         }

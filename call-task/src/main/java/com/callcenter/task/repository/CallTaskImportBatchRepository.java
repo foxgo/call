@@ -2,8 +2,8 @@ package com.callcenter.task.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.callcenter.persistence.context.DbRouteContextHolder;
-import com.callcenter.task.entity.CallTaskImportBatchEntity;
-import com.callcenter.task.mapper.CallTaskImportBatchMapper;
+import com.callcenter.task.repository.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.repository.mapper.CallTaskImportBatchMapper;
 import com.callcenter.persistence.route.ShardingRouter;
 import java.util.NoSuchElementException;
 import org.springframework.stereotype.Repository;

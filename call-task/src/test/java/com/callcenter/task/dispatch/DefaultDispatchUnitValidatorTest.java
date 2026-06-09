@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;

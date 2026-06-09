@@ -1,7 +1,7 @@
-package com.callcenter.task.mapper;
+package com.callcenter.task.repository.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.callcenter.task.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.repository.entity.CallTaskImportBatchEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

@@ -1,8 +1,8 @@
 package com.callcenter.task.service;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
-import com.callcenter.task.entity.CallTaskEntity;
-import com.callcenter.task.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskImportBatchEntity;
 import com.callcenter.task.enums.CallDialUnitStatus;
 import com.callcenter.task.enums.CallTaskStatus;
 import com.callcenter.task.enums.CallTaskImportBatchStatus;

@@ -1,6 +1,6 @@
 package com.callcenter.task.caller;
 
-import com.callcenter.task.entity.CallCallerIdStatsEntity;
+import com.callcenter.task.repository.entity.CallCallerIdStatsEntity;
 import com.callcenter.persistence.util.ShardedSnowflakeIdGenerator;
 import com.callcenter.task.repository.CallCallerIdStatsRepository;
 import java.time.LocalDateTime;

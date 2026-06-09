@@ -1,6 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.persistence.route.ShardingRouter;
 import com.callcenter.task.config.CallTaskDispatchProperties;
@@ -35,7 +36,7 @@ public class DialUnitPreloadService {
         if (windowSize >= properties.getPreloadThreshold()) {
             return;
         }
-        List<com.callcenter.task.entity.CallDialUnitEntity> units = callDialUnitRepository.claimPendingToReady(
+        List<CallDialUnitEntity> units = callDialUnitRepository.claimPendingToReady(
                 shardKey,
                 task.getId(),
                 properties.getPreloadBatchSize(),

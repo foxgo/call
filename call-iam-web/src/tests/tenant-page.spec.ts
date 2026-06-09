@@ -75,6 +75,7 @@ describe('management pages', () => {
         const wrapper = mount(TenantListView);
         await flushPromises();
 
+        expect(wrapper.get('[data-testid="tenant-search-input"]').attributes('placeholder')).toContain('搜索租户');
         expect(wrapper.text()).toContain('Acme Cloud');
         expect(wrapper.text()).toContain('Northwind Contact Center');
     });

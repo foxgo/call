@@ -1,7 +1,7 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.task.enums.CallTaskStatus;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.task.repository.CallTaskRepository;

@@ -1,6 +1,6 @@
 package com.callcenter.task.mq;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import com.callcenter.task.config.CallTaskRocketMqProperties;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.stereotype.Component;

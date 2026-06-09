@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import com.callcenter.task.repository.CallTaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

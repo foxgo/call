@@ -1,8 +1,8 @@
 package com.callcenter.task.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.callcenter.task.entity.CallCallerIdStatsEntity;
-import com.callcenter.task.mapper.CallCallerIdStatsMapper;
+import com.callcenter.task.repository.entity.CallCallerIdStatsEntity;
+import com.callcenter.task.repository.mapper.CallCallerIdStatsMapper;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;

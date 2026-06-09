@@ -1,8 +1,8 @@
 package com.callcenter.task.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.callcenter.task.entity.CallTaskCallerIdBindingEntity;
-import com.callcenter.task.mapper.CallTaskCallerIdBindingMapper;
+import com.callcenter.task.repository.entity.CallTaskCallerIdBindingEntity;
+import com.callcenter.task.repository.mapper.CallTaskCallerIdBindingMapper;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 

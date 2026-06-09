@@ -1,6 +1,6 @@
 package com.callcenter.task.dispatch;
 
-import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.repository.CallDialUnitRepository;
@@ -8,7 +8,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;

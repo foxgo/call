@@ -1,6 +1,6 @@
 package com.callcenter.task.caller;
 
-import com.callcenter.task.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
 import org.springframework.stereotype.Service;
 
 @Service

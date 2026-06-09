@@ -1,7 +1,7 @@
 package com.callcenter.task.service;
 
-import com.callcenter.task.entity.CallTaskEntity;
-import com.callcenter.task.entity.CallTaskImportBatchEntity;
+import com.callcenter.task.repository.entity.CallTaskEntity;
+import com.callcenter.task.repository.entity.CallTaskImportBatchEntity;
 import com.callcenter.task.enums.CallTaskStatus;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.persistence.route.ShardingRouter;

@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.callcenter.task.entity.CallDialUnitEntity;
+import com.callcenter.task.repository.entity.CallDialUnitEntity;
 import com.callcenter.persistence.route.ShardKey;
 import com.callcenter.task.metrics.CallTaskMetrics;
 import com.callcenter.task.mq.DialDispatchPublisher;

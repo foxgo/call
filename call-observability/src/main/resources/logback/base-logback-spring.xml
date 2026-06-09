@@ -1,0 +1,19 @@
+<included>
+    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="call-service"/>
+    <springProperty name="APP_ENV" source="call.logging.env" defaultValue="local"/>
+
+    <include resource="logback/call-console-appender.xml"/>
+    <include resource="logback/call-json-appender.xml"/>
+
+    <springProfile name="dev,test,local">
+        <root level="INFO">
+            <appender-ref ref="PLAIN_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev &amp; !test &amp; !local">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+</included>

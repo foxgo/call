@@ -1,0 +1,3 @@
+<configuration>
+    <include resource="logback/base-logback-spring.xml"/>
+</configuration>

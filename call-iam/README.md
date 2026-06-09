@@ -17,6 +17,24 @@ mvn -pl call-iam -am spring-boot:run
 
 默认端口：`8085`
 
+## 默认初始化账号
+
+Flyway 迁移完成后会自动创建以下初始化数据：
+
+- 平台管理帐号
+  - 用户名：`platform-admin`
+  - 密码：`Abcdef12`
+  - 登录方式：`tenantCode` 留空
+- 默认租户
+  - `tenantCode`：`default`
+  - 名称：`Default Tenant`
+- 租户管理员帐号
+  - 用户名：`tenant-admin`
+  - 密码：`Abcdef12`
+  - 登录方式：`tenantCode = default`
+
+首次登录后应立即修改默认密码，生产环境不要保留初始化口令。
+
 ## 依赖环境变量
 
 - `MYSQL_HOST`

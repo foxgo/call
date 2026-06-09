@@ -3,6 +3,7 @@ package com.callcenter.task.dispatch;
 import com.callcenter.task.config.CallTaskDispatchProperties;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,6 +77,37 @@ class CallTaskDispatcherTest {
         verify(worker, times(1)).runPartition(7);
     }
 
+    @Test
+    void shouldStopSubmittingAfterExecutorRejectionAndResumeFromRejectedPartitionNextTick() {
+        TaskPartitionManager partitionManager = mock(TaskPartitionManager.class);
+        PartitionSchedulerWorker worker = mock(PartitionSchedulerWorker.class);
+        when(partitionManager.ownedPartitions()).thenReturn(List.of(7, 8, 9));
+        when(worker.runPartition(7)).thenReturn(false);
+        when(worker.runPartition(8)).thenReturn(false);
+        when(worker.runPartition(9)).thenReturn(false);
+
+        CallTaskDispatchProperties properties = new CallTaskDispatchProperties();
+        LimitedPerTickExecutor executor = new LimitedPerTickExecutor(1);
+        CallTaskDispatcher dispatcher = new CallTaskDispatcher(partitionManager, worker, properties, executor);
+
+        dispatcher.dispatchOwnedPartitions();
+
+        assertEquals(2, executor.attempts());
+        executor.runAll();
+        verify(worker, times(1)).runPartition(7);
+        verify(worker, never()).runPartition(8);
+        verify(worker, never()).runPartition(9);
+
+        executor.resetCapacity(1);
+        dispatcher.dispatchOwnedPartitions();
+
+        assertEquals(4, executor.attempts());
+        executor.runAll();
+        verify(worker, times(1)).runPartition(7);
+        verify(worker, times(1)).runPartition(8);
+        verify(worker, never()).runPartition(9);
+    }
+
     private static final class RecordingExecutor implements java.util.concurrent.Executor {
         private final List<Runnable> tasks = new ArrayList<>();
 
@@ -86,6 +118,40 @@ class CallTaskDispatcherTest {
 
         private int size() {
             return tasks.size();
+        }
+
+        private void runAll() {
+            List<Runnable> submitted = List.copyOf(tasks);
+            tasks.clear();
+            submitted.forEach(Runnable::run);
+        }
+    }
+
+    private static final class LimitedPerTickExecutor implements java.util.concurrent.Executor {
+        private final List<Runnable> tasks = new ArrayList<>();
+        private int remainingCapacity;
+        private int attempts;
+
+        private LimitedPerTickExecutor(int remainingCapacity) {
+            this.remainingCapacity = remainingCapacity;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            attempts++;
+            if (remainingCapacity <= 0) {
+                throw new RejectedExecutionException("executor full");
+            }
+            remainingCapacity--;
+            tasks.add(command);
+        }
+
+        private int attempts() {
+            return attempts;
+        }
+
+        private void resetCapacity(int remainingCapacity) {
+            this.remainingCapacity = remainingCapacity;
         }
 
         private void runAll() {

@@ -98,9 +98,13 @@ public class MybatisUserRepository implements UserRepository {
 
     private <T> Optional<User> selectOne(Long tenantId, com.baomidou.mybatisplus.core.toolkit.support.SFunction<UserDO, T> column, T value) {
         LambdaQueryWrapper<UserDO> query = new LambdaQueryWrapper<UserDO>()
-                .eq(UserDO::getTenantId, tenantId)
                 .eq(column, value)
                 .last("LIMIT 1");
+        if (tenantId == null) {
+            query.isNull(UserDO::getTenantId);
+        } else {
+            query.eq(UserDO::getTenantId, tenantId);
+        }
         return Optional.ofNullable(userMapper.selectOne(query)).map(this::toDomain);
     }
 

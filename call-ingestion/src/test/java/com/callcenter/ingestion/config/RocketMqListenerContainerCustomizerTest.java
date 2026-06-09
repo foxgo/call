@@ -113,9 +113,11 @@ class RocketMqListenerContainerCustomizerTest {
 
         when(container.getConsumerGroup()).thenReturn("call-ai-dlq-group");
         when(container.getConsumer()).thenReturn(consumer);
+        when(consumer.getConsumeThreadMin()).thenReturn(20);
 
         customizer.postProcessAfterInitialization(container, "rocketMqAiDeadLetterConsumer");
 
+        verify(consumer).setConsumeThreadMin(1);
         verify(consumer).setConsumeThreadMax(1);
         verify(consumer).setMaxReconsumeTimes(9);
     }

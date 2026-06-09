@@ -4,6 +4,7 @@ package com.callcenter.persistence.util;
 import com.callcenter.persistence.config.CallIdProperties;
 import com.callcenter.persistence.config.ShardProperties;
 import java.time.Clock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,6 +27,7 @@ public class ShardedSnowflakeIdGenerator {
     private long lastTimestamp = -1L;
     private long sequence = 0L;
 
+    @Autowired
     public ShardedSnowflakeIdGenerator(CallIdProperties idProperties, ShardProperties shardProperties) {
         this(idProperties, shardProperties.getTableCount(), Clock.systemUTC());
     }

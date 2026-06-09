@@ -15,7 +15,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
+@Service
 public class LoginUseCase {
 
     private final UserRepository userRepository;

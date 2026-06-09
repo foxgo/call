@@ -52,7 +52,8 @@ class TaskFlywayMigrationStrategyTest {
 
         for (String database : List.of("call_0", "call_1", "call_2", "call_3")) {
             JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource(database));
-            assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isTrue();
+            assertThat(tableExists(jdbcTemplate, "flyway_schema_history_call_task")).isTrue();
+            assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isFalse();
             assertThat(tableExists(jdbcTemplate, "call_task")).isTrue();
             assertThat(tableExists(jdbcTemplate, "call_task_import_batch")).isTrue();
             assertThat(tableExists(jdbcTemplate, "call_dial_unit_15")).isTrue();

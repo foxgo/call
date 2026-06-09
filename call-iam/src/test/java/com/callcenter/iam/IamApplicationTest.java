@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @Disabled("Requires full infrastructure wiring for datasource and Flyway beans")
-@SpringBootTest(classes = IamApplication.class)
+@SpringBootTest(classes = CallIamApplication.class)
 class IamApplicationTest {
 
     @Test

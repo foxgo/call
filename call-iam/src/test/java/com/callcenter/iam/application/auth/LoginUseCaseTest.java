@@ -25,6 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LoginUseCaseTest {
 
+    private static final String SEEDED_ADMIN_PASSWORD_HASH =
+            "$2y$10$JnlTGAcCnc7Lw6ZqjJXv3ukr3Ik3ks1.aeWEXlnlswARe7Dmj.JKy";
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtTokenProvider tokenProvider = new JwtTokenProvider(
             "test-secret-key-for-iam-module-should-be-long-enough",
@@ -32,6 +35,11 @@ class LoginUseCaseTest {
             1800,
             604800
     );
+
+    @Test
+    void shouldAcceptSeededAdminPasswordHash() {
+        assertThat(passwordEncoder.matches("Abcdef12", SEEDED_ADMIN_PASSWORD_HASH)).isTrue();
+    }
 
     @Test
     void shouldRejectLockedUser() {

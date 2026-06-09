@@ -10,6 +10,10 @@ spring:
     name: call-iam
   jackson:
     default-property-inclusion: non_null
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
@@ -35,7 +39,6 @@ call:
     username: ${ES_USERNAME:elastic}
     password: ${ES_PASSWORD:elastic123}
     auto-init: true
-
 
 
 

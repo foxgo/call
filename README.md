@@ -2,7 +2,7 @@
 
 生产级通话完成后处理系统工程骨架，包含：
 
-- `call-common`：共享模型、分片路由、MyBatis-Plus、ES 初始化能力
+- `call-persistence`：分片路由、MyBatis-Plus能力
 - `call-iam`：统一身份中心，提供认证、租户、用户、角色、部门与审计接口
 - `call-ingestion`：RocketMQ 消费、MySQL 持久化、ES 写入、重试与 DLQ
 - `call-search`：查询接口预留与基础设施
@@ -34,7 +34,7 @@ docker compose -f deploy/docker-compose.yml up -d
 
 ```text
 call/
-├── call-common
+├── call-persistence
 ├── call-iam
 ├── call-ingestion
 ├── call-search
@@ -79,3 +79,4 @@ cd call-iam-web && npm test
 2. `mvn -pl call-iam -am spring-boot:run`
 3. 访问 `http://localhost:8085/actuator/health`
 4. 访问 `http://localhost:8085/v3/api-docs`
+5. 前端本地联调时，在 `call-iam-web` 执行 `npm run dev`，`/api/iam/**` 会由 Vite 代理到 `http://127.0.0.1:8085`

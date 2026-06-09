@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CallTaskFlywayConfig {
 
+    static final String HISTORY_TABLE = "flyway_schema_history_call_task";
+
     @Bean
     public FlywayMigrationStrategy flywayMigrationStrategy(CallDatasourceProperties properties) {
         return ignored -> properties.getNodes().forEach(this::migrateNode);
@@ -18,6 +20,7 @@ public class CallTaskFlywayConfig {
         Flyway.configure()
                 .dataSource(jdbcUrl(node), node.getUsername(), node.getPassword())
                 .locations("classpath:db/migration")
+                .table(HISTORY_TABLE)
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
                 .load()

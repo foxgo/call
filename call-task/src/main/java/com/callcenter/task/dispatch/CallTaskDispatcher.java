@@ -1,10 +1,12 @@
 package com.callcenter.task.dispatch;
 
 import com.callcenter.task.config.CallTaskDispatchProperties;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,6 +28,7 @@ public class CallTaskDispatcher {
     private final Executor dispatchExecutor;
     // 每个 partition 同一时刻只允许一个 worker 运行，避免重复 claim Redis 队列中的任务单元。
     private final ConcurrentHashMap<Integer, AtomicBoolean> runningPartitions = new ConcurrentHashMap<>();
+    private final AtomicInteger nextPartitionOffset = new AtomicInteger();
 
     public CallTaskDispatcher(
             TaskPartitionManager taskPartitionManager,
@@ -41,15 +44,25 @@ public class CallTaskDispatcher {
 
     @Scheduled(fixedDelayString = "${call.task.dispatch.poll-interval:PT1S}")
     public void dispatchOwnedPartitions() {
-        for (int partition : taskPartitionManager.ownedPartitions()) {
-            submitPartition(partition);
+        List<Integer> ownedPartitions = taskPartitionManager.ownedPartitions();
+        if (ownedPartitions.isEmpty()) {
+            return;
         }
+        int start = Math.floorMod(nextPartitionOffset.get(), ownedPartitions.size());
+        for (int i = 0; i < ownedPartitions.size(); i++) {
+            SubmitResult result = submitPartition(ownedPartitions.get((start + i) % ownedPartitions.size()));
+            if (result == SubmitResult.REJECTED) {
+                nextPartitionOffset.set(start + i);
+                return;
+            }
+        }
+        nextPartitionOffset.set(start + 1);
     }
 
-    private void submitPartition(int partition) {
+    private SubmitResult submitPartition(int partition) {
         AtomicBoolean running = runningPartitions.computeIfAbsent(partition, ignored -> new AtomicBoolean(false));
         if (!running.compareAndSet(false, true)) {
-            return;
+            return SubmitResult.ALREADY_RUNNING;
         }
         try {
             dispatchExecutor.execute(() -> {
@@ -59,9 +72,11 @@ public class CallTaskDispatcher {
                     running.set(false);
                 }
             });
+            return SubmitResult.SUBMITTED;
         } catch (RejectedExecutionException ex) {
             running.set(false);
-            log.warn("Dispatch executor rejected partition {}", partition, ex);
+            log.warn("Dispatch executor saturated, deferring remaining partitions from {}", partition);
+            return SubmitResult.REJECTED;
         }
     }
 
@@ -72,5 +87,11 @@ public class CallTaskDispatcher {
                 break;
             }
         }
+    }
+
+    private enum SubmitResult {
+        SUBMITTED,
+        ALREADY_RUNNING,
+        REJECTED
     }
 }

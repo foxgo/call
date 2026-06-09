@@ -39,7 +39,9 @@ public class RocketMqListenerContainerCustomizer implements BeanPostProcessor {
 
         DefaultMQPushConsumer consumer = container.getConsumer();
         if (consumer != null) {
-            consumer.setConsumeThreadMax(settings.consumeThreadMax());
+            int consumeThreadMax = settings.consumeThreadMax();
+            consumer.setConsumeThreadMin(Math.min(consumer.getConsumeThreadMin(), consumeThreadMax));
+            consumer.setConsumeThreadMax(consumeThreadMax);
             consumer.setMaxReconsumeTimes(settings.maxReconsumeTimes());
         }
         return bean;

@@ -66,9 +66,12 @@ CREATE TABLE IF NOT EXISTS call_analysis_result (
 
 DELIMITER $$
 
+DROP PROCEDURE IF EXISTS alter_call_record_tables$$
+
 CREATE PROCEDURE alter_call_record_tables()
 BEGIN
   DECLARE done INT DEFAULT 0;
+  DECLARE column_exists INT DEFAULT 0;
   DECLARE table_name_value VARCHAR(128);
   DECLARE cursor_tables CURSOR FOR
     SELECT table_name
@@ -85,21 +88,133 @@ BEGIN
       LEAVE read_loop;
     END IF;
 
-    SET @alter_sql = CONCAT(
-      'ALTER TABLE `', table_name_value, '` ',
-      'ADD COLUMN IF NOT EXISTS `recording_url` VARCHAR(512) NULL AFTER `round_total`, ',
-      'ADD COLUMN IF NOT EXISTS `error_code` INT NULL AFTER `recording_url`, ',
-      'ADD COLUMN IF NOT EXISTS `error_description` TEXT NULL AFTER `error_code`, ',
-      'ADD COLUMN IF NOT EXISTS `hangup_by` TINYINT NULL AFTER `error_description`, ',
-      'ADD COLUMN IF NOT EXISTS `connected` TINYINT NULL AFTER `hangup_by`, ',
-      'ADD COLUMN IF NOT EXISTS `ring_duration` BIGINT NULL AFTER `connected`, ',
-      'ADD COLUMN IF NOT EXISTS `ring_start_time` DATETIME(3) NULL AFTER `ring_duration`, ',
-      'ADD COLUMN IF NOT EXISTS `hangup_time` DATETIME(3) NULL AFTER `ring_start_time`'
-    );
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'recording_url';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `recording_url` VARCHAR(512) NULL AFTER `round_total`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
 
-    PREPARE stmt FROM @alter_sql;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'error_code';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `error_code` INT NULL AFTER `recording_url`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'error_description';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `error_description` TEXT NULL AFTER `error_code`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'hangup_by';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `hangup_by` TINYINT NULL AFTER `error_description`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'connected';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `connected` TINYINT NULL AFTER `hangup_by`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'ring_duration';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `ring_duration` BIGINT NULL AFTER `connected`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'ring_start_time';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `ring_start_time` DATETIME(3) NULL AFTER `ring_duration`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = table_name_value
+      AND column_name = 'hangup_time';
+    IF column_exists = 0 THEN
+      SET @alter_sql = CONCAT(
+        'ALTER TABLE `', table_name_value, '` ',
+        'ADD COLUMN `hangup_time` DATETIME(3) NULL AFTER `ring_start_time`'
+      );
+      PREPARE stmt FROM @alter_sql;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
   END LOOP;
 
   CLOSE cursor_tables;
@@ -109,4 +224,4 @@ DELIMITER ;
 
 CALL alter_call_record_tables();
 
-DROP PROCEDURE alter_call_record_tables;
+DROP PROCEDURE IF EXISTS alter_call_record_tables;

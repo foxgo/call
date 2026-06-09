@@ -44,12 +44,16 @@ class IamFlywayMigrationStrategyTest {
         strategy.migrate(null);
 
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource("call_0"));
-        assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "flyway_schema_history_call_iam")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isFalse();
         assertThat(tableExists(jdbcTemplate, "tenant")).isTrue();
         assertThat(tableExists(jdbcTemplate, "permission")).isTrue();
         assertThat(tableExists(jdbcTemplate, "role")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "iam_user")).isTrue();
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM permission", Integer.class)).isEqualTo(5);
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM role", Integer.class)).isEqualTo(4);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM role", Integer.class)).isEqualTo(5);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM tenant", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM iam_user", Integer.class)).isEqualTo(2);
     }
 
     private static CallDatasourceProperties.Node node(int index, String database) {

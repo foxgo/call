@@ -52,10 +52,19 @@ class IngestionFlywayMigrationStrategyTest {
 
         for (String database : List.of("call_0", "call_1", "call_2", "call_3")) {
             JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource(database));
-            assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isTrue();
+            assertThat(tableExists(jdbcTemplate, "flyway_schema_history_call_ingestion")).isTrue();
+            assertThat(tableExists(jdbcTemplate, "flyway_schema_history")).isFalse();
             assertThat(tableExists(jdbcTemplate, "call_event_outbox")).isTrue();
             assertThat(tableExists(jdbcTemplate, "call_dead_letter_task")).isTrue();
             assertThat(tableExists(jdbcTemplate, "call_analysis_result")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "recording_url")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "error_code")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "error_description")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "hangup_by")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "connected")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "ring_duration")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "ring_start_time")).isTrue();
+            assertThat(columnExists(jdbcTemplate, "call_record_202605_00", "hangup_time")).isTrue();
         }
     }
 
@@ -90,6 +99,22 @@ class IngestionFlywayMigrationStrategyTest {
                 """,
                 Integer.class,
                 tableName
+        );
+        return count != null && count > 0;
+    }
+
+    private static boolean columnExists(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND column_name = ?
+                """,
+                Integer.class,
+                tableName,
+                columnName
         );
         return count != null && count > 0;
     }

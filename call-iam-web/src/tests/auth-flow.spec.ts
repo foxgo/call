@@ -135,6 +135,7 @@ describe('auth flow', () => {
             }
         });
 
+        expect(wrapper.get('[data-testid="login-hero"]').text()).toContain('统一身份与租户治理');
         await wrapper.get('[data-testid="tenant-code-input"]').setValue('acme');
         await wrapper.get('[data-testid="account-input"]').setValue('tenant-admin');
         await wrapper.get('[data-testid="password-input"]').setValue('secret');
@@ -168,5 +169,6 @@ describe('auth flow', () => {
         });
 
         expect(wrapper.text()).toContain('Tenant Admin');
+        expect(wrapper.get('[data-testid="header-user-chip"]').text()).toContain('Tenant Admin');
     });
 });

@@ -1,41 +1,48 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <div>
+      <div class="page-title-group">
         <p class="page-eyebrow">User</p>
-        <h1>用户管理</h1>
+        <h1 class="page-title">用户管理</h1>
+        <p class="page-description">统一管理用户账号、启停状态、角色授权、部门归属与密码重置。</p>
       </div>
-      <button data-testid="open-create-user" type="button" class="page-action" @click="openCreateDialog">
+      <button data-testid="open-create-user" type="button" class="page-primary-btn" @click="openCreateDialog">
         新建用户
       </button>
     </header>
 
-    <section class="toolbar">
-      <select v-model="selectedDepartmentId" @change="loadUsers">
-        <option value="">全部部门</option>
-        <option v-for="department in departments" :key="department.id" :value="department.id">
-          {{ department.name }}
-        </option>
-      </select>
-      <span class="pager">共 {{ users.length }} 个用户</span>
+    <section class="page-toolbar surface-panel">
+      <div class="page-toolbar__group">
+        <select v-model="selectedDepartmentId" class="page-select user-filter" @change="loadUsers">
+          <option value="">全部部门</option>
+          <option v-for="department in departments" :key="department.id" :value="department.id">
+            {{ department.name }}
+          </option>
+        </select>
+      </div>
+      <span class="page-toolbar__meta">共 {{ users.length }} 个用户</span>
     </section>
 
-    <section class="table-card">
-      <article v-for="user in users" :key="user.id" class="table-row">
-        <div>
-          <h2>{{ user.nickname }}</h2>
-          <p>{{ user.username }} / {{ user.email || user.mobile || '-' }}</p>
+    <section class="record-list">
+      <article v-for="user in users" :key="user.id" class="record-card surface-panel">
+        <div class="record-card__main">
+          <div class="record-card__chips">
+            <span :class="['status-pill', statusClass(user.status)]">{{ user.status }}</span>
+            <span class="info-pill">{{ user.username }}</span>
+          </div>
+          <h2 class="record-card__title">{{ user.nickname }}</h2>
+          <p class="record-card__description">{{ user.email || user.mobile || '-' }}</p>
+          <p class="record-card__meta">角色 {{ user.roleIds.length }} 个 / 部门 {{ user.departmentIds.length }} 个</p>
         </div>
-        <div class="row-actions">
-          <strong>{{ user.status }}</strong>
-          <button type="button" @click="openEditDialog(user)">编辑</button>
-          <button type="button" @click="toggleStatus(user)">
+        <div class="record-card__actions">
+          <button type="button" class="page-secondary-btn" @click="openEditDialog(user)">编辑</button>
+          <button type="button" class="page-secondary-btn" @click="toggleStatus(user)">
             {{ user.status === 'ENABLE' ? '停用' : '启用' }}
           </button>
-          <button type="button" @click="openRolesDialog(user)">角色</button>
-          <button type="button" @click="openDepartmentsDialog(user)">部门</button>
-          <button type="button" @click="openPasswordDialog(user)">重置密码</button>
-          <button type="button" @click="removeUser(user.id)">删除</button>
+          <button type="button" class="page-secondary-btn" @click="openRolesDialog(user)">角色</button>
+          <button type="button" class="page-secondary-btn" @click="openDepartmentsDialog(user)">部门</button>
+          <button type="button" class="page-secondary-btn" @click="openPasswordDialog(user)">重置密码</button>
+          <button type="button" class="page-danger-btn" @click="removeUser(user.id)">删除</button>
         </div>
       </article>
     </section>
@@ -238,80 +245,23 @@ async function removeUser(userId: number) {
     await userApi.remove(userId);
     await loadUsers();
 }
+
+function statusClass(status: string) {
+    if (status === 'ENABLE') {
+        return 'status-pill--success';
+    }
+    if (status === 'DISABLE') {
+        return 'status-pill--warning';
+    }
+    if (status === 'LOCK') {
+        return 'status-pill--danger';
+    }
+    return 'status-pill--neutral';
+}
 </script>
 
 <style scoped>
-.page-shell {
-    display: grid;
-    gap: 20px;
-}
-
-.page-header,
-.toolbar,
-.table-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.page-eyebrow {
-    margin: 0 0 8px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--iam-accent);
-}
-
-h1,
-h2,
-p {
-    margin: 0;
-}
-
-.page-action {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--iam-border);
-    background: #12343b;
-    color: #fff;
-    cursor: pointer;
-}
-
-.table-card {
-    display: grid;
-    gap: 12px;
-}
-
-.table-row {
-    padding: 18px 20px;
-    border-radius: 20px;
-    background: var(--iam-surface);
-    border: 1px solid var(--iam-border);
-}
-
-.toolbar select {
-    min-width: 220px;
-    padding: 10px 14px;
-    border: 1px solid var(--iam-border);
-    border-radius: 12px;
-}
-
-.pager {
-    color: var(--iam-muted);
-}
-
-.row-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.row-actions button {
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--iam-border);
-    background: transparent;
-    cursor: pointer;
+.user-filter {
+    min-width: min(280px, 100%);
 }
 </style>

@@ -1,15 +1,21 @@
 <template>
   <div v-if="open" class="dialog-backdrop">
-    <section class="dialog-card">
+    <section class="dialog-card dialog-card--compact">
       <header class="dialog-header">
-        <h3>{{ title }}</h3>
+        <div class="dialog-title-block">
+          <p class="dialog-kicker">Department Assignment</p>
+          <h3 class="dialog-title">{{ title }}</h3>
+          <p class="dialog-description">为账号分配部门归属，影响组织范围和后续数据权限计算。</p>
+        </div>
         <button type="button" class="dialog-close" @click="$emit('close')">关闭</button>
       </header>
       <form class="dialog-body" @submit.prevent="submit">
-        <label v-for="department in departments" :key="department.id" class="check-item">
-          <input v-model="selectedIds" type="checkbox" :value="department.id" />
-          <span>{{ department.name }}</span>
-        </label>
+        <div class="selection-list">
+          <label v-for="department in departments" :key="department.id" class="selection-item">
+            <input v-model="selectedIds" type="checkbox" :value="department.id" />
+            <span>{{ department.name }}</span>
+          </label>
+        </div>
         <div class="dialog-actions">
           <button type="button" class="dialog-secondary" @click="$emit('close')">取消</button>
           <button type="submit" class="dialog-primary" :disabled="loading">
@@ -56,65 +62,4 @@ function submit() {
 }
 </script>
 
-<style scoped>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgba(15, 23, 42, 0.2);
-}
-
-.dialog-card {
-    width: min(480px, 100%);
-    padding: 24px;
-    border-radius: 24px;
-    background: #fff;
-}
-
-.dialog-header,
-.dialog-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.dialog-body {
-    display: grid;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.check-item {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.dialog-actions {
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 12px;
-}
-
-.dialog-secondary,
-.dialog-primary,
-.dialog-close {
-    padding: 10px 14px;
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-.dialog-close,
-.dialog-secondary {
-    border: 1px solid var(--iam-border);
-    background: transparent;
-}
-
-.dialog-primary {
-    border: 0;
-    background: #12343b;
-    color: #fff;
-}
-</style>
+<style scoped></style>

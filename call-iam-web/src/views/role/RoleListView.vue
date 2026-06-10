@@ -1,24 +1,29 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <div>
+      <div class="page-title-group">
         <p class="page-eyebrow">Role</p>
-        <h1>角色权限管理</h1>
+        <h1 class="page-title">角色权限管理</h1>
+        <p class="page-description">维护系统角色、权限项与数据范围，保证多租户权限边界清晰可控。</p>
       </div>
-      <button type="button" class="page-action" @click="openCreateDialog">新建角色</button>
+      <button type="button" class="page-primary-btn" @click="openCreateDialog">新建角色</button>
     </header>
 
-    <section class="table-card">
-      <article v-for="role in roles" :key="role.id" class="table-row">
-        <div>
-          <h2>{{ role.roleName }}</h2>
-          <p>{{ role.roleCode }} / {{ role.roleType }}</p>
+    <section class="record-list">
+      <article v-for="role in roles" :key="role.id" class="record-card surface-panel">
+        <div class="record-card__main">
+          <div class="record-card__chips">
+            <span class="status-pill status-pill--neutral">{{ role.roleType }}</span>
+            <span class="info-pill">{{ role.roleCode }}</span>
+          </div>
+          <h2 class="record-card__title">{{ role.roleName }}</h2>
+          <p class="record-card__description">{{ role.permissionIds.length }} 项权限配置</p>
+          <p class="record-card__meta">适用于平台与租户级别的授权控制和数据范围管理。</p>
         </div>
-        <div class="row-actions">
-          <strong>{{ role.permissionIds.length }} 项权限</strong>
-          <button type="button" @click="openEditDialog(role)">编辑</button>
-          <button type="button" @click="openDataScopeDialog(role)">数据范围</button>
-          <button type="button" @click="removeRole(role.id)">删除</button>
+        <div class="record-card__actions">
+          <button type="button" class="page-secondary-btn" @click="openEditDialog(role)">编辑</button>
+          <button type="button" class="page-secondary-btn" @click="openDataScopeDialog(role)">数据范围</button>
+          <button type="button" class="page-danger-btn" @click="removeRole(role.id)">删除</button>
         </div>
       </article>
     </section>
@@ -170,66 +175,4 @@ async function removeRole(roleId: number) {
 }
 </script>
 
-<style scoped>
-.page-shell {
-    display: grid;
-    gap: 20px;
-}
-
-.page-header,
-.table-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.page-eyebrow {
-    margin: 0 0 8px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--iam-accent);
-}
-
-h1,
-h2,
-p {
-    margin: 0;
-}
-
-.page-action {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--iam-border);
-    background: #12343b;
-    color: #fff;
-    cursor: pointer;
-}
-
-.table-card {
-    display: grid;
-    gap: 12px;
-}
-
-.table-row {
-    padding: 18px 20px;
-    border-radius: 20px;
-    background: var(--iam-surface);
-    border: 1px solid var(--iam-border);
-}
-
-.row-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.row-actions button {
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--iam-border);
-    background: transparent;
-    cursor: pointer;
-}
-</style>
+<style scoped></style>

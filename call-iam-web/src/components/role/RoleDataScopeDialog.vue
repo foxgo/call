@@ -1,23 +1,27 @@
 <template>
   <div v-if="open" class="dialog-backdrop">
-    <section class="dialog-card">
+    <section class="dialog-card dialog-card--compact">
       <header class="dialog-header">
-        <h3>{{ title }}</h3>
+        <div class="dialog-title-block">
+          <p class="dialog-kicker">Data Scope</p>
+          <h3 class="dialog-title">{{ title }}</h3>
+          <p class="dialog-description">定义角色可访问的数据范围，用于部门级与个人级数据隔离。</p>
+        </div>
         <button type="button" class="dialog-close" @click="$emit('close')">关闭</button>
       </header>
       <form class="dialog-body" @submit.prevent="submit">
-        <label>
-          数据范围
-          <select v-model="scopeType">
+        <label class="dialog-field">
+          <span class="dialog-label">数据范围</span>
+          <select v-model="scopeType" class="page-select">
             <option value="ALL">ALL</option>
             <option value="SELF">SELF</option>
             <option value="DEPARTMENT">DEPARTMENT</option>
             <option value="DEPARTMENT_AND_CHILD">DEPARTMENT_AND_CHILD</option>
           </select>
         </label>
-        <label>
-          部门
-          <select v-model="departmentId">
+        <label class="dialog-field">
+          <span class="dialog-label">部门</span>
+          <select v-model="departmentId" class="page-select">
             <option :value="null">不指定</option>
             <option v-for="department in departments" :key="department.id" :value="department.id">
               {{ department.name }}
@@ -76,69 +80,4 @@ function submit() {
 }
 </script>
 
-<style scoped>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgba(15, 23, 42, 0.2);
-}
-
-.dialog-card {
-    width: min(420px, 100%);
-    padding: 24px;
-    border-radius: 24px;
-    background: #fff;
-}
-
-.dialog-header,
-.dialog-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.dialog-body {
-    display: grid;
-    gap: 14px;
-    margin-top: 16px;
-}
-
-.dialog-body label {
-    display: grid;
-    gap: 8px;
-}
-
-.dialog-body select {
-    padding: 10px 12px;
-    border: 1px solid var(--iam-border);
-    border-radius: 12px;
-}
-
-.dialog-actions {
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.dialog-secondary,
-.dialog-primary,
-.dialog-close {
-    padding: 10px 14px;
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-.dialog-close,
-.dialog-secondary {
-    border: 1px solid var(--iam-border);
-    background: transparent;
-}
-
-.dialog-primary {
-    border: 0;
-    background: #12343b;
-    color: #fff;
-}
-</style>
+<style scoped></style>

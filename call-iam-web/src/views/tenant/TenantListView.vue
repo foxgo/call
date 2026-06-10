@@ -1,28 +1,41 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <div>
+      <div class="page-title-group">
         <p class="page-eyebrow">Tenant</p>
-        <h1>租户管理</h1>
+        <h1 class="page-title">租户管理</h1>
+        <p class="page-description">统一查看租户状态、租户编码和到期时间，面向平台级治理与续期管理。</p>
       </div>
-      <button type="button" class="page-action" @click="openCreateDialog">新建租户</button>
+      <button type="button" class="page-primary-btn" @click="openCreateDialog">新建租户</button>
     </header>
 
-    <section class="toolbar">
-      <input v-model="keyword" type="text" placeholder="搜索租户名称或编码" />
-      <span class="pager">共 {{ filteredTenants.length }} 个租户</span>
+    <section class="page-toolbar surface-panel">
+      <div class="page-toolbar__group">
+        <input
+          v-model="keyword"
+          data-testid="tenant-search-input"
+          class="page-input tenant-search"
+          type="text"
+          placeholder="搜索租户名称或编码"
+        />
+      </div>
+      <span class="page-toolbar__meta">共 {{ filteredTenants.length }} 个租户</span>
     </section>
 
-    <section class="table-card">
-      <article v-for="tenant in filteredTenants" :key="tenant.id" class="table-row">
-        <div>
-          <h2>{{ tenant.tenantName }}</h2>
-          <p>{{ tenant.tenantCode }} / 到期 {{ tenant.expireTime || '-' }}</p>
+    <section class="record-list">
+      <article v-for="tenant in filteredTenants" :key="tenant.id" class="record-card surface-panel">
+        <div class="record-card__main">
+          <div class="record-card__chips">
+            <span :class="['status-pill', statusClass(tenant.status)]">{{ tenant.status }}</span>
+            <span class="info-pill">编码 {{ tenant.tenantCode }}</span>
+          </div>
+          <h2 class="record-card__title">{{ tenant.tenantName }}</h2>
+          <p class="record-card__description">到期时间 {{ tenant.expireTime || '未设置' }}</p>
+          <p class="record-card__meta">适用于平台级租户生命周期、续期和基本治理场景。</p>
         </div>
-        <div class="row-actions">
-          <strong>{{ tenant.status }}</strong>
-          <button type="button" @click="openEditDialog(tenant)">编辑</button>
-          <button type="button" @click="removeTenant(tenant.id)">删除</button>
+        <div class="record-card__actions">
+          <button type="button" class="page-secondary-btn" @click="openEditDialog(tenant)">编辑</button>
+          <button type="button" class="page-danger-btn" @click="removeTenant(tenant.id)">删除</button>
         </div>
       </article>
     </section>
@@ -104,81 +117,26 @@ async function removeTenant(tenantId: number) {
     await tenantApi.remove(tenantId);
     await loadTenants();
 }
+
+function statusClass(status: string) {
+    if (status === 'ACTIVE') {
+        return 'status-pill--success';
+    }
+    if (status === 'DISABLE' || status === 'DISABLED') {
+        return 'status-pill--warning';
+    }
+    return 'status-pill--neutral';
+}
 </script>
 
 <style scoped>
-.page-shell {
-    display: grid;
-    gap: 20px;
+.tenant-search {
+    min-width: min(360px, 100%);
 }
 
-.page-header,
-.toolbar,
-.table-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.page-eyebrow {
-    margin: 0 0 8px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--iam-accent);
-}
-
-h1,
-h2,
-p {
-    margin: 0;
-}
-
-.page-action,
-.toolbar input {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--iam-border);
-}
-
-.page-action {
-    background: #12343b;
-    color: #fff;
-    cursor: pointer;
-}
-
-.toolbar input {
-    min-width: 240px;
-}
-
-.pager {
-    color: var(--iam-muted);
-}
-
-.table-card {
-    display: grid;
-    gap: 12px;
-}
-
-.table-row {
-    padding: 18px 20px;
-    border-radius: 20px;
-    background: var(--iam-surface);
-    border: 1px solid var(--iam-border);
-}
-
-.row-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.row-actions button {
-    padding: 8px 12px;
-    border: 1px solid var(--iam-border);
-    border-radius: 10px;
-    background: transparent;
-    cursor: pointer;
+@media (max-width: 760px) {
+    .tenant-search {
+        min-width: 100%;
+    }
 }
 </style>

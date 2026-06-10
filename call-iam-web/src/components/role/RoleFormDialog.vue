@@ -1,22 +1,26 @@
 <template>
   <div v-if="open" class="dialog-backdrop">
-    <section class="dialog-card">
+    <section class="dialog-card dialog-card--wide">
       <header class="dialog-header">
-        <h3>{{ title }}</h3>
+        <div class="dialog-title-block">
+          <p class="dialog-kicker">Role</p>
+          <h3 class="dialog-title">{{ title }}</h3>
+          <p class="dialog-description">配置角色基础属性和权限项，作为 IAM 授权体系中的核心控制单元。</p>
+        </div>
         <button type="button" class="dialog-close" @click="$emit('close')">关闭</button>
       </header>
       <form class="dialog-body" @submit.prevent="submit">
-        <label>
-          角色编码
-          <input v-model="form.roleCode" type="text" placeholder="输入角色编码" />
+        <label class="dialog-field">
+          <span class="dialog-label">角色编码</span>
+          <input v-model="form.roleCode" class="page-input" type="text" placeholder="输入角色编码" />
         </label>
-        <label>
-          角色名称
-          <input v-model="form.roleName" type="text" placeholder="输入角色名称" />
+        <label class="dialog-field">
+          <span class="dialog-label">角色名称</span>
+          <input v-model="form.roleName" class="page-input" type="text" placeholder="输入角色名称" />
         </label>
-        <label>
-          角色类型
-          <select v-model="form.roleType">
+        <label class="dialog-field">
+          <span class="dialog-label">角色类型</span>
+          <select v-model="form.roleType" class="page-select">
             <option value="TENANT_CUSTOM">TENANT_CUSTOM</option>
             <option value="TENANT_SYSTEM">TENANT_SYSTEM</option>
             <option value="PLATFORM_SYSTEM">PLATFORM_SYSTEM</option>
@@ -97,90 +101,19 @@ function submit() {
 </script>
 
 <style scoped>
-.dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgba(15, 23, 42, 0.2);
-}
-
-.dialog-card {
-    width: min(560px, 100%);
-    padding: 24px;
-    border-radius: 24px;
-    background: #fff;
-}
-
-.dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.dialog-close {
-    border: 0;
-    background: transparent;
-    color: var(--iam-accent);
-    cursor: pointer;
-}
-
-.dialog-body {
-    display: grid;
-    gap: 14px;
-    margin-top: 16px;
-}
-
-.dialog-body label {
-    display: grid;
-    gap: 8px;
-}
-
-.dialog-body input,
-.dialog-body select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--iam-border);
-    border-radius: 12px;
-}
-
 .permission-list {
     display: grid;
     gap: 12px;
     margin: 0;
-    padding: 12px 14px;
+    padding: 16px;
     border: 1px solid var(--iam-border);
-    border-radius: 16px;
+    border-radius: 18px;
+    background: var(--iam-surface-muted);
 }
 
 .permission-item {
     display: flex;
     gap: 10px;
     align-items: center;
-}
-
-.dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.dialog-secondary,
-.dialog-primary {
-    padding: 10px 14px;
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-.dialog-secondary {
-    border: 1px solid var(--iam-border);
-    background: transparent;
-}
-
-.dialog-primary {
-    border: 0;
-    background: #12343b;
-    color: #fff;
 }
 </style>

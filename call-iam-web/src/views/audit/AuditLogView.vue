@@ -1,28 +1,35 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <div>
+      <div class="page-title-group">
         <p class="page-eyebrow">Audit</p>
-        <h1>审计日志</h1>
+        <h1 class="page-title">审计日志</h1>
+        <p class="page-description">查看关键事件、操作者和资源变更，支持按资源类型、资源 ID 和操作者筛选。</p>
       </div>
     </header>
 
-    <section class="filter-card">
-      <input v-model="filters.operatorId" type="number" placeholder="操作者 ID" />
-      <input v-model="filters.resourceType" type="text" placeholder="资源类型" />
-      <input v-model="filters.resourceId" type="text" placeholder="资源 ID" />
-      <button type="button" class="page-action" @click="loadAudits">查询</button>
+    <section class="page-toolbar surface-panel">
+      <div class="page-toolbar__group audit-filter-grid">
+        <input v-model="filters.operatorId" class="page-input" type="number" placeholder="操作者 ID" />
+        <input v-model="filters.resourceType" class="page-input" type="text" placeholder="资源类型" />
+        <input v-model="filters.resourceId" class="page-input" type="text" placeholder="资源 ID" />
+      </div>
+      <button type="button" class="page-primary-btn" @click="loadAudits">查询</button>
     </section>
 
-    <section class="table-card">
-      <article v-for="audit in audits" :key="audit.id" class="table-row">
-        <div>
-          <h2>{{ audit.action }}</h2>
-          <p>{{ audit.resourceType }} / {{ audit.resourceId || '-' }} / {{ audit.createdAt }}</p>
+    <section class="record-list">
+      <article v-for="audit in audits" :key="audit.id" class="record-card surface-panel">
+        <div class="record-card__main">
+          <div class="record-card__chips">
+            <span class="status-pill status-pill--neutral">{{ audit.resourceType }}</span>
+            <span class="info-pill">资源 {{ audit.resourceId || '-' }}</span>
+          </div>
+          <h2 class="record-card__title">{{ audit.action }}</h2>
+          <p class="record-card__description">操作者 {{ audit.operatorId ?? '-' }} / {{ audit.createdAt }}</p>
+          <p class="record-card__meta">面向关键操作审计与排障回溯。</p>
         </div>
-        <div class="row-actions">
-          <strong>{{ audit.operatorId ?? '-' }}</strong>
-          <button type="button" @click="openDetail(audit.id)">详情</button>
+        <div class="record-card__actions">
+          <button type="button" class="page-secondary-btn" @click="openDetail(audit.id)">详情</button>
         </div>
       </article>
     </section>
@@ -64,64 +71,15 @@ async function openDetail(auditId: number) {
 </script>
 
 <style scoped>
-.page-shell {
+.audit-filter-grid {
     display: grid;
-    gap: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
 }
 
-.page-eyebrow {
-    margin: 0 0 8px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--iam-accent);
-}
-
-h1,
-h2,
-p {
-    margin: 0;
-}
-
-.filter-card,
-.table-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.filter-card input,
-.page-action {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--iam-border);
-}
-
-.page-action {
-    background: #12343b;
-    color: #fff;
-    cursor: pointer;
-}
-
-.table-row {
-    justify-content: space-between;
-    padding: 18px 20px;
-    border-radius: 20px;
-    background: var(--iam-surface);
-    border: 1px solid var(--iam-border);
-}
-
-.row-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.row-actions button {
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--iam-border);
-    background: transparent;
-    cursor: pointer;
+@media (max-width: 760px) {
+    .audit-filter-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

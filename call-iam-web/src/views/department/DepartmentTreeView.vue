@@ -1,24 +1,34 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <div>
+      <div class="page-title-group">
         <p class="page-eyebrow">Department</p>
-        <h1>部门管理</h1>
+        <h1 class="page-title">部门管理</h1>
+        <p class="page-description">维护组织层级、部门状态与父子关系，支持子部门创建与节点移动。</p>
       </div>
-      <button type="button" class="page-action" @click="openCreateDialog()">新建部门</button>
+      <button type="button" class="page-primary-btn" @click="openCreateDialog()">新建部门</button>
     </header>
 
-    <section class="tree-card">
-      <article v-for="item in flatDepartments" :key="item.id" class="tree-row" :style="{ paddingLeft: `${item.depth * 24 + 16}px` }">
-        <div>
-          <strong>{{ item.name }}</strong>
-          <p>{{ item.status }} / sort {{ item.sort }}</p>
+    <section class="record-list">
+      <article
+        v-for="item in flatDepartments"
+        :key="item.id"
+        class="record-card surface-panel department-row"
+        :style="{ marginLeft: `${item.depth * 18}px` }"
+      >
+        <div class="record-card__main">
+          <div class="record-card__chips">
+            <span :class="['status-pill', statusClass(item.status)]">{{ item.status }}</span>
+            <span class="info-pill">排序 {{ item.sort }}</span>
+          </div>
+          <h2 class="record-card__title">{{ item.name }}</h2>
+          <p class="record-card__meta">层级深度 {{ item.depth }} / 父级 {{ item.parentId ?? 'ROOT' }}</p>
         </div>
-        <div class="row-actions">
-          <button type="button" @click="openCreateDialog(item.id)">新增子部门</button>
-          <button type="button" @click="openEditDialog(item)">编辑</button>
-          <button type="button" @click="openMoveDialog(item)">移动</button>
-          <button type="button" @click="removeDepartment(item.id)">删除</button>
+        <div class="record-card__actions">
+          <button type="button" class="page-secondary-btn" @click="openCreateDialog(item.id)">新增子部门</button>
+          <button type="button" class="page-secondary-btn" @click="openEditDialog(item)">编辑</button>
+          <button type="button" class="page-secondary-btn" @click="openMoveDialog(item)">移动</button>
+          <button type="button" class="page-danger-btn" @click="removeDepartment(item.id)">删除</button>
         </div>
       </article>
     </section>
@@ -159,79 +169,35 @@ async function removeDepartment(departmentId: number) {
     await departmentApi.remove(departmentId);
     await loadTree();
 }
+
+function statusClass(status: string) {
+    return status === 'ACTIVE' ? 'status-pill--success' : 'status-pill--warning';
+}
 </script>
 
 <style scoped>
-.page-shell {
-    display: grid;
-    gap: 20px;
+.department-row {
+    position: relative;
 }
 
-.page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.department-row::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 18px;
+    bottom: 18px;
+    width: 2px;
+    border-radius: 999px;
+    background: rgba(31, 111, 120, 0.16);
 }
 
-.page-eyebrow {
-    margin: 0 0 8px;
-    font-size: 12px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--iam-accent);
-}
+@media (max-width: 760px) {
+    .department-row {
+        margin-left: 0 !important;
+    }
 
-h1 {
-    margin: 0;
-}
-
-.page-action {
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--iam-border);
-    background: #12343b;
-    color: #fff;
-    cursor: pointer;
-}
-
-.tree-card {
-    display: grid;
-    gap: 10px;
-    padding: 16px;
-    border-radius: 20px;
-    background: var(--iam-surface);
-    border: 1px solid var(--iam-border);
-}
-
-.tree-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 12px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.8);
-}
-
-.tree-row p,
-.tree-row strong {
-    margin: 0;
-}
-
-.tree-row p {
-    color: var(--iam-muted);
-}
-
-.row-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.row-actions button {
-    padding: 8px 12px;
-    border: 1px solid var(--iam-border);
-    border-radius: 10px;
-    background: transparent;
-    cursor: pointer;
+    .department-row::before {
+        display: none;
+    }
 }
 </style>
